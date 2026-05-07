@@ -1,0 +1,2368 @@
+[
+    {
+        "id": "3673608143",
+        "name": "State Bank of India",
+        "lat": 10.5540944,
+        "lng": 76.2264121,
+        "tags": {
+            "amenity": "atm",
+            "brand": "State Bank of India",
+            "brand:wikidata": "Q1340361",
+            "name": "State Bank of India",
+            "operator": "State Bank of India",
+            "operator:wikidata": "Q1340361",
+            "short_name": "SBI"
+        }
+    },
+    {
+        "id": "5491824377",
+        "name": "Ushus",
+        "lat": 10.5524399,
+        "lng": 76.2282883,
+        "tags": {
+            "building": "yes",
+            "name": "Ushus"
+        }
+    },
+    {
+        "id": "5907766700",
+        "name": "Unnamed Location",
+        "lat": 10.5519133,
+        "lng": 76.2267944,
+        "tags": {
+            "amenity": "atm",
+            "operator": "South Indian Bank ATM"
+        }
+    },
+    {
+        "id": "5907766702",
+        "name": "South Indian Bank",
+        "lat": 10.5520774,
+        "lng": 76.2267813,
+        "tags": {
+            "amenity": "bank",
+            "name": "South Indian Bank"
+        }
+    },
+    {
+        "id": "5907766703",
+        "name": "Vimala College Chapel",
+        "lat": 10.5523134,
+        "lng": 76.2264343,
+        "tags": {
+            "amenity": "place_of_worship",
+            "name": "Vimala College Chapel",
+            "religion": "christian"
+        }
+    },
+    {
+        "id": "5907766704",
+        "name": "Unnamed Location",
+        "lat": 10.5533061,
+        "lng": 76.2267506,
+        "tags": {
+            "amenity": "atm",
+            "operator": "HDFC Bank ATM"
+        }
+    },
+    {
+        "id": "5907766705",
+        "name": "Milma Store",
+        "lat": 10.5535849,
+        "lng": 76.2261035,
+        "tags": {
+            "amenity": "cafe",
+            "name": "Milma Store",
+            "opening_hours": "closed"
+        }
+    },
+    {
+        "id": "5907766712",
+        "name": "Ice and Bakes",
+        "lat": 10.5545195,
+        "lng": 76.2267115,
+        "tags": {
+            "amenity": "cafe",
+            "name": "Ice and Bakes"
+        }
+    },
+    {
+        "id": "5907781916",
+        "name": "Bay Leaf Restaurant",
+        "lat": 10.5558752,
+        "lng": 76.2273301,
+        "tags": {
+            "amenity": "restaurant",
+            "name": "Bay Leaf Restaurant"
+        }
+    },
+    {
+        "id": "5907781917",
+        "name": "Rockland",
+        "lat": 10.5558108,
+        "lng": 76.22717,
+        "tags": {
+            "amenity": "restaurant",
+            "name": "Rockland"
+        }
+    },
+    {
+        "id": "5907781918",
+        "name": "MEA Masjid",
+        "lat": 10.5551133,
+        "lng": 76.228247,
+        "tags": {
+            "amenity": "place_of_worship",
+            "name": "MEA Masjid",
+            "religion": "muslim"
+        }
+    },
+    {
+        "id": "5907781920",
+        "name": "Police Dog Squad Thrissur",
+        "lat": 10.5561828,
+        "lng": 76.2265405,
+        "tags": {
+            "amenity": "police",
+            "name": "Police Dog Squad Thrissur"
+        }
+    },
+    {
+        "id": "5907781921",
+        "name": "Office of The Deputy Commandant, Dist. Armed Reserve, Ramavarmapuram,Thrissur",
+        "lat": 10.5565513,
+        "lng": 76.2272391,
+        "tags": {
+            "amenity": "police",
+            "name": "Office of The Deputy Commandant, Dist. Armed Reserve, Ramavarmapuram,Thrissur"
+        }
+    },
+    {
+        "id": "5907781922",
+        "name": "916 Fried Chicken",
+        "lat": 10.556258,
+        "lng": 76.2281124,
+        "tags": {
+            "amenity": "restaurant",
+            "name": "916 Fried Chicken"
+        }
+    },
+    {
+        "id": "5907781923",
+        "name": "Lassi Corner",
+        "lat": 10.5569722,
+        "lng": 76.2285766,
+        "tags": {
+            "amenity": "cafe",
+            "name": "Lassi Corner"
+        }
+    },
+    {
+        "id": "5907816966",
+        "name": "Juma Masji",
+        "lat": 10.557934,
+        "lng": 76.2299149,
+        "tags": {
+            "amenity": "place_of_worship",
+            "name": "Juma Masji",
+            "religion": "muslim"
+        }
+    },
+    {
+        "id": "7465588097",
+        "name": "Unnamed Location",
+        "lat": 10.5542328,
+        "lng": 76.2265731,
+        "tags": {
+            "amenity": "atm",
+            "operator": "HDFC Bank"
+        }
+    },
+    {
+        "id": "7736908650",
+        "name": "Thrissur Engineering College Sub-Post Office",
+        "lat": 10.5540642,
+        "lng": 76.2264114,
+        "tags": {
+            "amenity": "post_office",
+            "name": "Thrissur Engineering College Sub-Post Office",
+            "operator": "India Post",
+            "operator:wikidata": "Q3519720"
+        }
+    },
+    {
+        "id": "8344921530",
+        "name": "Akshaya Centre, Pallimoola",
+        "lat": 10.5554878,
+        "lng": 76.2271479,
+        "tags": {
+            "amenity": "internet_cafe",
+            "name": "Akshaya Centre, Pallimoola",
+            "ref": "TSR240"
+        }
+    },
+    {
+        "id": "8833391700",
+        "name": "Green Pharma",
+        "lat": 10.5560978,
+        "lng": 76.2278388,
+        "tags": {
+            "amenity": "pharmacy",
+            "dispensing": "yes",
+            "healthcare": "pharmacy",
+            "name": "Green Pharma"
+        }
+    },
+    {
+        "id": "9537578161",
+        "name": "Gloria Gopikumar Hall (Wester Amphitheatre)",
+        "lat": 10.5545006,
+        "lng": 76.2241289,
+        "tags": {
+            "amenity": "events_venue",
+            "name": "Gloria Gopikumar Hall (Wester Amphitheatre)"
+        }
+    },
+    {
+        "id": "9537578162",
+        "name": "Eastern Amphitheatre",
+        "lat": 10.5545058,
+        "lng": 76.2252164,
+        "tags": {
+            "amenity": "events_venue",
+            "name": "Eastern Amphitheatre"
+        }
+    },
+    {
+        "id": "9537578167",
+        "name": "GECT Cafeteria",
+        "lat": 10.5539729,
+        "lng": 76.2242327,
+        "tags": {
+            "amenity": "cafe",
+            "name": "GECT Cafeteria"
+        }
+    },
+    {
+        "id": "10841759609",
+        "name": "Cake With Us",
+        "lat": 10.5545964,
+        "lng": 76.2265357,
+        "tags": {
+            "amenity": "cafe",
+            "cuisine": "pizza;coffee_shop;lemonade_drink;cold_beverages",
+            "name": "Cake With Us",
+            "outdoor_seating": "yes",
+            "phone": "+91 7034667112"
+        }
+    },
+    {
+        "id": "115714366",
+        "name": "Central Auditorium",
+        "lat": 10.5535948,
+        "lng": 76.2245669,
+        "tags": {
+            "amenity": "community_centre",
+            "building": "yes",
+            "name": "Central Auditorium"
+        }
+    },
+    {
+        "id": "115714450",
+        "name": "Mechanical Engineering Workshops",
+        "lat": 10.552883,
+        "lng": 76.2246257,
+        "tags": {
+            "building": "yes",
+            "craft": "yes",
+            "name": "Mechanical Engineering Workshops"
+        }
+    },
+    {
+        "id": "115714487",
+        "name": "Electrical Engineering workshops",
+        "lat": 10.5530023,
+        "lng": 76.2259154,
+        "tags": {
+            "building": "yes",
+            "craft": "yes",
+            "name": "Electrical Engineering workshops"
+        }
+    },
+    {
+        "id": "115714492",
+        "name": "Civil Engineering Workshop",
+        "lat": 10.5537076,
+        "lng": 76.2258611,
+        "tags": {
+            "building": "yes",
+            "craft": "yes",
+            "name": "Civil Engineering Workshop"
+        }
+    },
+    {
+        "id": "115714570",
+        "name": "Vimala College Thrissur",
+        "lat": 10.5530736,
+        "lng": 76.2268773,
+        "tags": {
+            "building": "college",
+            "name": "Vimala College Thrissur",
+            "wikidata": "Q1424939",
+            "wikipedia": "en:Vimala College"
+        }
+    },
+    {
+        "id": "115714680",
+        "name": "Dept. of Chemical Engineering",
+        "lat": 10.552614,
+        "lng": 76.2232924,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Chemical Engineering"
+        }
+    },
+    {
+        "id": "315753702",
+        "name": "St. Francis Xavier's Church Vijayapuram",
+        "lat": 10.5550309,
+        "lng": 76.226831,
+        "tags": {
+            "amenity": "place_of_worship",
+            "building": "yes",
+            "denomination": "roman_catholic",
+            "name": "St. Francis Xavier's Church Vijayapuram",
+            "religion": "christian"
+        }
+    },
+    {
+        "id": "315753811",
+        "name": "Jubilee Parish Hall",
+        "lat": 10.5548361,
+        "lng": 76.2271242,
+        "tags": {
+            "amenity": "community_centre",
+            "building": "yes",
+            "name": "Jubilee Parish Hall"
+        }
+    },
+    {
+        "id": "333757869",
+        "name": "Dept. of Electronics and Communication Engineering, GECT",
+        "lat": 10.5527095,
+        "lng": 76.2216185,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Electronics and Communication Engineering, GECT"
+        }
+    },
+    {
+        "id": "333758244",
+        "name": "Dept. of Computer Science and Engineering",
+        "lat": 10.5527399,
+        "lng": 76.2220205,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Computer Science and Engineering"
+        }
+    },
+    {
+        "id": "333758245",
+        "name": "Dept. of Production Engineering",
+        "lat": 10.5527995,
+        "lng": 76.2225682,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Production Engineering"
+        }
+    },
+    {
+        "id": "363172473",
+        "name": "Main Building",
+        "lat": 10.5544176,
+        "lng": 76.2246677,
+        "tags": {
+            "building": "college",
+            "name": "Main Building"
+        }
+    },
+    {
+        "id": "363172790",
+        "name": "Unnamed Location",
+        "lat": 10.5540909,
+        "lng": 76.2213138,
+        "tags": {
+            "building": "yes",
+            "tourism": "hostel"
+        }
+    },
+    {
+        "id": "363172791",
+        "name": "Unnamed Location",
+        "lat": 10.5540888,
+        "lng": 76.2221222,
+        "tags": {
+            "building": "yes",
+            "tourism": "hostel"
+        }
+    },
+    {
+        "id": "363172792",
+        "name": "Unnamed Location",
+        "lat": 10.5544256,
+        "lng": 76.2213312,
+        "tags": {
+            "building": "yes",
+            "tourism": "hostel"
+        }
+    },
+    {
+        "id": "363172794",
+        "name": "A-Block Mens Hostel",
+        "lat": 10.5544423,
+        "lng": 76.2221209,
+        "tags": {
+            "building": "yes",
+            "name": "A-Block Mens Hostel",
+            "tourism": "hostel"
+        }
+    },
+    {
+        "id": "425745732",
+        "name": "vimala college hostel",
+        "lat": 10.5522469,
+        "lng": 76.2262863,
+        "tags": {
+            "building": "yes",
+            "name": "vimala college hostel"
+        }
+    },
+    {
+        "id": "429995792",
+        "name": "I.M.A. Blood Bank Complex and Research Centre",
+        "lat": 10.5598421,
+        "lng": 76.2268681,
+        "tags": {
+            "addr:city": "Ramavarmapuram",
+            "addr:district": "Thrissur",
+            "addr:full": "Pallimoola",
+            "addr:postcode": "680631",
+            "addr:state": "Kerala",
+            "addr:street": "Viyyur - Thanikkudam Road",
+            "amenity": "blood_bank",
+            "building": "yes",
+            "contact:mobile": "+91-9947646464",
+            "contact:phone": "+91-4872323964; +91-4872320784",
+            "name": "I.M.A. Blood Bank Complex and Research Centre",
+            "opening_hours": "24/7",
+            "operator:type": "ngo",
+            "source": "OpenGovernmentData",
+            "website": "http://www.imabloodbankthrissur.com"
+        }
+    },
+    {
+        "id": "429998841",
+        "name": "Unnamed Location",
+        "lat": 10.5552604,
+        "lng": 76.2266549,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "453249819",
+        "name": "Fire and Rescue Station, Viyyur",
+        "lat": 10.5558619,
+        "lng": 76.2237502,
+        "tags": {
+            "amenity": "fire_station",
+            "building": "yes",
+            "name": "Fire and Rescue Station, Viyyur",
+            "operator:wikidata": "Q16133774",
+            "website": "https://fire.kerala.gov.in/"
+        }
+    },
+    {
+        "id": "625701583",
+        "name": "Unnamed Location",
+        "lat": 10.5572084,
+        "lng": 76.2292931,
+        "tags": {
+            "building": "house"
+        }
+    },
+    {
+        "id": "663226998",
+        "name": "Unnamed Location",
+        "lat": 10.5572825,
+        "lng": 76.229906,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "663226999",
+        "name": "Unnamed Location",
+        "lat": 10.5572437,
+        "lng": 76.2296652,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "663227000",
+        "name": "Unnamed Location",
+        "lat": 10.5570454,
+        "lng": 76.2296312,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "663227001",
+        "name": "Unnamed Location",
+        "lat": 10.5572417,
+        "lng": 76.2294876,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664123096",
+        "name": "Unnamed Location",
+        "lat": 10.5509434,
+        "lng": 76.2258147,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664123098",
+        "name": "Unnamed Location",
+        "lat": 10.5509408,
+        "lng": 76.2261111,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664123099",
+        "name": "Unnamed Location",
+        "lat": 10.5509619,
+        "lng": 76.2262652,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664123602",
+        "name": "Unnamed Location",
+        "lat": 10.550958,
+        "lng": 76.2264205,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664123603",
+        "name": "Unnamed Location",
+        "lat": 10.5511069,
+        "lng": 76.22582,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664123604",
+        "name": "Unnamed Location",
+        "lat": 10.5512428,
+        "lng": 76.2260064,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124237",
+        "name": "Unnamed Location",
+        "lat": 10.5518689,
+        "lng": 76.2263618,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124238",
+        "name": "Unnamed Location",
+        "lat": 10.5516949,
+        "lng": 76.22639,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124239",
+        "name": "Unnamed Location",
+        "lat": 10.5517022,
+        "lng": 76.2260098,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124240",
+        "name": "Unnamed Location",
+        "lat": 10.5520122,
+        "lng": 76.2256049,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124241",
+        "name": "Unnamed Location",
+        "lat": 10.5520431,
+        "lng": 76.2246267,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124242",
+        "name": "Unnamed Location",
+        "lat": 10.5520305,
+        "lng": 76.2249392,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124243",
+        "name": "Unnamed Location",
+        "lat": 10.5519174,
+        "lng": 76.2247406,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124244",
+        "name": "Unnamed Location",
+        "lat": 10.551817,
+        "lng": 76.2247627,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664124245",
+        "name": "Unnamed Location",
+        "lat": 10.5514183,
+        "lng": 76.2249474,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664125505",
+        "name": "Unnamed Location",
+        "lat": 10.5515931,
+        "lng": 76.2255584,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664125506",
+        "name": "Unnamed Location",
+        "lat": 10.5517096,
+        "lng": 76.2257258,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664125508",
+        "name": "Unnamed Location",
+        "lat": 10.5512082,
+        "lng": 76.2243862,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664126468",
+        "name": "Unnamed Location",
+        "lat": 10.5512322,
+        "lng": 76.2234672,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664126474",
+        "name": "Canteen",
+        "lat": 10.5523325,
+        "lng": 76.2243316,
+        "tags": {
+            "amenity": "food_court",
+            "building": "yes",
+            "name": "Canteen"
+        }
+    },
+    {
+        "id": "664126477",
+        "name": "Unnamed Location",
+        "lat": 10.5509523,
+        "lng": 76.2253912,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664126485",
+        "name": "Unnamed Location",
+        "lat": 10.5510483,
+        "lng": 76.2246825,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "664126491",
+        "name": "Unnamed Location",
+        "lat": 10.5517622,
+        "lng": 76.2274557,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "673856254",
+        "name": "Unnamed Location",
+        "lat": 10.5511263,
+        "lng": 76.2264145,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "673856255",
+        "name": "Unnamed Location",
+        "lat": 10.5518505,
+        "lng": 76.2258683,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "673856256",
+        "name": "Unnamed Location",
+        "lat": 10.5522131,
+        "lng": 76.2260136,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "673856257",
+        "name": "South Indian Bank",
+        "lat": 10.552176,
+        "lng": 76.2268524,
+        "tags": {
+            "amenity": "bank",
+            "building": "yes",
+            "name": "South Indian Bank"
+        }
+    },
+    {
+        "id": "673856258",
+        "name": "Unnamed Location",
+        "lat": 10.5523064,
+        "lng": 76.2270094,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "673856471",
+        "name": "Unnamed Location",
+        "lat": 10.5509993,
+        "lng": 76.2282449,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "673856472",
+        "name": "South Indian Bank",
+        "lat": 10.5519768,
+        "lng": 76.2268941,
+        "tags": {
+            "amenity": "bank",
+            "atm": "yes",
+            "building": "yes",
+            "name": "South Indian Bank"
+        }
+    },
+    {
+        "id": "726612600",
+        "name": "Dept. of Architecture",
+        "lat": 10.553398,
+        "lng": 76.2211375,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Architecture"
+        }
+    },
+    {
+        "id": "726628926",
+        "name": "Dept. of Civil Engineering",
+        "lat": 10.5539403,
+        "lng": 76.2251566,
+        "tags": {
+            "building": "college",
+            "building:levels": "3",
+            "name": "Dept. of Civil Engineering"
+        }
+    },
+    {
+        "id": "726629162",
+        "name": "GECT Library",
+        "lat": 10.5539858,
+        "lng": 76.2247009,
+        "tags": {
+            "building": "college",
+            "building:levels": "3",
+            "name": "GECT Library"
+        }
+    },
+    {
+        "id": "726764417",
+        "name": "Ladies Amenity Centre",
+        "lat": 10.5538525,
+        "lng": 76.2249177,
+        "tags": {
+            "building": "yes",
+            "name": "Ladies Amenity Centre"
+        }
+    },
+    {
+        "id": "726764929",
+        "name": "Dept. of Physical Education and gym",
+        "lat": 10.5539421,
+        "lng": 76.2242923,
+        "tags": {
+            "addr:city": "Thrissur",
+            "building": "yes",
+            "leisure": "fitness_centre",
+            "name": "Dept. of Physical Education and gym"
+        }
+    },
+    {
+        "id": "760600128",
+        "name": "Post Graduate block",
+        "lat": 10.5534405,
+        "lng": 76.2205772,
+        "tags": {
+            "building": "college",
+            "name": "Post Graduate block"
+        }
+    },
+    {
+        "id": "760600129",
+        "name": "E-Block Mens Hostel",
+        "lat": 10.553727,
+        "lng": 76.2206448,
+        "tags": {
+            "building": "yes",
+            "internet_access": "wlan",
+            "name": "E-Block Mens Hostel",
+            "tourism": "hostel"
+        }
+    },
+    {
+        "id": "760602029",
+        "name": "Dept. of Electrical and Electronics Engineering",
+        "lat": 10.5521713,
+        "lng": 76.2237962,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Electrical and Electronics Engineering"
+        }
+    },
+    {
+        "id": "798211270",
+        "name": "Unnamed Location",
+        "lat": 10.5548942,
+        "lng": 76.2284417,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "798214451",
+        "name": "Unnamed Location",
+        "lat": 10.5551014,
+        "lng": 76.227627,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "798214452",
+        "name": "Unnamed Location",
+        "lat": 10.5545041,
+        "lng": 76.2272742,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "798214453",
+        "name": "Unnamed Location",
+        "lat": 10.555228,
+        "lng": 76.2269266,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "798214455",
+        "name": "Little Star Restaurant",
+        "lat": 10.5542094,
+        "lng": 76.2266852,
+        "tags": {
+            "amenity": "restaurant",
+            "building": "yes",
+            "name": "Little Star Restaurant"
+        }
+    },
+    {
+        "id": "799003356",
+        "name": "Unnamed Location",
+        "lat": 10.5523204,
+        "lng": 76.2287295,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003357",
+        "name": "Unnamed Location",
+        "lat": 10.5520043,
+        "lng": 76.2290786,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003358",
+        "name": "Unnamed Location",
+        "lat": 10.5525482,
+        "lng": 76.2289392,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003359",
+        "name": "Unnamed Location",
+        "lat": 10.5520292,
+        "lng": 76.2284677,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003360",
+        "name": "Unnamed Location",
+        "lat": 10.5526668,
+        "lng": 76.2286343,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003361",
+        "name": "Unnamed Location",
+        "lat": 10.5525339,
+        "lng": 76.227497,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003363",
+        "name": "Unnamed Location",
+        "lat": 10.5531387,
+        "lng": 76.2277421,
+        "tags": {
+            "building": "college"
+        }
+    },
+    {
+        "id": "799003364",
+        "name": "Unnamed Location",
+        "lat": 10.5534176,
+        "lng": 76.2276178,
+        "tags": {
+            "building": "college"
+        }
+    },
+    {
+        "id": "799003365",
+        "name": "Unnamed Location",
+        "lat": 10.5542045,
+        "lng": 76.2270968,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003366",
+        "name": "Unnamed Location",
+        "lat": 10.5542466,
+        "lng": 76.2272824,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003367",
+        "name": "Unnamed Location",
+        "lat": 10.5540052,
+        "lng": 76.2271129,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003368",
+        "name": "Unnamed Location",
+        "lat": 10.5537834,
+        "lng": 76.2278088,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003369",
+        "name": "Unnamed Location",
+        "lat": 10.5537783,
+        "lng": 76.2280408,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003370",
+        "name": "Unnamed Location",
+        "lat": 10.5538996,
+        "lng": 76.228013,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003371",
+        "name": "Unnamed Location",
+        "lat": 10.5541139,
+        "lng": 76.2280254,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003372",
+        "name": "Unnamed Location",
+        "lat": 10.5555037,
+        "lng": 76.2271636,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003373",
+        "name": "Unnamed Location",
+        "lat": 10.554432,
+        "lng": 76.2277787,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003374",
+        "name": "Unnamed Location",
+        "lat": 10.5532905,
+        "lng": 76.2282502,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003375",
+        "name": "Unnamed Location",
+        "lat": 10.5535036,
+        "lng": 76.2281765,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003376",
+        "name": "Unnamed Location",
+        "lat": 10.5546314,
+        "lng": 76.2287123,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003377",
+        "name": "Unnamed Location",
+        "lat": 10.5548706,
+        "lng": 76.2279701,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003378",
+        "name": "Unnamed Location",
+        "lat": 10.5557681,
+        "lng": 76.228547,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003379",
+        "name": "Unnamed Location",
+        "lat": 10.5563381,
+        "lng": 76.2290499,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003380",
+        "name": "Unnamed Location",
+        "lat": 10.5565018,
+        "lng": 76.2270036,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003381",
+        "name": "Unnamed Location",
+        "lat": 10.5565108,
+        "lng": 76.2259385,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003382",
+        "name": "Unnamed Location",
+        "lat": 10.5565644,
+        "lng": 76.2261375,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003383",
+        "name": "Unnamed Location",
+        "lat": 10.5567365,
+        "lng": 76.226113,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003384",
+        "name": "Unnamed Location",
+        "lat": 10.5569555,
+        "lng": 76.2261087,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799003385",
+        "name": "District institution of education and training,Thrissur",
+        "lat": 10.5556283,
+        "lng": 76.2256698,
+        "tags": {
+            "building": "yes",
+            "name": "District institution of education and training,Thrissur",
+            "office": "educational_institution"
+        }
+    },
+    {
+        "id": "799111142",
+        "name": "Unnamed Location",
+        "lat": 10.551302,
+        "lng": 76.2297269,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111143",
+        "name": "Unnamed Location",
+        "lat": 10.5511813,
+        "lng": 76.2296942,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111144",
+        "name": "Unnamed Location",
+        "lat": 10.5514057,
+        "lng": 76.2298434,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111145",
+        "name": "Unnamed Location",
+        "lat": 10.5510475,
+        "lng": 76.229051,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111146",
+        "name": "Unnamed Location",
+        "lat": 10.5511595,
+        "lng": 76.22851,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111147",
+        "name": "Unnamed Location",
+        "lat": 10.5513795,
+        "lng": 76.2284908,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111148",
+        "name": "Unnamed Location",
+        "lat": 10.5531642,
+        "lng": 76.2293958,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111149",
+        "name": "Unnamed Location",
+        "lat": 10.5532313,
+        "lng": 76.2298871,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111150",
+        "name": "Unnamed Location",
+        "lat": 10.5527262,
+        "lng": 76.2297114,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799111151",
+        "name": "Unnamed Location",
+        "lat": 10.552761,
+        "lng": 76.2299728,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794469",
+        "name": "Unnamed Location",
+        "lat": 10.5514003,
+        "lng": 76.2270434,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794470",
+        "name": "Unnamed Location",
+        "lat": 10.5520315,
+        "lng": 76.2263271,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794475",
+        "name": "Unnamed Location",
+        "lat": 10.551395,
+        "lng": 76.2282494,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794476",
+        "name": "Unnamed Location",
+        "lat": 10.5514032,
+        "lng": 76.2280928,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794477",
+        "name": "Unnamed Location",
+        "lat": 10.5512793,
+        "lng": 76.2282944,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794478",
+        "name": "Unnamed Location",
+        "lat": 10.5512773,
+        "lng": 76.2281687,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794479",
+        "name": "Unnamed Location",
+        "lat": 10.5512103,
+        "lng": 76.2288483,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794480",
+        "name": "Unnamed Location",
+        "lat": 10.5516451,
+        "lng": 76.2298089,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794481",
+        "name": "Unnamed Location",
+        "lat": 10.5517015,
+        "lng": 76.2295511,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794482",
+        "name": "Unnamed Location",
+        "lat": 10.5517538,
+        "lng": 76.2296582,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794483",
+        "name": "Unnamed Location",
+        "lat": 10.5519999,
+        "lng": 76.2287745,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794484",
+        "name": "Unnamed Location",
+        "lat": 10.5521518,
+        "lng": 76.228607,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794485",
+        "name": "Unnamed Location",
+        "lat": 10.5523618,
+        "lng": 76.2289148,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794486",
+        "name": "Unnamed Location",
+        "lat": 10.5521722,
+        "lng": 76.2284274,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794487",
+        "name": "Unnamed Location",
+        "lat": 10.5526265,
+        "lng": 76.2291416,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794488",
+        "name": "Unnamed Location",
+        "lat": 10.5528156,
+        "lng": 76.2284524,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "799794501",
+        "name": "Unnamed Location",
+        "lat": 10.5538196,
+        "lng": 76.2296635,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800962530",
+        "name": "Unnamed Location",
+        "lat": 10.5556494,
+        "lng": 76.228627,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800962531",
+        "name": "Unnamed Location",
+        "lat": 10.5550561,
+        "lng": 76.228638,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800962532",
+        "name": "MEA masjid",
+        "lat": 10.5550963,
+        "lng": 76.2282792,
+        "tags": {
+            "amenity": "place_of_worship",
+            "building": "yes",
+            "name": "MEA masjid",
+            "religion": "muslim"
+        }
+    },
+    {
+        "id": "800962533",
+        "name": "Unnamed Location",
+        "lat": 10.5550442,
+        "lng": 76.2281234,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800962534",
+        "name": "Unnamed Location",
+        "lat": 10.5548507,
+        "lng": 76.2282345,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800964544",
+        "name": "Unnamed Location",
+        "lat": 10.5552703,
+        "lng": 76.2285705,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800964545",
+        "name": "Unnamed Location",
+        "lat": 10.5552547,
+        "lng": 76.2286572,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800964546",
+        "name": "Unnamed Location",
+        "lat": 10.555224,
+        "lng": 76.2287872,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800964547",
+        "name": "Unnamed Location",
+        "lat": 10.5551941,
+        "lng": 76.2288829,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800964548",
+        "name": "Unnamed Location",
+        "lat": 10.5550518,
+        "lng": 76.2288627,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800964549",
+        "name": "Unnamed Location",
+        "lat": 10.5545467,
+        "lng": 76.228405,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800964550",
+        "name": "Unnamed Location",
+        "lat": 10.5544425,
+        "lng": 76.2284173,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800966179",
+        "name": "Unnamed Location",
+        "lat": 10.555391,
+        "lng": 76.2283139,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800966180",
+        "name": "Unnamed Location",
+        "lat": 10.5556643,
+        "lng": 76.2283222,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800966181",
+        "name": "Unnamed Location",
+        "lat": 10.5559571,
+        "lng": 76.2283575,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800966182",
+        "name": "Unnamed Location",
+        "lat": 10.5553869,
+        "lng": 76.2286158,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800966183",
+        "name": "Unnamed Location",
+        "lat": 10.555682,
+        "lng": 76.2288124,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800968193",
+        "name": "Unnamed Location",
+        "lat": 10.5559313,
+        "lng": 76.2281603,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800968194",
+        "name": "Unnamed Location",
+        "lat": 10.5557507,
+        "lng": 76.2280104,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800968195",
+        "name": "Unnamed Location",
+        "lat": 10.5555972,
+        "lng": 76.2280204,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800968196",
+        "name": "Unnamed Location",
+        "lat": 10.5555235,
+        "lng": 76.2277905,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800968197",
+        "name": "Unnamed Location",
+        "lat": 10.5558204,
+        "lng": 76.2277592,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800968198",
+        "name": "Unnamed Location",
+        "lat": 10.5537373,
+        "lng": 76.2271047,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800968199",
+        "name": "Unnamed Location",
+        "lat": 10.5541176,
+        "lng": 76.2277648,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800969714",
+        "name": "Unnamed Location",
+        "lat": 10.5543325,
+        "lng": 76.2267208,
+        "tags": {
+            "building": "retail"
+        }
+    },
+    {
+        "id": "800969715",
+        "name": "Pee Jey complex",
+        "lat": 10.5544531,
+        "lng": 76.2267137,
+        "tags": {
+            "building": "retail",
+            "name": "Pee Jey complex"
+        }
+    },
+    {
+        "id": "800969717",
+        "name": "Unnamed Location",
+        "lat": 10.5542205,
+        "lng": 76.227762,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800969718",
+        "name": "Unnamed Location",
+        "lat": 10.5543299,
+        "lng": 76.2277188,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800969719",
+        "name": "Unnamed Location",
+        "lat": 10.5545576,
+        "lng": 76.2277142,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800969720",
+        "name": "Unnamed Location",
+        "lat": 10.554521,
+        "lng": 76.2279705,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800971453",
+        "name": "Unnamed Location",
+        "lat": 10.5536883,
+        "lng": 76.2281563,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800974986",
+        "name": "Unnamed Location",
+        "lat": 10.5552481,
+        "lng": 76.2283578,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800974987",
+        "name": "Unnamed Location",
+        "lat": 10.5559404,
+        "lng": 76.2286559,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800974988",
+        "name": "Unnamed Location",
+        "lat": 10.5564305,
+        "lng": 76.2282245,
+        "tags": {
+            "building": "retail"
+        }
+    },
+    {
+        "id": "800974989",
+        "name": "Unnamed Location",
+        "lat": 10.5564041,
+        "lng": 76.2286845,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800974990",
+        "name": "Unnamed Location",
+        "lat": 10.5563384,
+        "lng": 76.2292182,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800974991",
+        "name": "Unnamed Location",
+        "lat": 10.5566554,
+        "lng": 76.2286159,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800974992",
+        "name": "Unnamed Location",
+        "lat": 10.5569112,
+        "lng": 76.2286679,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800998834",
+        "name": "Unnamed Location",
+        "lat": 10.5553904,
+        "lng": 76.2289095,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800998835",
+        "name": "Unnamed Location",
+        "lat": 10.5559357,
+        "lng": 76.2288228,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "800998836",
+        "name": "Unnamed Location",
+        "lat": 10.5559995,
+        "lng": 76.2291867,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801341897",
+        "name": "Unnamed Location",
+        "lat": 10.5516755,
+        "lng": 76.229068,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801341898",
+        "name": "Unnamed Location",
+        "lat": 10.5517673,
+        "lng": 76.2284125,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801341899",
+        "name": "Unnamed Location",
+        "lat": 10.5517506,
+        "lng": 76.229388,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801361583",
+        "name": "Unnamed Location",
+        "lat": 10.5514692,
+        "lng": 76.228827,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801361584",
+        "name": "Unnamed Location",
+        "lat": 10.5520815,
+        "lng": 76.2295634,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801361585",
+        "name": "Unnamed Location",
+        "lat": 10.5518899,
+        "lng": 76.2293488,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801361586",
+        "name": "Unnamed Location",
+        "lat": 10.5515791,
+        "lng": 76.2291948,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801361587",
+        "name": "Unnamed Location",
+        "lat": 10.5531569,
+        "lng": 76.2281362,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801361589",
+        "name": "Unnamed Location",
+        "lat": 10.5540672,
+        "lng": 76.2292599,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801363199",
+        "name": "Unnamed Location",
+        "lat": 10.5543967,
+        "lng": 76.2290536,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801363200",
+        "name": "Unnamed Location",
+        "lat": 10.554496,
+        "lng": 76.2293908,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801363201",
+        "name": "Unnamed Location",
+        "lat": 10.5546097,
+        "lng": 76.2293394,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801363202",
+        "name": "Unnamed Location",
+        "lat": 10.554623,
+        "lng": 76.2299064,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801363203",
+        "name": "Unnamed Location",
+        "lat": 10.5544045,
+        "lng": 76.2299047,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801880077",
+        "name": "Unnamed Location",
+        "lat": 10.5563593,
+        "lng": 76.2296882,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801880078",
+        "name": "Unnamed Location",
+        "lat": 10.5558965,
+        "lng": 76.229899,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801880079",
+        "name": "Unnamed Location",
+        "lat": 10.5559722,
+        "lng": 76.229406,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801907892",
+        "name": "Unnamed Location",
+        "lat": 10.5557715,
+        "lng": 76.2292154,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801907893",
+        "name": "Unnamed Location",
+        "lat": 10.5558087,
+        "lng": 76.229389,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "801907894",
+        "name": "Unnamed Location",
+        "lat": 10.5558605,
+        "lng": 76.2296853,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "824615089",
+        "name": "Quarters",
+        "lat": 10.5531721,
+        "lng": 76.2203488,
+        "tags": {
+            "building": "detached",
+            "name": "Quarters"
+        }
+    },
+    {
+        "id": "824615428",
+        "name": "Quarters",
+        "lat": 10.5532238,
+        "lng": 76.2201514,
+        "tags": {
+            "building": "detached",
+            "name": "Quarters"
+        }
+    },
+    {
+        "id": "824616928",
+        "name": "Co Operative Store",
+        "lat": 10.5539061,
+        "lng": 76.2240978,
+        "tags": {
+            "building": "college",
+            "name": "Co Operative Store"
+        }
+    },
+    {
+        "id": "839560996",
+        "name": "Government Vocational Higher Secondary School, Ramavarmapuram",
+        "lat": 10.5595864,
+        "lng": 76.2259272,
+        "tags": {
+            "addr:city": "Viyyur",
+            "addr:postcode": "680631",
+            "addr:street": "ramavarmapuram road",
+            "building": "school",
+            "governance_type": "government",
+            "name": "Government Vocational Higher Secondary School, Ramavarmapuram"
+        }
+    },
+    {
+        "id": "839561005",
+        "name": "Government Vocational Higher Secondary School, Ramavarmapuram",
+        "lat": 10.5594212,
+        "lng": 76.225361,
+        "tags": {
+            "addr:city": "Viyyur",
+            "addr:postcode": "680631",
+            "addr:street": "ramavarmapuram road",
+            "building": "school",
+            "governance_type": "government",
+            "name": "Government Vocational Higher Secondary School, Ramavarmapuram"
+        }
+    },
+    {
+        "id": "843061098",
+        "name": "Fire and Rescue Station Thrissur",
+        "lat": 10.5586782,
+        "lng": 76.2265309,
+        "tags": {
+            "amenity": "fire_station",
+            "building": "yes",
+            "name": "Fire and Rescue Station Thrissur"
+        }
+    },
+    {
+        "id": "845996667",
+        "name": "Unnamed Location",
+        "lat": 10.5511939,
+        "lng": 76.2222632,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "845996962",
+        "name": "Unnamed Location",
+        "lat": 10.5513859,
+        "lng": 76.2224808,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "845997626",
+        "name": "Unnamed Location",
+        "lat": 10.5513153,
+        "lng": 76.2226711,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "845997766",
+        "name": "Unnamed Location",
+        "lat": 10.5517456,
+        "lng": 76.2222865,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "845999126",
+        "name": "Unnamed Location",
+        "lat": 10.551933,
+        "lng": 76.222054,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "846000286",
+        "name": "Unnamed Location",
+        "lat": 10.5517658,
+        "lng": 76.222468,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "846000634",
+        "name": "Unnamed Location",
+        "lat": 10.5519001,
+        "lng": 76.2224441,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "846000892",
+        "name": "Unnamed Location",
+        "lat": 10.5514912,
+        "lng": 76.222389,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "846002691",
+        "name": "Unnamed Location",
+        "lat": 10.5517058,
+        "lng": 76.2218711,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "846003589",
+        "name": "Unnamed Location",
+        "lat": 10.5516821,
+        "lng": 76.2220041,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "866736396",
+        "name": "Vignan Sagar Science and Technology Park",
+        "lat": 10.5581686,
+        "lng": 76.225602,
+        "tags": {
+            "building": "yes",
+            "museum": "science",
+            "name": "Vignan Sagar Science and Technology Park",
+            "tourism": "museum"
+        }
+    },
+    {
+        "id": "893279304",
+        "name": "Central Computing Facility (CCF)",
+        "lat": 10.5536573,
+        "lng": 76.2251171,
+        "tags": {
+            "addr:city": "Thrissur",
+            "addr:housenumber": "GEC Thrissur",
+            "addr:postcode": "680009",
+            "addr:street": "ramavarmapuram road",
+            "building": "yes",
+            "building:levels": "3",
+            "name": "Central Computing Facility (CCF)"
+        }
+    },
+    {
+        "id": "954403683",
+        "name": "District Institute Of Education And Training Men's Hostel",
+        "lat": 10.556052,
+        "lng": 76.2261015,
+        "tags": {
+            "building": "yes",
+            "name": "District Institute Of Education And Training Men's Hostel"
+        }
+    },
+    {
+        "id": "954403684",
+        "name": "Geetha Homes",
+        "lat": 10.5552649,
+        "lng": 76.2249632,
+        "tags": {
+            "addr:city": "Thrissur",
+            "addr:housenumber": "Pallimoola",
+            "addr:postcode": "680009",
+            "addr:street": "Ramavarmapuram",
+            "building": "yes",
+            "name": "Geetha Homes"
+        }
+    },
+    {
+        "id": "954403685",
+        "name": "Madathilparambil Hostel",
+        "lat": 10.5561744,
+        "lng": 76.2242336,
+        "tags": {
+            "building": "yes",
+            "name": "Madathilparambil Hostel"
+        }
+    },
+    {
+        "id": "954403686",
+        "name": "Varappilli Shiva Temple",
+        "lat": 10.556444,
+        "lng": 76.2245815,
+        "tags": {
+            "amenity": "place_of_worship",
+            "building": "yes",
+            "name": "Varappilli Shiva Temple",
+            "religion": "hindu"
+        }
+    },
+    {
+        "id": "954403687",
+        "name": "Preethi Hostel",
+        "lat": 10.5561652,
+        "lng": 76.2246143,
+        "tags": {
+            "building": "yes",
+            "name": "Preethi Hostel"
+        }
+    },
+    {
+        "id": "1035390651",
+        "name": "Bus Garage",
+        "lat": 10.5524794,
+        "lng": 76.2239685,
+        "tags": {
+            "building": "garage",
+            "name": "Bus Garage"
+        }
+    },
+    {
+        "id": "1035390652",
+        "name": "Dept. of Electrical and Electronics Engineering extension",
+        "lat": 10.5533335,
+        "lng": 76.2258053,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Electrical and Electronics Engineering extension"
+        }
+    },
+    {
+        "id": "1035390653",
+        "name": "Environmental Engineering block",
+        "lat": 10.5528104,
+        "lng": 76.2255582,
+        "tags": {
+            "building": "college",
+            "name": "Environmental Engineering block"
+        }
+    },
+    {
+        "id": "1035390654",
+        "name": "Academic Block",
+        "lat": 10.553437,
+        "lng": 76.2250819,
+        "tags": {
+            "building": "college",
+            "name": "Academic Block"
+        }
+    },
+    {
+        "id": "1035390655",
+        "name": "NSS GECT",
+        "lat": 10.5540112,
+        "lng": 76.2262909,
+        "tags": {
+            "building": "college",
+            "name": "NSS GECT"
+        }
+    },
+    {
+        "id": "1035390656",
+        "name": "Dept. of Mechanical Engineering extension",
+        "lat": 10.5526897,
+        "lng": 76.2254346,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Mechanical Engineering extension"
+        }
+    },
+    {
+        "id": "1035400071",
+        "name": "Mens Hostel Mess B",
+        "lat": 10.5538387,
+        "lng": 76.2211766,
+        "tags": {
+            "amenity": "food_court",
+            "building": "yes",
+            "name": "Mens Hostel Mess B"
+        }
+    },
+    {
+        "id": "1035400072",
+        "name": "Mens Hoste Mess A",
+        "lat": 10.5536843,
+        "lng": 76.2221877,
+        "tags": {
+            "amenity": "food_court",
+            "building": "yes",
+            "name": "Mens Hoste Mess A"
+        }
+    },
+    {
+        "id": "1035409952",
+        "name": "Unnamed Location",
+        "lat": 10.5545683,
+        "lng": 76.2256642,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "1035563825",
+        "name": "Unnamed Location",
+        "lat": 10.5536928,
+        "lng": 76.2218267,
+        "tags": {
+            "building": "yes"
+        }
+    },
+    {
+        "id": "1035563836",
+        "name": "Dyuthi Room",
+        "lat": 10.5534669,
+        "lng": 76.2257176,
+        "tags": {
+            "building": "yes",
+            "name": "Dyuthi Room"
+        }
+    },
+    {
+        "id": "1035563841",
+        "name": "Dept. of Computer Schience Engineering extension",
+        "lat": 10.5525513,
+        "lng": 76.2219875,
+        "tags": {
+            "building": "college",
+            "name": "Dept. of Computer Schience Engineering extension"
+        }
+    },
+    {
+        "id": "custom_room_101",
+        "name": "Prof. Smith's Secret Lab (Mock Navigation Target)",
+        "lat": 10.5561,
+        "lng": 76.2245,
+        "tags": {}
+    }
+]
