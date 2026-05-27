@@ -2,11 +2,9 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:latlong2/latlong.dart';
-
-// Conditional imports are not needed — we guard with kIsWeb at runtime.
-// On web, sensors_plus and flutter_compass will simply not produce events.
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'web_sensors_stub.dart' if (dart.library.html) 'web_sensors_web.dart';
 
 class PDRService {
   StreamSubscription? _accelSub;
@@ -31,17 +29,21 @@ class PDRService {
   int _stepCount = 0;
   LatLng? _currentPosition;
 
-  bool get isActive => _currentPosition != null && (_accelSub != null || _simulationTimer != null);
+  bool get isActive => _currentPosition != null && (_accelSub != null || _simulationTimer != null || kIsWeb);
 
-  void startPDR(LatLng startPosition) {
+  Future<void> startPDR(LatLng startPosition) async {
     stopPDR(); // Clean up any previous session
     _currentPosition = startPosition;
     _stepCount = 0;
 
     if (kIsWeb) {
-      // On web, sensors are unavailable. Run a simulation so the user can
-      // see the feature working: simulate walking toward the destination.
-      _startWebSimulation();
+      bool permissionGranted = await requestWebSensorPermissions();
+      if (!permissionGranted) {
+        // Fallback to simulation if user denied sensor permission
+        _startWebSimulation();
+        return;
+      }
+      _startWebPDR();
     } else {
       _startNativePDR();
     }
@@ -53,9 +55,19 @@ class PDRService {
         _currentHeading = event.heading!;
       }
     });
+    _listenToAccelerometer();
+  }
 
+  void _startWebPDR() {
+    // Custom JS interop compass because flutter_compass doesn't support web
+    listenToWebCompass((heading) {
+      _currentHeading = heading;
+    });
+    _listenToAccelerometer();
+  }
+
+  void _listenToAccelerometer() {
     _accelSub = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
-      // Calculate magnitude of linear acceleration (gravity removed)
       double magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
       int now = DateTime.now().millisecondsSinceEpoch;
 
@@ -75,18 +87,29 @@ class PDRService {
     });
   }
 
-  /// On web, simulate steps every 800ms with a random heading drift.
   void _startWebSimulation() {
     final rng = Random();
     _currentHeading = rng.nextDouble() * 360;
 
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+      // In web simulation, we step slower to allow interactive overrides
       _stepCount++;
-      // Add small random heading drift for realistic demo
-      _currentHeading += (rng.nextDouble() - 0.5) * 20;
+      _currentHeading += (rng.nextDouble() - 0.5) * 15;
       if (onStepDetected != null) onStepDetected!(_stepCount);
       _updatePositionWithPDR();
     });
+  }
+
+  void triggerManualStep(double heading) {
+    _currentHeading = heading;
+    _stepCount++;
+    if (onStepDetected != null) onStepDetected!(_stepCount);
+    _updatePositionWithPDR();
+  }
+
+  void forceSetPosition(LatLng position) {
+    _currentPosition = position;
+    if (onPositionUpdated != null) onPositionUpdated!(position);
   }
 
   void _updatePositionWithPDR() {
