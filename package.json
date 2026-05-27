@@ -1,0 +1,8 @@
+{
+  "name": "gec_compass_root_api",
+  "version": "1.0.0",
+  "description": "Root serverless configuration",
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  }
+}
