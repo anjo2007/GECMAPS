@@ -12,6 +12,7 @@ import '../models/building.dart';
 import '../services/data_service.dart';
 import '../services/pdr_service.dart';
 import '../services/routing_service.dart';
+import '../services/web_sensors_stub.dart' if (dart.library.html) '../services/web_sensors_web.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -57,6 +58,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   // GEC Thrissur Center
   final LatLng _campusCenter = const LatLng(10.555761, 76.224317);
 
+  // New state variables for upgraded algorithms and HUD UX
+  List<List<LatLng>> _roadEdges = [];
+  int _selectedFloor = 0;
+  bool _audioNavigationEnabled = true;
+  String _lastAnnouncedInstruction = "";
+  double _deviceHeading = 0.0;
+  bool _expandDirections = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,12 +84,20 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         _pdrTrail.add(newPosition);
       });
       _mapController.move(newPosition, _mapController.camera.zoom);
+      _checkAudioNavigation();
     };
 
     _pdrService.onStepDetected = (int count) {
       if (!mounted) return;
       setState(() {
         _stepCount = count;
+      });
+    };
+
+    _pdrService.onHeadingUpdated = (double heading) {
+      if (!mounted) return;
+      setState(() {
+        _deviceHeading = heading;
       });
     };
   }
@@ -122,6 +139,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         debugPrint("Location error (non-fatal): $e");
         userPos = _campusCenter;
       }
+
+      _roadEdges = _routingService.getRoadEdges();
+      _pdrService.roadEdges = _roadEdges;
 
       if (!mounted) return;
       setState(() {
@@ -183,6 +203,38 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     _showBuildingDetails(building);
   }
 
+  void _announceInstruction(String text) {
+    if (!_audioNavigationEnabled) return;
+    if (_lastAnnouncedInstruction == text) return;
+    _lastAnnouncedInstruction = text;
+    speakWeb(text);
+  }
+
+  void _checkAudioNavigation() {
+    if (!_isNavigating || _routeInstructions.isEmpty) return;
+
+    final dist = _currentPosition != null && _selectedBuilding != null
+        ? _distanceMeters(_currentPosition!, LatLng(_selectedBuilding!.lat, _selectedBuilding!.lng))
+        : null;
+
+    final floorTag = _selectedBuilding?.tags['floor'];
+
+    String primaryInstruction = "Head towards ${_selectedBuilding!.name}";
+    if (_routeInstructions.isNotEmpty && _currentInstructionIndex < _routeInstructions.length) {
+      primaryInstruction = _routeInstructions[_currentInstructionIndex];
+    }
+
+    if (dist != null) {
+      if (dist < 5.0) {
+        _announceInstruction("You have arrived at ${_selectedBuilding!.name}");
+      } else if (dist < 15.0 && floorTag != null && floorTag.toString().isNotEmpty) {
+        _announceInstruction("Take stairs to Floor $floorTag, then proceed to ${_selectedBuilding!.name}");
+      } else {
+        _announceInstruction(primaryInstruction);
+      }
+    }
+  }
+
   void _startNavigation() {
     if (_selectedBuilding == null) return;
     
@@ -193,6 +245,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     final path = _routingService.getFullRoute(startPos, endPos);
     final instructions = _routingService.getRouteInstructions(path);
 
+    _pdrService.activeRoute = path; // Feed snapping polyline to PDRService
     _pdrService.startPDR(startPos);
     setState(() {
       _isNavigating = true;
@@ -202,7 +255,13 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _routeInstructions = instructions;
       _currentInstructionIndex = 0;
       _simulatedRouteIndex = 0;
+      _lastAnnouncedInstruction = "";
+      _expandDirections = false;
     });
+
+    if (instructions.isNotEmpty) {
+      _announceInstruction(instructions.first);
+    }
 
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -224,6 +283,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   void _stopNavigation() {
     _pdrService.stopPDR();
+    _pdrService.activeRoute = [];
     setState(() {
       _isNavigating = false;
       _pdrTrail.clear();
@@ -231,6 +291,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _routeInstructions.clear();
       _currentInstructionIndex = 0;
       _simulatedRouteIndex = 0;
+      _lastAnnouncedInstruction = "";
+      _expandDirections = false;
     });
   }
 
@@ -254,7 +316,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           _currentInstructionIndex = _simulatedRouteIndex - 1;
         }
       });
+      _checkAudioNavigation();
     } else {
+      _announceInstruction("You have arrived at your destination!");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('You have arrived at your destination!'),
@@ -279,32 +343,45 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     return (bearing + 360) % 360;
   }
 
-  // Filter buildings on the map based on the active category chip
+  // Filter buildings on the map based on the active category chip and floor level
   List<Building> _getFilteredBuildings() {
-    if (_selectedCategory == 'All') {
-      return _buildings;
-    }
-    return _buildings.where((b) {
-      final amenity = b.tags['amenity'] as String?;
-      final buildingType = b.tags['building'] as String?;
-      final tourism = b.tags['tourism'] as String?;
-      final isRoom = b.tags['room'] == 'yes';
+    List<Building> list = _buildings;
+    if (_selectedCategory != 'All') {
+      list = list.where((b) {
+        final amenity = b.tags['amenity'] as String?;
+        final buildingType = b.tags['building'] as String?;
+        final tourism = b.tags['tourism'] as String?;
+        final isRoom = b.tags['room'] == 'yes';
 
-      switch (_selectedCategory) {
-        case 'Departments':
-          return buildingType == 'college' && !isRoom;
-        case 'Workshops':
-          return b.name.toLowerCase().contains('workshop');
-        case 'Hostels':
-          return tourism == 'hostel' || b.name.toLowerCase().contains('hostel');
-        case 'Cafes/ATMs':
-          return ['restaurant', 'cafe', 'food_court', 'atm', 'bank'].contains(amenity);
-        case 'Rooms/Labs':
-          return isRoom;
-        default:
-          return true;
+        switch (_selectedCategory) {
+          case 'Departments':
+            return buildingType == 'college' && !isRoom;
+          case 'Workshops':
+            return b.name.toLowerCase().contains('workshop');
+          case 'Hostels':
+            return tourism == 'hostel' || b.name.toLowerCase().contains('hostel');
+          case 'Cafes/ATMs':
+            return ['restaurant', 'cafe', 'food_court', 'atm', 'bank'].contains(amenity);
+          case 'Rooms/Labs':
+            return isRoom;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    // Now apply floor level filter to rooms/classrooms
+    list = list.where((b) {
+      final isRoom = b.tags['room'] == 'yes';
+      if (isRoom) {
+        final floorStr = b.tags['floor']?.toString() ?? '0';
+        final floorVal = int.tryParse(floorStr) ?? 0;
+        return floorVal == _selectedFloor;
       }
+      return true; // Main department buildings / general POIs stay visible on all floors
     }).toList();
+
+    return list;
   }
 
   void _showBuildingDetails(Building building) {
@@ -821,6 +898,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ),
             ),
 
+          // Digital Compass HUD
+          _buildCompassHUD(),
+
+          // Floor level switcher
+          if (_shouldShowFloorSelector)
+            Positioned(
+              bottom: _isNavigating ? 140 : 180,
+              right: 16,
+              child: _buildFloorSelector(),
+            ),
+
           // Navigation UI Overlay
           if (_isNavigating) _buildNavigationOverlay(),
 
@@ -1014,12 +1102,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           ),
         ),
         
-        // Bottom Navigation Status Bar
+        // Bottom Navigation Status Bar (Expandable directions drawer)
         Positioned(
           bottom: 0,
           left: 0,
           right: 0,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            height: _expandDirections ? MediaQuery.of(context).size.height * 0.45 : 120 + MediaQuery.of(context).padding.bottom,
             decoration: BoxDecoration(
               color: const Color(0xFF0F172A),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -1028,49 +1119,127 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 BoxShadow(color: Colors.black.withOpacity(0.6), blurRadius: 25, offset: const Offset(0, -6)),
               ],
             ),
-            padding: EdgeInsets.only(
-              left: 24, 
-              right: 24, 
-              top: 24, 
-              bottom: MediaQuery.of(context).padding.bottom + 24
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            padding: const EdgeInsets.only(left: 24, right: 24, top: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text("$minutes min", style: const TextStyle(color: Color(0xFF10B981), fontSize: 28, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 12),
-                          Text(_formatDistance(dist), style: const TextStyle(color: Colors.white70, fontSize: 18)),
-                        ],
+                // Pull bar drawer handle gesture indicator
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _expandDirections = !_expandDirections;
+                      });
+                    },
+                    child: Container(
+                      width: 50,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(3),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.directions_walk, color: Colors.white54, size: 16),
-                          const SizedBox(width: 4),
-                          Text("$_stepCount steps taken", style: const TextStyle(color: Colors.white54, fontSize: 14)),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _stopNavigation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.withOpacity(0.85),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 28),
+                // Compact HUD line
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _expandDirections = !_expandDirections;
+                          });
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text("$minutes min", style: const TextStyle(color: Color(0xFF10B981), fontSize: 24, fontWeight: FontWeight.bold)),
+                                const SizedBox(width: 8),
+                                Text(_formatDistance(dist), style: const TextStyle(color: Colors.white70, fontSize: 16)),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                const Icon(Icons.directions_walk, color: Colors.white54, size: 14),
+                                const SizedBox(width: 4),
+                                Text("$_stepCount steps taken", style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _stopNavigation,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent.withOpacity(0.85),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: const Icon(Icons.close, color: Colors.white, size: 22),
+                    ),
+                  ],
                 ),
+                
+                // Detailed Turn-by-Turn directions list visible when drawer is expanded
+                if (_expandDirections) ...[
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white12, height: 1),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "Directions List",
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: _routeInstructions.length,
+                      separatorBuilder: (c, i) => Divider(color: Colors.white.withOpacity(0.04), height: 1),
+                      itemBuilder: (context, index) {
+                        final instr = _routeInstructions[index];
+                        final isCompleted = index < _currentInstructionIndex;
+                        final isCurrent = index == _currentInstructionIndex;
+                        
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            radius: 14,
+                            backgroundColor: isCurrent 
+                              ? const Color(0xFF3B82F6) 
+                              : (isCompleted ? Colors.white12 : const Color(0xFF1E293B)),
+                            child: Icon(
+                              index == _routeInstructions.length - 1 
+                                ? Icons.flag 
+                                : (isCurrent ? Icons.play_arrow : Icons.check),
+                              color: isCurrent ? Colors.white : (isCompleted ? Colors.white54 : Colors.white30),
+                              size: 14,
+                            ),
+                          ),
+                          title: Text(
+                            instr,
+                            style: TextStyle(
+                              color: isCurrent 
+                                ? Colors.white 
+                                : (isCompleted ? Colors.white38 : Colors.white70),
+                              fontSize: 13,
+                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1079,7 +1248,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Render onboarding/instructional carousel
+  // Render onboarding/instructional carousel with height calibration field
   Widget _buildOnboardingOverlay() {
     final slides = [
       _buildOnboardingSlide(
@@ -1094,6 +1263,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         icon: Icons.directions_walk,
         iconColor: const Color(0xFF10B981),
       ),
+      _buildHeightCalibrationSlide(),
       _buildOnboardingSlide(
         title: "Global Updates",
         desc: "Add missing rooms, classes, or labs with photos and coordinates. Updates sync globally to a shared cloud database instantly.",
@@ -1180,6 +1350,188 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeightCalibrationSlide() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.height, size: 80, color: Color(0xFF3B82F6)),
+        const SizedBox(height: 20),
+        const Text(
+          "PDR Step Calibration",
+          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          "Enter your height to automatically calibrate your average step length for Pedestrian Dead Reckoning (PDR).",
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "${(_pdrService.userHeight * 100).toStringAsFixed(0)} cm",
+              style: const TextStyle(color: Color(0xFF3B82F6), fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        Slider(
+          value: _pdrService.userHeight,
+          min: 1.30,
+          max: 2.10,
+          divisions: 80,
+          onChanged: (val) {
+            setState(() {
+              _pdrService.userHeight = val;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  // Dynamic floating floor selector widget (G, 1, 2)
+  Widget _buildFloorSelector() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        final floorText = index == 0 ? 'G' : '$index';
+        final isSelected = _selectedFloor == index;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6.0),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: FloatingActionButton(
+              heroTag: 'floor_btn_$index',
+              mini: true,
+              backgroundColor: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF1E293B),
+              foregroundColor: isSelected ? Colors.white : Colors.white70,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: isSelected ? Colors.blueAccent : Colors.white.withOpacity(0.08),
+                  width: 1.5,
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  _selectedFloor = index;
+                });
+              },
+              child: Text(
+                floorText,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+          ),
+        );
+      }).reversed.toList(),
+    );
+  }
+
+  bool get _shouldShowFloorSelector {
+    if (_selectedCategory == 'Rooms/Labs') return true;
+    if (_selectedBuilding != null) {
+      final isRoom = _selectedBuilding!.tags['room'] == 'yes';
+      final parentId = _selectedBuilding!.id;
+      final hasRooms = _buildings.any((b) => b.tags['parent_id'] == parentId);
+      return isRoom || hasRooms;
+    }
+    return false;
+  }
+
+  // Glowing Digital HUD Compass overlay
+  Widget _buildCompassHUD() {
+    double? targetBearing;
+    if (_isNavigating && _routingPath.isNotEmpty && _simulatedRouteIndex < _routingPath.length - 1) {
+      final nextPos = _routingPath[_simulatedRouteIndex];
+      final currentPos = _currentPosition ?? _campusCenter;
+      targetBearing = _calculateBearing(currentPos, nextPos);
+    }
+
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 130,
+      right: 16,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _audioNavigationEnabled = !_audioNavigationEnabled;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_audioNavigationEnabled ? 'Voice Guidance Enabled' : 'Voice Guidance Muted'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: _audioNavigationEnabled ? const Color(0xFF10B981) : Colors.amber,
+            ),
+          );
+        },
+        child: Container(
+          width: 76,
+          height: 76,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF0F172A).withOpacity(0.85),
+            border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3B82F6).withOpacity(_isNavigating ? 0.35 : 0.15),
+                blurRadius: 10,
+                spreadRadius: 2,
+              )
+            ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Rotating Compass Ring dial
+              Transform.rotate(
+                angle: -_deviceHeading * pi / 180,
+                child: CustomPaint(
+                  size: const Size(76, 76),
+                  painter: CompassDialPainter(),
+                ),
+              ),
+              // Target bearing needle pointing to next waypoint
+              if (targetBearing != null)
+                Transform.rotate(
+                  angle: (targetBearing - _deviceHeading) * pi / 180,
+                  child: const Icon(
+                    Icons.navigation,
+                    color: Color(0xFF10B981),
+                    size: 24,
+                  ),
+                ),
+              // Center digital reading & Audio status icon
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "${_deviceHeading.toStringAsFixed(0)}°",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                  Icon(
+                    _audioNavigationEnabled ? Icons.volume_up : Icons.volume_off,
+                    color: _audioNavigationEnabled ? const Color(0xFF3B82F6) : Colors.white38,
+                    size: 11,
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -1300,15 +1652,28 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    if (feedbackController.text.trim().isNotEmpty) {
+                  onPressed: () async {
+                    final text = feedbackController.text.trim();
+                    if (text.isNotEmpty) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Feedback submitted! Thank you for contributing.'),
-                          backgroundColor: Color(0xFF10B981),
+                          content: Text('Sending report globally...'),
+                          backgroundColor: Colors.blueAccent,
+                          duration: Duration(seconds: 1),
                         ),
                       );
+
+                      await _dataService.submitFeedback(text);
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Feedback submitted! Thank you for contributing.'),
+                            backgroundColor: Color(0xFF10B981),
+                          ),
+                        );
+                      }
                     }
                   },
                   icon: const Icon(Icons.send, color: Colors.white),
@@ -1653,4 +2018,62 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       ),
     );
   }
+}
+
+class CompassDialPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Draw cardinal marks
+    final cardinals = {'N': 0.0, 'E': 90.0, 'S': 180.0, 'W': 270.0};
+    final textPaint = TextPainter(textDirection: TextDirection.ltr);
+
+    for (int i = 0; i < 360; i += 30) {
+      final angle = i * pi / 180;
+      final isCardinal = i % 90 == 0;
+      final tickLength = isCardinal ? 6.0 : 3.0;
+
+      final start = Offset(
+        center.dx + (radius - tickLength) * sin(angle),
+        center.dy - (radius - tickLength) * cos(angle),
+      );
+      final end = Offset(
+        center.dx + radius * sin(angle),
+        center.dy - radius * cos(angle),
+      );
+      canvas.drawLine(start, end, paint);
+    }
+
+    cardinals.forEach((label, deg) {
+      final angle = deg * pi / 180;
+      final offset = Offset(
+        center.dx + (radius - 12) * sin(angle),
+        center.dy - (radius - 12) * cos(angle),
+      );
+
+      textPaint.text = TextSpan(
+        text: label,
+        style: TextStyle(
+          color: label == 'N' ? Colors.redAccent : Colors.white70,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+      textPaint.layout();
+      textPaint.paint(
+        canvas,
+        Offset(offset.dx - textPaint.width / 2, offset.dy - textPaint.height / 2),
+      );
+    });
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -29,3 +29,12 @@ void stopWebCompass() {
   _compassSub?.cancel();
   _compassSub = null;
 }
+
+void speakWeb(String text) {
+  try {
+    final utterance = html.SpeechSynthesisUtterance(text);
+    html.window.speechSynthesis?.speak(utterance);
+  } catch (e) {
+    // fallback or fail silently
+  }
+}

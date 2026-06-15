@@ -59,36 +59,63 @@ export default async function handler(request, response) {
 
   if (request.method === 'POST') {
     try {
-      const newPlace = request.body;
+      const data = request.body;
       
       // Basic validation
-      if (!newPlace || !newPlace.id || !newPlace.name) {
-        return response.status(400).json({ error: 'Invalid place data' });
+      if (!data || !data.id) {
+        return response.status(400).json({ error: 'Invalid data' });
       }
 
-      // Try Vercel KV first
-      if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-        const existingPlaces = await kv.get(PLACES_KEY) || [];
-        // Prevent duplicate IDs
-        const filtered = existingPlaces.filter(p => p.id !== newPlace.id);
-        filtered.push(newPlace);
-        await kv.set(PLACES_KEY, filtered);
-        return response.status(200).json({ success: true, place: newPlace, source: 'kv' });
+      const isFeedback = data.type === 'feedback' || (data.tags && data.tags.feedback === true);
+
+      if (isFeedback) {
+        const FEEDBACK_KEY = 'gec_compass_feedback';
+        // Try Vercel KV first
+        if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+          const existingFeedback = await kv.get(FEEDBACK_KEY) || [];
+          existingFeedback.push(data);
+          await kv.set(FEEDBACK_KEY, existingFeedback);
+          return response.status(200).json({ success: true, feedback: data, source: 'kv' });
+        } else {
+          // Fallback to npoint list
+          const existingPlaces = await fetchFallbackPlaces();
+          existingPlaces.push(data);
+          const success = await saveFallbackPlaces(existingPlaces);
+          if (success) {
+            return response.status(200).json({ success: true, feedback: data, source: 'fallback' });
+          } else {
+            return response.status(500).json({ error: 'Failed to save feedback to fallback DB' });
+          }
+        }
       } else {
-        throw new Error('Vercel KV not configured');
+        // Handle normal place addition
+        if (!data.name) {
+          return response.status(400).json({ error: 'Invalid place data (missing name)' });
+        }
+
+        // Try Vercel KV first
+        if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+          const existingPlaces = await kv.get(PLACES_KEY) || [];
+          // Prevent duplicate IDs
+          const filtered = existingPlaces.filter(p => p.id !== data.id);
+          filtered.push(data);
+          await kv.set(PLACES_KEY, filtered);
+          return response.status(200).json({ success: true, place: data, source: 'kv' });
+        } else {
+          const existingPlaces = await fetchFallbackPlaces();
+          // Prevent duplicate IDs
+          const filtered = existingPlaces.filter(p => p.id !== data.id);
+          filtered.push(data);
+          const success = await saveFallbackPlaces(filtered);
+          if (success) {
+            return response.status(200).json({ success: true, place: data, source: 'fallback' });
+          } else {
+            return response.status(500).json({ error: 'Failed to save place to fallback DB' });
+          }
+        }
       }
     } catch (error) {
-      console.warn('Vercel KV write failed, falling back to public DB:', error.message);
-      const existingPlaces = await fetchFallbackPlaces();
-      // Prevent duplicate IDs
-      const filtered = existingPlaces.filter(p => p.id !== newPlace.id);
-      filtered.push(newPlace);
-      const success = await saveFallbackPlaces(filtered);
-      if (success) {
-        return response.status(200).json({ success: true, place: newPlace, source: 'fallback' });
-      } else {
-        return response.status(500).json({ error: 'Failed to save place to fallback DB' });
-      }
+      return response.status(500).json({ error: error.message });
     }
   }
 

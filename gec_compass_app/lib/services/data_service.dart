@@ -67,6 +67,8 @@ class DataService {
         customBuildings = await _loadCustomBuildingsLocal();
       }
 
+      // Filter out feedback items so they do not render on the map
+      customBuildings.removeWhere((b) => b.tags.containsKey('feedback') && b.tags['feedback'] == true);
       filtered.addAll(customBuildings);
 
       debugPrint("Loaded ${filtered.length - customBuildings.length} standard buildings and ${customBuildings.length} custom buildings.");
@@ -146,6 +148,57 @@ class DataService {
         }
       } catch (e) {
         debugPrint("Error syncing to direct public DB fallback: $e");
+      }
+    }
+  }
+
+  Future<void> submitFeedback(String feedbackText) async {
+    final feedbackItem = {
+      'id': 'feedback_${DateTime.now().millisecondsSinceEpoch}',
+      'name': 'User Feedback',
+      'lat': 0.0,
+      'lng': 0.0,
+      'type': 'feedback',
+      'tags': {
+        'feedback': true,
+        'content': feedbackText,
+        'timestamp': DateTime.now().toIso8601String(),
+      }
+    };
+
+    // 1. Send to Vercel API
+    bool syncedToVercel = false;
+    try {
+      final response = await http.post(
+        Uri.parse(_apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(feedbackItem),
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        syncedToVercel = true;
+        debugPrint("Synced feedback to Vercel cloud.");
+      }
+    } catch (e) {
+      debugPrint("Error syncing feedback to Vercel: $e");
+    }
+
+    // 2. Fallback: Sync to direct public DB if Vercel sync failed
+    if (!syncedToVercel) {
+      try {
+        final response = await http.get(Uri.parse('https://api.npoint.io/b3f62804fe66d1f0545f')).timeout(const Duration(seconds: 5));
+        if (response.statusCode == 200) {
+          final List<dynamic> apiList = json.decode(response.body);
+          apiList.add(feedbackItem);
+
+          await http.post(
+            Uri.parse('https://api.npoint.io/b3f62804fe66d1f0545f'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(apiList),
+          ).timeout(const Duration(seconds: 5));
+          debugPrint("Synced feedback to direct public DB fallback.");
+        }
+      } catch (e) {
+        debugPrint("Error syncing feedback to fallback DB: $e");
       }
     }
   }

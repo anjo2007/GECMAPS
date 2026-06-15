@@ -200,4 +200,17 @@ class RoutingService {
     }
     return instructions;
   }
+
+  List<List<LatLng>> getRoadEdges() {
+    final List<List<LatLng>> edges = [];
+    _graph.forEach((startId, neighbors) {
+      final startWp = waypoints.firstWhere((w) => w.id == startId);
+      for (var neighborId in neighbors) {
+        final neighborWp = waypoints.firstWhere((w) => w.id == neighborId);
+        // Avoid duplicates in dual directions for simplification, or just add both
+        edges.add([startWp.position, neighborWp.position]);
+      }
+    });
+    return edges;
+  }
 }
