@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -12,6 +13,25 @@ import '../models/building.dart';
 import '../services/data_service.dart';
 import '../services/pdr_service.dart';
 import '../services/routing_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class TelemetryData {
+  final double heading;
+  final double accelX;
+  final double accelY;
+  final double accelZ;
+  final double accelMag;
+  final List<double> magHistory;
+
+  TelemetryData({
+    required this.heading,
+    required this.accelX,
+    required this.accelY,
+    required this.accelZ,
+    required this.accelMag,
+    required this.magHistory,
+  });
+}
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -25,6 +45,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   final DataService _dataService = DataService();
   final PDRService _pdrService = PDRService();
   final RoutingService _routingService = RoutingService();
+
+  double _currentZoom = 16.8;
+  late final ValueNotifier<TelemetryData> _telemetryNotifier;
 
   List<Building> _buildings = [];
   Building? _selectedBuilding;
@@ -54,8 +77,58 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   // Pulsing animation for selected markers
   late AnimationController _pulseController;
 
+  // Map Type ('dark', 'satellite', 'light', 'ambient')
+  String _mapType = 'dark';
+  // App Theme Mode ('dark', 'light', 'ambient')
+  String _appThemeMode = 'dark';
+  bool _showLayerSelector = false;
+
+  // Telemetry dashboard states
+  bool _showSensorDashboard = false;
+  double _telemetryHeading = 0.0;
+  double _telemetryAccelX = 0.0;
+  double _telemetryAccelY = 0.0;
+  double _telemetryAccelZ = 0.0;
+  double _telemetryAccelMag = 0.0;
+  double _compassOffset = 0.0;
+  final List<double> _magHistory = List.filled(15, 0.0);
+
   // GEC Thrissur Center
   final LatLng _campusCenter = const LatLng(10.555761, 76.224317);
+
+  // Dynamic color getters for Theme System
+  Color get _bgOverlayColor {
+    if (_appThemeMode == 'light') return Colors.white.withOpacity(0.85);
+    if (_appThemeMode == 'ambient') return const Color(0xFF0F1E36).withOpacity(0.8); // Tinted blue-violet glass
+    return const Color(0xFF0F172A).withOpacity(0.8); // Dark slate glass
+  }
+
+  Color get _cardBgColor {
+    if (_appThemeMode == 'light') return Colors.white;
+    if (_appThemeMode == 'ambient') return const Color(0xFF1E294B); // Tinted navy card
+    return const Color(0xFF1E293B); // Dark slate card
+  }
+
+  Color get _scaffoldBgColor {
+    if (_appThemeMode == 'light') return const Color(0xFFF1F5F9);
+    if (_appThemeMode == 'ambient') return const Color(0xFF0B0F19);
+    return const Color(0xFF0F172A);
+  }
+
+  Color get _textColor {
+    if (_appThemeMode == 'light') return const Color(0xFF0F172A);
+    return Colors.white;
+  }
+
+  Color get _subTextColor {
+    if (_appThemeMode == 'light') return const Color(0xFF475569);
+    return Colors.white.withOpacity(0.60);
+  }
+
+  Color get _borderColor {
+    if (_appThemeMode == 'light') return Colors.black.withOpacity(0.08);
+    return Colors.white.withOpacity(0.12);
+  }
 
   @override
   void initState() {
@@ -65,6 +138,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+
+    _telemetryNotifier = ValueNotifier<TelemetryData>(
+      TelemetryData(
+        heading: 0.0,
+        accelX: 0.0,
+        accelY: 0.0,
+        accelZ: 0.0,
+        accelMag: 0.0,
+        magHistory: List.filled(15, 0.0),
+      ),
+    );
 
     _initData();
 
@@ -83,6 +167,41 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         _stepCount = count;
       });
     };
+
+    _pdrService.onRawCompassUpdated = (double heading) {
+      if (!mounted) return;
+      final current = _telemetryNotifier.value;
+      _telemetryHeading = (heading + _compassOffset + 360) % 360;
+      _telemetryNotifier.value = TelemetryData(
+        heading: _telemetryHeading,
+        accelX: current.accelX,
+        accelY: current.accelY,
+        accelZ: current.accelZ,
+        accelMag: current.accelMag,
+        magHistory: current.magHistory,
+      );
+    };
+
+    _pdrService.onRawAccelUpdated = (double x, double y, double z, double magnitude) {
+      if (!mounted) return;
+      final current = _telemetryNotifier.value;
+      _telemetryAccelX = x;
+      _telemetryAccelY = y;
+      _telemetryAccelZ = z;
+      _telemetryAccelMag = magnitude;
+      
+      _magHistory.removeAt(0);
+      _magHistory.add(magnitude);
+
+      _telemetryNotifier.value = TelemetryData(
+        heading: _telemetryHeading,
+        accelX: x,
+        accelY: y,
+        accelZ: z,
+        accelMag: magnitude,
+        magHistory: List<double>.from(_magHistory),
+      );
+    };
   }
 
   @override
@@ -90,6 +209,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     _pulseController.dispose();
     _pdrService.stopPDR();
     _onboardingPageController.dispose();
+    _telemetryNotifier.dispose();
     super.dispose();
   }
 
@@ -222,6 +342,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
   }
 
+  void _startTelemetryListening() {
+    _pdrService.startTelemetryOnly();
+  }
+
+  void _stopTelemetryListening() {
+    _pdrService.stopTelemetryOnly();
+  }
+
   void _stopNavigation() {
     _pdrService.stopPDR();
     setState(() {
@@ -231,6 +359,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _routeInstructions.clear();
       _currentInstructionIndex = 0;
       _simulatedRouteIndex = 0;
+      if (_showSensorDashboard) {
+        _startTelemetryListening();
+      }
     });
   }
 
@@ -281,14 +412,21 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   // Filter buildings on the map based on the active category chip
   List<Building> _getFilteredBuildings() {
-    if (_selectedCategory == 'All') {
-      return _buildings;
-    }
+    final showRooms = _selectedCategory == 'Rooms/Labs' || (_selectedCategory == 'All' && _currentZoom >= 17.5);
+
     return _buildings.where((b) {
       final amenity = b.tags['amenity'] as String?;
       final buildingType = b.tags['building'] as String?;
       final tourism = b.tags['tourism'] as String?;
       final isRoom = b.tags['room'] == 'yes';
+
+      if (isRoom && !showRooms) {
+        return false;
+      }
+
+      if (_selectedCategory == 'All') {
+        return true;
+      }
 
       switch (_selectedCategory) {
         case 'Departments':
@@ -307,6 +445,20 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }).toList();
   }
 
+  String _getTileUrl() {
+    switch (_mapType) {
+      case 'satellite':
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      case 'light':
+        return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      case 'ambient':
+        return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+      case 'dark':
+      default:
+        return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    }
+  }
+
   void _showBuildingDetails(Building building) {
     final double? dist = _currentPosition != null
         ? _distanceMeters(_currentPosition!, LatLng(building.lat, building.lng))
@@ -318,12 +470,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       isScrollControlled: true,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
+          color: _cardBgColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: _borderColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withOpacity(_appThemeMode == 'light' ? 0.15 : 0.6),
               blurRadius: 25,
               spreadRadius: 8,
             )
@@ -339,7 +491,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 width: 46,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: _textColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -363,10 +515,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 Expanded(
                   child: Text(
                     building.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: _textColor,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -394,7 +546,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 Expanded(
                   child: Text(
                     "${building.lat.toStringAsFixed(6)}, ${building.lng.toStringAsFixed(6)}",
-                    style: const TextStyle(color: Colors.white60, fontSize: 13),
+                    style: TextStyle(color: _subTextColor, fontSize: 13),
                   ),
                 ),
               ],
@@ -412,7 +564,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Text(" away along paths", style: TextStyle(color: Colors.white54)),
+                  Text(" away along paths", style: TextStyle(color: _subTextColor)),
                 ],
               ),
             ],
@@ -426,18 +578,130 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     .map((e) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B),
+                            color: _scaffoldBgColor.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                            border: Border.all(color: _borderColor),
                           ),
                           child: Text(
                             "${e.key}: ${e.value}",
-                            style: const TextStyle(fontSize: 11, color: Colors.white70),
+                            style: TextStyle(fontSize: 11, color: _textColor.withOpacity(0.8)),
                           ),
                         ))
                     .toList(),
               ),
             ],
+            
+            // Render Contact Options (Call / WhatsApp) if phone exists
+            () {
+              final String? rawPhone = (building.tags['phone'] ?? building.tags['contact:phone']) as String?;
+              final List<String> phoneNumbers = rawPhone != null 
+                  ? rawPhone.split(';').map((p) => p.trim()).where((p) => p.isNotEmpty).toList()
+                  : [];
+
+              if (phoneNumbers.isEmpty) return const SizedBox.shrink();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 18),
+                  Text(
+                    "CONTACT OPTIONS",
+                    style: TextStyle(
+                      color: _textColor.withOpacity(0.55),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...phoneNumbers.map((phone) {
+                    final cleanPhone = phone.replaceAll(RegExp(r'[^+\d]'), '');
+                    final standardPhone = (cleanPhone.length == 10 && !cleanPhone.startsWith('+'))
+                        ? '+91$cleanPhone'
+                        : cleanPhone;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _scaffoldBgColor.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: _borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    phone,
+                                    style: TextStyle(
+                                      color: _textColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Tap icons to Call or Chat",
+                                    style: TextStyle(
+                                      color: _subTextColor,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () async {
+                                final url = Uri.parse("tel:$standardPhone");
+                                try {
+                                  await launchUrl(url);
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Could not call $phone")),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.phone, size: 20),
+                              style: IconButton.styleFrom(
+                                foregroundColor: const Color(0xFF3B82F6),
+                                backgroundColor: const Color(0xFF3B82F6).withOpacity(0.12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () async {
+                                final text = "Hello! I am using the GEC Compass app and wanted to query about ${building.name}.";
+                                final url = Uri.parse("https://wa.me/${standardPhone.replaceAll('+', '').replaceAll(' ', '')}?text=${Uri.encodeComponent(text)}");
+                                try {
+                                  final success = await launchUrl(url, mode: LaunchMode.externalApplication);
+                                  if (!success) throw Exception();
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Could not open WhatsApp for $phone")),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.chat, size: 20),
+                              style: IconButton.styleFrom(
+                                foregroundColor: const Color(0xFF10B981),
+                                backgroundColor: const Color(0xFF10B981).withOpacity(0.12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            }(),
+            
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -472,360 +736,555 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final filteredBuildings = _getFilteredBuildings();
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Loading / Error / Map
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (_loadError != null)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
-                    const SizedBox(height: 16),
-                    Text("Failed to load: $_loadError",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _initData, child: const Text("Retry")),
-                  ],
-                ),
-              ),
-            )
-          else
-            FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: _campusCenter,
-                initialZoom: 16.8,
-                maxZoom: 22.0,
-                onPositionChanged: (pos, hasGesture) {
-                  if (hasGesture) FocusScope.of(context).unfocus();
-                },
-                onTap: (tapPosition, point) {
-                  // Interactive Web debug tapping
-                  if (_isNavigating && kIsWeb) {
-                    _pdrService.forceSetPosition(point);
-                  }
-                },
-              ),
+    return Theme(
+      data: ThemeData(
+        brightness: _appThemeMode == 'light' ? Brightness.light : Brightness.dark,
+        primaryColor: _scaffoldBgColor,
+        scaffoldBackgroundColor: _scaffoldBgColor,
+        cardColor: _cardBgColor,
+        colorScheme: ColorScheme(
+          brightness: _appThemeMode == 'light' ? Brightness.light : Brightness.dark,
+          primary: const Color(0xFF3B82F6),
+          onPrimary: Colors.white,
+          secondary: const Color(0xFF10B981),
+          onSecondary: Colors.white,
+          error: Colors.redAccent,
+          onError: Colors.white,
+          surface: _cardBgColor,
+          onSurface: _textColor,
+        ),
+        useMaterial3: true,
+      ),
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            backgroundColor: _scaffoldBgColor,
+            body: Stack(
               children: [
-                // Dark-themed CartoDB Tiles
-                TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
-                  userAgentPackageName: 'com.example.gec_compass_app',
-                ),
-                
-                // Polyline layer for Dijkstra road route (under custom markers)
-                if (_isNavigating && _routingPath.length >= 2)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: _routingPath,
-                        color: const Color(0xFF3B82F6),
-                        strokeWidth: 6.0,
-                        strokeCap: StrokeCap.round,
-                        strokeJoin: StrokeJoin.round,
-                      ),
-                    ],
-                  ),
-                
-                // Polyline layer for actual walked/PDR trail
-                if (_isNavigating && _pdrTrail.length >= 2)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: _pdrTrail,
-                        color: const Color(0xFF10B981),
-                        strokeWidth: 3.5,
-                        strokeCap: StrokeCap.round,
-                        strokeJoin: StrokeJoin.round,
-                      ),
-                    ],
-                  ),
-
-                // Building markers
-                MarkerLayer(
-                  markers: filteredBuildings.map((b) => Marker(
-                    point: LatLng(b.lat, b.lng),
-                    width: 60,
-                    height: 60,
-                    child: GestureDetector(
-                      onTap: () => _selectBuilding(b),
-                      child: _buildMarkerIcon(b),
-                    ),
-                  )).toList(),
-                ),
-
-                // User position marker
-                if (_currentPosition != null)
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: _currentPosition!,
-                        width: 55,
-                        height: 55,
-                        child: _buildUserLocationMarker(),
-                      )
-                    ],
-                  ),
-              ],
-            ),
-
-          // Search Bar & Horizontal Category Filters (Top)
-          if (!_isNavigating)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
-              left: 16,
-              right: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Glassmorphism Search Bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A).withOpacity(0.75),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white.withOpacity(0.12)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black38,
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            )
-                          ],
-                        ),
-                        child: Autocomplete<Building>(
-                          optionsBuilder: (TextEditingValue textEditingValue) {
-                            if (textEditingValue.text.isEmpty) {
-                              return const Iterable<Building>.empty();
-                            }
-                            return _buildings.where((Building option) {
-                              return option.name
-                                  .toLowerCase()
-                                  .contains(textEditingValue.text.toLowerCase());
-                            });
-                          },
-                          displayStringForOption: (Building option) => option.name,
-                          onSelected: (Building selection) {
-                            _selectBuilding(selection);
-                          },
-                          fieldViewBuilder: (BuildContext context,
-                              TextEditingController textEditingController,
-                              FocusNode focusNode,
-                              VoidCallback onFieldSubmitted) {
-                            return TextField(
-                              controller: textEditingController,
-                              focusNode: focusNode,
-                              style: const TextStyle(color: Colors.white, fontSize: 15),
-                              decoration: InputDecoration(
-                                hintText: 'Search departments, labs, cafes...',
-                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                                prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.5)),
-                                suffixIcon: textEditingController.text.isNotEmpty 
-                                    ? IconButton(
-                                        icon: const Icon(Icons.clear, color: Colors.white54, size: 18),
-                                        onPressed: () {
-                                          textEditingController.clear();
-                                          focusNode.unfocus();
-                                        },
-                                      )
-                                    : null,
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                              ),
-                            );
-                          },
-                          optionsViewBuilder: (BuildContext context,
-                              AutocompleteOnSelected<Building> onSelected,
-                              Iterable<Building> options) {
-                            return Align(
-                              alignment: Alignment.topLeft,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: Container(
-                                  width: MediaQuery.of(context).size.width - 32,
-                                  margin: const EdgeInsets.only(top: 8),
-                                  constraints: const BoxConstraints(maxHeight: 250),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF0F172A),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                                    boxShadow: [
-                                      BoxShadow(
-                                          color: Colors.black54,
-                                          blurRadius: 15,
-                                          offset: const Offset(0, 5))
-                                    ],
-                                  ),
-                                  child: ListView.separated(
-                                    padding: EdgeInsets.zero,
-                                    shrinkWrap: true,
-                                    itemCount: options.length,
-                                    separatorBuilder: (c, i) => Divider(color: Colors.white.withOpacity(0.06), height: 1),
-                                    itemBuilder: (BuildContext context, int index) {
-                                      final Building option = options.elementAt(index);
-                                      return ListTile(
-                                        title: Text(option.name,
-                                            style: const TextStyle(color: Colors.white, fontSize: 14)),
-                                        leading: Icon(_getMarkerIcon(option),
-                                            color: _getMarkerColor(option), size: 20),
-                                        onTap: () {
-                                          onSelected(option);
-                                        },
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Category filter chips
-                  SizedBox(
-                    height: 40,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _categories.length,
-                      itemBuilder: (context, index) {
-                        final cat = _categories[index];
-                        final isSelected = _selectedCategory == cat;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: ChoiceChip(
-                            label: Text(cat),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  _selectedCategory = cat;
-                                });
-                              }
-                            },
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white70,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 13,
-                            ),
-                            selectedColor: const Color(0xFF3B82F6),
-                            backgroundColor: const Color(0xFF1E293B).withOpacity(0.8),
-                            side: BorderSide(color: Colors.white.withOpacity(isSelected ? 0.0 : 0.08)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Floating Buttons on the right
-          if (!_isNavigating)
-            Positioned(
-              bottom: 32,
-              right: 16,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FloatingActionButton(
-                    heroTag: 'add_place_btn',
-                    backgroundColor: const Color(0xFF3B82F6),
-                    foregroundColor: Colors.white,
-                    onPressed: _showAddPlaceModal,
-                    child: const Icon(Icons.add_location_alt),
-                  ),
-                  const SizedBox(height: 14),
-                  FloatingActionButton(
-                    heroTag: 'recenter_btn',
-                    backgroundColor: const Color(0xFF1E293B),
-                    foregroundColor: const Color(0xFF3B82F6),
-                    onPressed: () {
-                      if (_currentPosition != null) {
-                        _mapController.move(_currentPosition!, 18.5);
-                      } else {
-                        _mapController.move(_campusCenter, 16.5);
-                      }
-                    },
-                    child: const Icon(Icons.my_location),
-                  ),
-                ],
-              ),
-            ),
-
-          // Feedback Button
-          if (!_isNavigating)
-            Positioned(
-              bottom: 32,
-              left: 16,
-              child: FloatingActionButton.extended(
-                heroTag: 'feedback_btn',
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.rate_review),
-                label: const Text('Feedback',
-                    style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                onPressed: _showFeedbackModal,
-              ),
-            ),
-
-          // Web simulated navigation walkthrough buttons
-          if (_isNavigating && kIsWeb)
-            Positioned(
-              bottom: MediaQuery.of(context).padding.bottom + 120,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      color: const Color(0xFF0F172A).withOpacity(0.85),
-                      child: Row(
+                // Loading / Error / Map
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else if (_loadError != null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          ElevatedButton.icon(
-                            onPressed: _simulateNextStep,
-                            icon: const Icon(Icons.directions_walk, size: 18, color: Colors.white),
-                            label: const Text("Simulate Step", style: TextStyle(color: Colors.white, fontSize: 13)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF3B82F6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text("or Tap map to jump", style: TextStyle(color: Colors.white60, fontSize: 11)),
+                          const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                          const SizedBox(height: 16),
+                          Text("Failed to load: $_loadError",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: _textColor.withOpacity(0.7))),
+                          const SizedBox(height: 16),
+                          ElevatedButton(onPressed: _initData, child: const Text("Retry")),
                         ],
                       ),
                     ),
+                  )
+                else
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: _campusCenter,
+                      initialZoom: 16.8,
+                      maxZoom: 22.0,
+                      onPositionChanged: (pos, hasGesture) {
+                        if (hasGesture) FocusScope.of(context).unfocus();
+                        final newZoom = pos.zoom ?? 16.8;
+                        final wasZoomedIn = _currentZoom >= 17.5;
+                        final isZoomedIn = newZoom >= 17.5;
+                        if (wasZoomedIn != isZoomedIn) {
+                          setState(() {
+                            _currentZoom = newZoom;
+                          });
+                        } else {
+                          _currentZoom = newZoom;
+                        }
+                      },
+                      onTap: (tapPosition, point) {
+                        // Interactive Web debug tapping
+                        if (_isNavigating && kIsWeb) {
+                          _pdrService.forceSetPosition(point);
+                        }
+                      },
+                    ),
+                    children: [
+                      // Configurable Map Tile Layer
+                      TileLayer(
+                        urlTemplate: _getTileUrl(),
+                        subdomains: const ['a', 'b', 'c', 'd'],
+                        maxNativeZoom: _mapType == 'satellite' ? 19 : 18,
+                        userAgentPackageName: 'com.example.gec_compass_app',
+                      ),
+                      if (_mapType == 'satellite') ...[
+                        TileLayer(
+                          urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+                          subdomains: const ['a', 'b', 'c', 'd'],
+                          maxNativeZoom: 19,
+                        ),
+                        TileLayer(
+                          urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+                          subdomains: const ['a', 'b', 'c', 'd'],
+                          maxNativeZoom: 19,
+                        ),
+                      ],
+                      
+                      // Polyline layer for Dijkstra road route (under custom markers)
+                      if (_isNavigating && _routingPath.length >= 2)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _routingPath,
+                              color: const Color(0xFF3B82F6),
+                              strokeWidth: 6.0,
+                              strokeCap: StrokeCap.round,
+                              strokeJoin: StrokeJoin.round,
+                            ),
+                          ],
+                        ),
+                      
+                      // Polyline layer for actual walked/PDR trail
+                      if (_isNavigating && _pdrTrail.length >= 2)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _pdrTrail,
+                              color: const Color(0xFF10B981),
+                              strokeWidth: 3.5,
+                              strokeCap: StrokeCap.round,
+                              strokeJoin: StrokeJoin.round,
+                            ),
+                          ],
+                        ),
+          
+                      // Building markers
+                      MarkerLayer(
+                        markers: filteredBuildings.map((b) => Marker(
+                          point: LatLng(b.lat, b.lng),
+                          width: 60,
+                          height: 60,
+                          child: GestureDetector(
+                            onTap: () => _selectBuilding(b),
+                            child: _buildMarkerIcon(b),
+                          ),
+                        )).toList(),
+                      ),
+          
+                      // User position marker
+                      if (_currentPosition != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: _currentPosition!,
+                              width: 55,
+                              height: 55,
+                              child: _buildUserLocationMarker(),
+                            )
+                          ],
+                        ),
+                    ],
+                  ),
+          
+                // Search Bar & Horizontal Category Filters (Top)
+                if (!_isNavigating)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 12,
+                    left: 16,
+                    right: 16,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Glassmorphism Search Bar
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _bgOverlayColor,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: _borderColor),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(_appThemeMode == 'light' ? 0.05 : 0.25),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ],
+                              ),
+                              child: Autocomplete<Building>(
+                                optionsBuilder: (TextEditingValue textEditingValue) {
+                                  if (textEditingValue.text.isEmpty) {
+                                    return const Iterable<Building>.empty();
+                                  }
+                                  return _buildings.where((Building option) {
+                                    return option.name
+                                        .toLowerCase()
+                                        .contains(textEditingValue.text.toLowerCase());
+                                  });
+                                },
+                                displayStringForOption: (Building option) => option.name,
+                                onSelected: (Building selection) {
+                                  _selectBuilding(selection);
+                                },
+                                fieldViewBuilder: (BuildContext context,
+                                    TextEditingController textEditingController,
+                                    FocusNode focusNode,
+                                    VoidCallback onFieldSubmitted) {
+                                  return TextField(
+                                    controller: textEditingController,
+                                    focusNode: focusNode,
+                                    style: TextStyle(color: _textColor, fontSize: 15),
+                                    decoration: InputDecoration(
+                                      hintText: 'Search departments, labs, cafes...',
+                                      hintStyle: TextStyle(color: _textColor.withOpacity(0.5)),
+                                      prefixIcon: Icon(Icons.search, color: _textColor.withOpacity(0.5)),
+                                      suffixIcon: textEditingController.text.isNotEmpty 
+                                          ? IconButton(
+                                              icon: Icon(Icons.clear, color: _textColor.withOpacity(0.5), size: 18),
+                                              onPressed: () {
+                                                textEditingController.clear();
+                                                focusNode.unfocus();
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                    ),
+                                  );
+                                },
+                                optionsViewBuilder: (BuildContext context,
+                                    AutocompleteOnSelected<Building> onSelected,
+                                    Iterable<Building> options) {
+                                  return Align(
+                                    alignment: Alignment.topLeft,
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: Container(
+                                        width: MediaQuery.of(context).size.width - 32,
+                                        margin: const EdgeInsets.only(top: 8),
+                                        constraints: const BoxConstraints(maxHeight: 250),
+                                        decoration: BoxDecoration(
+                                          color: _cardBgColor,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(color: _borderColor),
+                                          boxShadow: [
+                                            BoxShadow(
+                                                color: Colors.black.withOpacity(0.3),
+                                                blurRadius: 15,
+                                                offset: const Offset(0, 5))
+                                          ],
+                                        ),
+                                        child: ListView.separated(
+                                          padding: EdgeInsets.zero,
+                                          shrinkWrap: true,
+                                          itemCount: options.length,
+                                          separatorBuilder: (c, i) => Divider(color: _borderColor, height: 1),
+                                          itemBuilder: (BuildContext context, int index) {
+                                            final Building option = options.elementAt(index);
+                                            return ListTile(
+                                              title: Text(option.name,
+                                                  style: TextStyle(color: _textColor, fontSize: 14)),
+                                              leading: Icon(_getMarkerIcon(option),
+                                                  color: _getMarkerColor(option), size: 20),
+                                              onTap: () {
+                                                onSelected(option);
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Category filter chips
+                        SizedBox(
+                          height: 40,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _categories.length,
+                            itemBuilder: (context, index) {
+                              final cat = _categories[index];
+                              final isSelected = _selectedCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ChoiceChip(
+                                  label: Text(cat),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    if (selected) {
+                                      setState(() {
+                                        _selectedCategory = cat;
+                                      });
+                                    }
+                                  },
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? Colors.white : _textColor.withOpacity(0.8),
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 13,
+                                  ),
+                                  selectedColor: const Color(0xFF3B82F6),
+                                  backgroundColor: _cardBgColor.withOpacity(0.8),
+                                  side: BorderSide(color: isSelected ? Colors.transparent : _borderColor),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          
+                // Floating Buttons on the right (responsive positioning)
+                Positioned(
+                  bottom: _isNavigating ? 140 : 32,
+                  right: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Telemetry Dashboard Toggle
+                      FloatingActionButton(
+                        heroTag: 'sensors_btn',
+                        backgroundColor: _showSensorDashboard ? const Color(0xFF10B981) : _cardBgColor,
+                        foregroundColor: _showSensorDashboard ? Colors.white : const Color(0xFF3B82F6),
+                        onPressed: () {
+                          setState(() {
+                            _showSensorDashboard = !_showSensorDashboard;
+                            _showLayerSelector = false;
+                            if (_showSensorDashboard) {
+                              _startTelemetryListening();
+                            } else {
+                              if (!_isNavigating) {
+                                _stopTelemetryListening();
+                              }
+                            }
+                          });
+                        },
+                        child: Icon(_showSensorDashboard ? Icons.sensors : Icons.sensors_off),
+                      ),
+                      const SizedBox(height: 14),
+                      if (!_isNavigating) ...[
+                        // Theme/Layer Switcher Button
+                        FloatingActionButton(
+                          heroTag: 'layer_btn',
+                          backgroundColor: _cardBgColor,
+                          foregroundColor: const Color(0xFF3B82F6),
+                          onPressed: () {
+                            setState(() {
+                              _showLayerSelector = !_showLayerSelector;
+                            });
+                          },
+                          child: const Icon(Icons.layers),
+                        ),
+                        const SizedBox(height: 14),
+                        FloatingActionButton(
+                          heroTag: 'add_place_btn',
+                          backgroundColor: const Color(0xFF3B82F6),
+                          foregroundColor: Colors.white,
+                          onPressed: _showAddPlaceModal,
+                          child: const Icon(Icons.add_location_alt),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      FloatingActionButton(
+                        heroTag: 'recenter_btn',
+                        backgroundColor: _cardBgColor,
+                        foregroundColor: const Color(0xFF3B82F6),
+                        onPressed: () {
+                          if (_currentPosition != null) {
+                            _mapController.move(_currentPosition!, 18.5);
+                          } else {
+                            _mapController.move(_campusCenter, 16.5);
+                          }
+                        },
+                        child: const Icon(Icons.my_location),
+                      ),
+                    ],
                   ),
                 ),
+          
+                // Theme & Layer Selector Panel
+                if (_showLayerSelector && !_isNavigating)
+                  Positioned(
+                    bottom: 32 + 190,
+                    right: 16,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _bgOverlayColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _borderColor),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 15,
+                              )
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Theme & Map Layer",
+                                style: TextStyle(
+                                  color: _textColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  _buildLayerOption('dark', Icons.dark_mode, 'Dark'),
+                                  const SizedBox(width: 12),
+                                  _buildLayerOption('light', Icons.light_mode, 'Light'),
+                                  const SizedBox(width: 12),
+                                  _buildLayerOption('ambient', Icons.palette, 'Ambient'),
+                                  const SizedBox(width: 12),
+                                  _buildLayerOption('satellite', Icons.satellite_alt, 'Satellite'),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Feedback Button
+                if (!_isNavigating)
+                  Positioned(
+                    bottom: 32,
+                    left: 16,
+                    child: FloatingActionButton.extended(
+                      heroTag: 'feedback_btn',
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      icon: const Icon(Icons.rate_review),
+                      label: const Text('Feedback',
+                          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                      onPressed: _showFeedbackModal,
+                    ),
+                  ),
+          
+                // Web simulated navigation walkthrough buttons
+                if (_isNavigating && kIsWeb)
+                  Positioned(
+                    bottom: MediaQuery.of(context).padding.bottom + 120,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            color: _scaffoldBgColor.withOpacity(0.85),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: _simulateNextStep,
+                                  icon: const Icon(Icons.directions_walk, size: 18, color: Colors.white),
+                                  label: const Text("Simulate Step", style: TextStyle(color: Colors.white, fontSize: 13)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF3B82F6),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text("or Tap map to jump", style: TextStyle(color: _textColor.withOpacity(0.6), fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+          
+                // Telemetry Sensor Dashboard Overlay
+                if (_showSensorDashboard)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 80,
+                    left: 16,
+                    child: ValueListenableBuilder<TelemetryData>(
+                      valueListenable: _telemetryNotifier,
+                      builder: (context, telemetry, child) {
+                        return _buildSensorDashboardWidget(context, telemetry);
+                      },
+                    ),
+                  ),
+
+                // Navigation UI Overlay
+                if (_isNavigating) _buildNavigationOverlay(),
+          
+                // Welcome Onboarding Overlay
+                if (_showOnboarding) _buildOnboardingOverlay(),
+              ],
+            ),
+          );
+        }
+      ),
+    );
+  }
+
+  Widget _buildLayerOption(String type, IconData icon, String label) {
+    final isSelected = _mapType == type;
+    final color = isSelected ? const Color(0xFF3B82F6) : _cardBgColor.withOpacity(0.6);
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _mapType = type;
+          if (type != 'satellite') {
+            _appThemeMode = type;
+          }
+          _showLayerSelector = false;
+        });
+      },
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? const Color(0xFF3B82F6) : _borderColor,
+                width: 1.5,
               ),
             ),
-
-          // Navigation UI Overlay
-          if (_isNavigating) _buildNavigationOverlay(),
-
-          // Welcome Onboarding Overlay
-          if (_showOnboarding) _buildOnboardingOverlay(),
+            child: Icon(
+              icon,
+              color: isSelected ? Colors.white : _textColor.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? const Color(0xFF3B82F6) : _textColor.withOpacity(0.8),
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );
@@ -884,33 +1343,58 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     final color = isSelected ? Colors.greenAccent : _getMarkerColor(b);
     final icon = _getMarkerIcon(b);
 
+    if (!isSelected) {
+      return Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: _scaffoldBgColor.withOpacity(0.9),
+          shape: BoxShape.circle,
+          border: Border.all(color: color, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.4),
+              blurRadius: 4,
+              spreadRadius: 1,
+            )
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            icon,
+            color: color,
+            size: 16,
+          ),
+        ),
+      );
+    }
+
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (context, child) {
         return Stack(
           alignment: Alignment.center,
           children: [
-            if (isSelected)
-              Container(
-                width: 32 + _pulseController.value * 24,
-                height: 32 + _pulseController.value * 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withOpacity(0.5 * (1.0 - _pulseController.value)),
-                ),
-              ),
             Container(
-              width: isSelected ? 40 : 32,
-              height: isSelected ? 40 : 32,
+              width: 32 + _pulseController.value * 24,
+              height: 32 + _pulseController.value * 24,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A).withOpacity(0.9),
+                shape: BoxShape.circle,
+                color: color.withOpacity(0.5 * (1.0 - _pulseController.value)),
+              ),
+            ),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _scaffoldBgColor.withOpacity(0.9),
                 shape: BoxShape.circle,
                 border: Border.all(color: color, width: 2),
                 boxShadow: [
                   BoxShadow(
                     color: color.withOpacity(0.4),
-                    blurRadius: isSelected ? 8 : 4,
-                    spreadRadius: isSelected ? 2 : 1,
+                    blurRadius: 8,
+                    spreadRadius: 2,
                   )
                 ],
               ),
@@ -918,7 +1402,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 child: Icon(
                   icon,
                   color: color,
-                  size: isSelected ? 22 : 16,
+                  size: 22,
                 ),
               ),
             ),
@@ -1021,11 +1505,11 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           right: 0,
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
+              color: _scaffoldBgColor,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: _borderColor),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.6), blurRadius: 25, offset: const Offset(0, -6)),
+                BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 25, offset: const Offset(0, -6)),
               ],
             ),
             padding: EdgeInsets.only(
@@ -1048,15 +1532,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         children: [
                           Text("$minutes min", style: const TextStyle(color: Color(0xFF10B981), fontSize: 28, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 12),
-                          Text(_formatDistance(dist), style: const TextStyle(color: Colors.white70, fontSize: 18)),
+                          Text(_formatDistance(dist), style: TextStyle(color: _textColor.withOpacity(0.8), fontSize: 18)),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.directions_walk, color: Colors.white54, size: 16),
+                          Icon(Icons.directions_walk, color: _textColor.withOpacity(0.5), size: 16),
                           const SizedBox(width: 4),
-                          Text("$_stepCount steps taken", style: const TextStyle(color: Colors.white54, fontSize: 14)),
+                          Text("$_stepCount steps taken", style: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 14)),
                         ],
                       ),
                     ],
@@ -1113,9 +1597,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               width: MediaQuery.of(context).size.width * 0.88,
               height: 480,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
+                color: _cardBgColor,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                border: Border.all(color: _borderColor),
               ),
               padding: const EdgeInsets.all(28),
               child: Column(
@@ -1145,7 +1629,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         height: 8,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(4),
-                          color: _onboardingPageIndex == index ? const Color(0xFF3B82F6) : Colors.white30,
+                          color: _onboardingPageIndex == index ? const Color(0xFF3B82F6) : _textColor.withOpacity(0.3),
                         ),
                       ),
                     ),
@@ -1194,13 +1678,13 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         const SizedBox(height: 28),
         Text(
           title,
-          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(color: _textColor, fontSize: 24, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
         Text(
           desc,
-          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+          style: TextStyle(color: _textColor.withOpacity(0.7), fontSize: 14, height: 1.5),
           textAlign: TextAlign.center,
         ),
       ],
@@ -1251,9 +1735,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: _cardBgColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            border: Border.all(color: _borderColor),
           ),
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -1265,31 +1749,31 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: _textColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 "Feedback & Reports",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textColor),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 "Suggest a missing building, report an inaccurate path, or share feature requests.",
-                style: TextStyle(color: Colors.white60),
+                style: TextStyle(color: _subTextColor),
               ),
               const SizedBox(height: 18),
               TextField(
                 controller: feedbackController,
                 maxLines: 4,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: _textColor),
                 decoration: InputDecoration(
                   hintText: "Enter your feedback or report here...",
-                  hintStyle: const TextStyle(color: Colors.white38),
+                  hintStyle: TextStyle(color: _textColor.withOpacity(0.38)),
                   filled: true,
-                  fillColor: const Color(0xFF1E293B),
+                  fillColor: _scaffoldBgColor.withOpacity(0.5),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -1300,15 +1784,30 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    if (feedbackController.text.trim().isNotEmpty) {
+                  onPressed: () async {
+                    final text = feedbackController.text.trim();
+                    if (text.isNotEmpty) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Feedback submitted! Thank you for contributing.'),
-                          backgroundColor: Color(0xFF10B981),
+                          content: Text('Redirecting to WhatsApp to send feedback...'),
+                          backgroundColor: Color(0xFF3B82F6),
                         ),
                       );
+                      
+                      final url = Uri.parse("https://wa.me/917034667112?text=${Uri.encodeComponent("Compass Feedback: $text")}");
+                      try {
+                        final success = await launchUrl(url, mode: LaunchMode.externalApplication);
+                        if (!success) throw Exception("Could not launch URL");
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not launch WhatsApp. Feedback copied to clipboard.'),
+                            backgroundColor: Colors.amber,
+                          ),
+                        );
+                        await Clipboard.setData(ClipboardData(text: text));
+                      }
                     }
                   },
                   icon: const Icon(Icons.send, color: Colors.white),
@@ -1356,9 +1855,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             child: Container(
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
+                color: _cardBgColor,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: _borderColor),
               ),
               padding: const EdgeInsets.all(24),
               child: SingleChildScrollView(
@@ -1371,35 +1870,35 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.white24,
+                          color: _textColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       "Add a Place",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textColor),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       "Contribute a missing classroom, laboratory, or office to the cloud database.",
-                      style: TextStyle(color: Colors.white60, fontSize: 13),
+                      style: TextStyle(color: _subTextColor, fontSize: 13),
                     ),
                     const SizedBox(height: 20),
                     
                     // Choice of type
                     Row(
                       children: [
-                        const Text("Category:", style: TextStyle(color: Colors.white, fontSize: 14)),
+                        Text("Category:", style: TextStyle(color: _textColor, fontSize: 14)),
                         const SizedBox(width: 16),
                         ChoiceChip(
                           label: const Text("Building/Lab"),
                           selected: !isClassroom,
                           onSelected: (val) => setModalState(() { isClassroom = false; }),
                           selectedColor: const Color(0xFF3B82F6),
-                          backgroundColor: const Color(0xFF1E293B),
-                          labelStyle: TextStyle(color: !isClassroom ? Colors.white : Colors.white70, fontSize: 12),
+                          backgroundColor: _scaffoldBgColor.withOpacity(0.5),
+                          labelStyle: TextStyle(color: !isClassroom ? Colors.white : _textColor.withOpacity(0.7), fontSize: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                         const SizedBox(width: 8),
@@ -1408,8 +1907,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                           selected: isClassroom,
                           onSelected: (val) => setModalState(() { isClassroom = true; }),
                           selectedColor: const Color(0xFF3B82F6),
-                          backgroundColor: const Color(0xFF1E293B),
-                          labelStyle: TextStyle(color: isClassroom ? Colors.white : Colors.white70, fontSize: 12),
+                          backgroundColor: _scaffoldBgColor.withOpacity(0.5),
+                          labelStyle: TextStyle(color: isClassroom ? Colors.white : _textColor.withOpacity(0.7), fontSize: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                       ],
@@ -1419,12 +1918,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     // Name Input
                     TextField(
                       controller: nameController,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: _textColor),
                       decoration: InputDecoration(
                         labelText: "Place Name (e.g. Embedded Systems Lab)",
-                        labelStyle: const TextStyle(color: Colors.white54, fontSize: 14),
+                        labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 14),
                         filled: true,
-                        fillColor: const Color(0xFF1E293B),
+                        fillColor: _scaffoldBgColor.withOpacity(0.5),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                       ),
                     ),
@@ -1435,15 +1934,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       DropdownButtonFormField<Building>(
                         decoration: InputDecoration(
                           labelText: "Located In (Building)",
-                          labelStyle: const TextStyle(color: Colors.white54, fontSize: 14),
+                          labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 14),
                           filled: true,
-                          fillColor: const Color(0xFF1E293B),
+                          fillColor: _scaffoldBgColor.withOpacity(0.5),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                         ),
-                        dropdownColor: const Color(0xFF0F172A),
+                        dropdownColor: _cardBgColor,
                         initialValue: selectedParent,
                         items: _buildings.where((b) => b.tags['building'] == 'college' || !b.tags.containsKey('room')).map((b) {
-                          return DropdownMenuItem(value: b, child: Text(b.name, style: const TextStyle(color: Colors.white, fontSize: 14)));
+                          return DropdownMenuItem(value: b, child: Text(b.name, style: TextStyle(color: _textColor, fontSize: 14)));
                         }).toList(),
                         onChanged: (val) {
                           setModalState(() { selectedParent = val; });
@@ -1459,12 +1958,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                           child: TextField(
                             controller: floorController,
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: _textColor),
                             decoration: InputDecoration(
                               labelText: "Floor (e.g., 0, 1, 2)",
-                              labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+                              labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 13),
                               filled: true,
-                              fillColor: const Color(0xFF1E293B),
+                              fillColor: _scaffoldBgColor.withOpacity(0.5),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                             ),
                           ),
@@ -1473,12 +1972,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         Expanded(
                           child: TextField(
                             controller: roomController,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: _textColor),
                             decoration: InputDecoration(
                               labelText: "Room ID / Number",
-                              labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+                              labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 13),
                               filled: true,
-                              fillColor: const Color(0xFF1E293B),
+                              fillColor: _scaffoldBgColor.withOpacity(0.5),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                             ),
                           ),
@@ -1491,14 +1990,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
+                        color: _scaffoldBgColor.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: _borderColor),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Geographical Coordinates", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text("Geographical Coordinates", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 14)),
                           const SizedBox(height: 8),
                           if (location != null)
                             Row(
@@ -1512,7 +2011,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               ],
                             )
                           else
-                            const Text("No coordinate assigned yet", style: TextStyle(color: Colors.white38, fontSize: 13)),
+                            Text("No coordinate assigned yet", style: TextStyle(color: _textColor.withOpacity(0.4), fontSize: 13)),
                           const SizedBox(height: 14),
                           SizedBox(
                             width: double.infinity,
@@ -1547,7 +2046,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                                 : const Icon(Icons.gps_fixed, size: 18),
                               label: Text(isFetchingLocation ? "Acquiring satellites..." : "Use Current GPS Location"),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0F172A),
+                                backgroundColor: _scaffoldBgColor,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
@@ -1584,7 +2083,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          side: BorderSide(color: Colors.white.withOpacity(0.12)),
+                          side: BorderSide(color: _borderColor),
                         ),
                       ),
                     ),
@@ -1653,4 +2152,507 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       ),
     );
   }
+
+  // --- Glassmorphic Telemetry Dashboard Widgets & Helpers ---
+  Widget _buildSensorDashboardWidget(BuildContext context, TelemetryData telemetry) {
+    final double panelWidth = min(MediaQuery.of(context).size.width - 32, 320);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          width: panelWidth,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _appThemeMode == 'light'
+                ? Colors.white.withOpacity(0.82)
+                : const Color(0xFF0F172A).withOpacity(0.55),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: _appThemeMode == 'light'
+                  ? Colors.black.withOpacity(0.12)
+                  : Colors.white.withOpacity(0.18),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 1,
+              )
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      _buildTelemetryDot(),
+                      const SizedBox(width: 8),
+                      Text(
+                        "TELEMETRY",
+                        style: TextStyle(
+                          color: _textColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _showSensorDashboard = false;
+                        if (!_isNavigating) {
+                          _stopTelemetryListening();
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: _textColor.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.close, color: _textColor.withOpacity(0.7), size: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Status Badges
+              Row(
+                children: [
+                  _buildStatusBadge("ACCEL", telemetry.accelMag == 0.0 ? "STANDBY" : "LIVE", Colors.cyanAccent),
+                  const SizedBox(width: 6),
+                  _buildStatusBadge("COMPASS", telemetry.heading == 0.0 ? "SIM" : "LIVE", Colors.amberAccent),
+                  const SizedBox(width: 6),
+                  _buildStatusBadge("PDR", _isNavigating ? "ACTIVE" : "STANDBY", Colors.greenAccent),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Rotating Compass
+              Center(
+                child: Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 110,
+                          height: 110,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _textColor.withOpacity(0.12),
+                              width: 3.5,
+                            ),
+                          ),
+                        ),
+                        // Rotating dial
+                        Transform.rotate(
+                          angle: -telemetry.heading * pi / 180,
+                          child: CustomPaint(
+                            size: const Size(100, 100),
+                            painter: CompassDialPainter(textColor: _textColor),
+                          ),
+                        ),
+                        // Fixed pointer pointing north
+                        const Positioned(
+                          top: 2,
+                          child: Icon(
+                            Icons.arrow_drop_up,
+                            color: Colors.redAccent,
+                            size: 24,
+                          ),
+                        ),
+                        // Center readout bubble
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _cardBgColor.withOpacity(0.85),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              "${telemetry.heading.toStringAsFixed(0)}°",
+                              style: TextStyle(
+                                color: _textColor,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _getHeadingDirectionText(telemetry.heading),
+                      style: TextStyle(
+                        color: _textColor.withOpacity(0.85),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Accelerometer physical meters
+              Text(
+                "ACCELEROMETER SENSOR (m/s²)",
+                style: TextStyle(
+                  color: _textColor.withOpacity(0.55),
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _buildAccelAxisIndicator("X", telemetry.accelX, Colors.redAccent),
+              const SizedBox(height: 4),
+              _buildAccelAxisIndicator("Y", telemetry.accelY, Colors.greenAccent),
+              const SizedBox(height: 4),
+              _buildAccelAxisIndicator("Z", telemetry.accelZ, Colors.blueAccent),
+              
+              // Sparkline graph
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "VIBRATION TELEMETRY",
+                    style: TextStyle(
+                      color: _textColor.withOpacity(0.55),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  Text(
+                    "Mag: ${telemetry.accelMag.toStringAsFixed(2)}",
+                    style: TextStyle(
+                      color: _textColor.withOpacity(0.8),
+                      fontSize: 9,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: _textColor.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _borderColor),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: telemetry.magHistory.map((val) {
+                    final heightFactor = (val / 10.0).clamp(0.08, 1.0);
+                    return Container(
+                      width: 8,
+                      height: 24 * heightFactor,
+                      decoration: BoxDecoration(
+                        color: Color.lerp(Colors.cyan, Colors.redAccent, (val / 6.0).clamp(0.0, 1.0)),
+                        borderRadius: BorderRadius.circular(1.5),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              // PDR Step engine details
+              const SizedBox(height: 12),
+              Text(
+                "PEDESTRIAN DEAD RECKONING (PDR)",
+                style: TextStyle(
+                  color: _textColor.withOpacity(0.55),
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.directions_walk, color: const Color(0xFF10B981), size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        "$_stepCount steps",
+                        style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    "Dist: ${(_stepCount * 0.7).toStringAsFixed(1)} m",
+                    style: TextStyle(color: _subTextColor, fontSize: 11),
+                  ),
+                ],
+              ),
+
+              // Compass Offset Calibration slider
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "CALIBRATE COMPASS BIAS",
+                    style: TextStyle(
+                      color: _textColor.withOpacity(0.55),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    "${_compassOffset >= 0 ? '+' : ''}${_compassOffset.toStringAsFixed(0)}°",
+                    style: TextStyle(color: _textColor, fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 1.5,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                ),
+                child: Slider(
+                  value: _compassOffset,
+                  min: -180.0,
+                  max: 180.0,
+                  onChanged: (val) {
+                    setState(() {
+                      _compassOffset = val;
+                      _telemetryHeading = (_pdrService.rawHeading + _compassOffset + 360) % 360;
+                    });
+                    _telemetryNotifier.value = TelemetryData(
+                      heading: _telemetryHeading,
+                      accelX: telemetry.accelX,
+                      accelY: telemetry.accelY,
+                      accelZ: telemetry.accelZ,
+                      accelMag: telemetry.accelMag,
+                      magHistory: telemetry.magHistory,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTelemetryDot() {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        return Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.greenAccent,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.greenAccent.withOpacity(0.6 * (1.0 - _pulseController.value)),
+                blurRadius: 3 + _pulseController.value * 5,
+                spreadRadius: _pulseController.value * 2.5,
+              )
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusBadge(String name, String status, Color activeColor) {
+    final isLive = status == "LIVE" || status == "ACTIVE";
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: (isLive ? activeColor : Colors.blueAccent).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: (isLive ? activeColor : Colors.blueAccent).withOpacity(0.25),
+          width: 0.8,
+        ),
+      ),
+      child: Text(
+        "$name: $status",
+        style: TextStyle(
+          color: isLive ? activeColor : Colors.blueAccent,
+          fontSize: 8.5,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccelAxisIndicator(String axis, double val, Color color) {
+    final double clamped = val.clamp(-8.0, 8.0);
+    final double percentage = (clamped + 8.0) / 16.0;
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 10,
+          child: Text(
+            axis,
+            style: TextStyle(
+              color: _textColor.withOpacity(0.6),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: Container(
+              height: 6,
+              color: _textColor.withOpacity(0.08),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: percentage,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        SizedBox(
+          width: 38,
+          child: Text(
+            "${val >= 0 ? '+' : ''}${val.toStringAsFixed(2)}",
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: _textColor,
+              fontFamily: 'monospace',
+              fontSize: 9,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getHeadingDirectionText(double heading) {
+    final deg = (heading + 360) % 360;
+    if (deg >= 337.5 || deg < 22.5) return "North (N)";
+    if (deg >= 22.5 && deg < 67.5) return "North-East (NE)";
+    if (deg >= 67.5 && deg < 112.5) return "East (E)";
+    if (deg >= 112.5 && deg < 157.5) return "South-East (SE)";
+    if (deg >= 157.5 && deg < 202.5) return "South (S)";
+    if (deg >= 202.5 && deg < 247.5) return "South-West (SW)";
+    if (deg >= 247.5 && deg < 292.5) return "West (W)";
+    return "North-West (NW)";
+  }
+}
+
+class CompassDialPainter extends CustomPainter {
+  final Color textColor;
+  CompassDialPainter({required this.textColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = textColor.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    canvas.drawCircle(center, radius, paint);
+
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+
+    for (int i = 0; i < 360; i += 15) {
+      final angle = i * pi / 180;
+      final isCardinal = i % 90 == 0;
+      final tickLength = isCardinal ? 8.0 : 4.0;
+
+      final start = Offset(
+        center.dx + (radius - tickLength) * sin(angle),
+        center.dy - (radius - tickLength) * cos(angle),
+      );
+      final end = Offset(
+        center.dx + radius * sin(angle),
+        center.dy - radius * cos(angle),
+      );
+
+      canvas.drawLine(start, end, paint);
+
+      if (isCardinal) {
+        String label = "";
+        switch (i) {
+          case 0:
+            label = "N";
+            break;
+          case 90:
+            label = "E";
+            break;
+          case 180:
+            label = "S";
+            break;
+          case 270:
+            label = "W";
+            break;
+        }
+
+        textPainter.text = TextSpan(
+          text: label,
+          style: TextStyle(
+            color: label == "N" ? Colors.redAccent : textColor.withOpacity(0.7),
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+          ),
+        );
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(
+            center.dx + (radius - 16) * sin(angle) - textPainter.width / 2,
+            center.dy - (radius - 16) * cos(angle) - textPainter.height / 2,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CompassDialPainter oldDelegate) =>
+      oldDelegate.textColor != textColor;
 }

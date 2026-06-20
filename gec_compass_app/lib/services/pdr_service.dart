@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:latlong2/latlong.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -26,6 +26,17 @@ class PDRService {
   void Function(LatLng newPosition)? onPositionUpdated;
   void Function(int count)? onStepDetected;
 
+  // Telemetry callbacks & variables
+  double rawAccelX = 0.0;
+  double rawAccelY = 0.0;
+  double rawAccelZ = 0.0;
+  double rawAccelMagnitude = 0.0;
+  double rawHeading = 0.0;
+
+  void Function(double heading)? onRawCompassUpdated;
+  void Function(double x, double y, double z, double magnitude)? onRawAccelUpdated;
+
+  bool _isTelemetryOnlyActive = false;
   int _stepCount = 0;
   LatLng? _currentPosition;
 
@@ -49,10 +60,87 @@ class PDRService {
     }
   }
 
+  void startTelemetryOnly() {
+    if (isActive || _isTelemetryOnlyActive) return;
+    _isTelemetryOnlyActive = true;
+
+    if (kIsWeb) {
+      listenToWebCompass((heading) {
+        _currentHeading = heading;
+        rawHeading = heading;
+        if (onRawCompassUpdated != null) onRawCompassUpdated!(heading);
+      });
+      _listenToAccelerometerTelemetry();
+    } else {
+      _compassSub = FlutterCompass.events?.listen((CompassEvent event) {
+        if (event.heading != null) {
+          _currentHeading = event.heading!;
+          rawHeading = event.heading!;
+          if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
+        }
+      });
+      _listenToAccelerometerTelemetry();
+    }
+  }
+
+  void _listenToAccelerometerTelemetry() {
+    try {
+      _accelSub = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
+        double magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
+        rawAccelX = event.x;
+        rawAccelY = event.y;
+        rawAccelZ = event.z;
+        rawAccelMagnitude = magnitude;
+        if (onRawAccelUpdated != null) {
+          onRawAccelUpdated!(event.x, event.y, event.z, magnitude);
+        }
+      }, onError: (e) {
+        debugPrint("Sensors error, running fallback simulation: $e");
+        _startTelemetryFallbackSimulation();
+      });
+
+      // If no events are received (common on desktop web), start fallback simulation after 1 second
+      Timer(const Duration(seconds: 1), () {
+        if (_isTelemetryOnlyActive && rawAccelMagnitude == 0.0) {
+          _startTelemetryFallbackSimulation();
+        }
+      });
+    } catch (e) {
+      _startTelemetryFallbackSimulation();
+    }
+  }
+
+  void _startTelemetryFallbackSimulation() {
+    _simulationTimer?.cancel();
+    final rng = Random();
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 150), (timer) {
+      if (!_isTelemetryOnlyActive) {
+        timer.cancel();
+        return;
+      }
+      // Generate mild vibration/movement noise
+      rawAccelX = (rng.nextDouble() - 0.5) * 0.4;
+      rawAccelY = (rng.nextDouble() - 0.5) * 0.4;
+      rawAccelZ = (rng.nextDouble() - 0.5) * 0.4;
+      rawAccelMagnitude = sqrt(rawAccelX * rawAccelX + rawAccelY * rawAccelY + rawAccelZ * rawAccelZ);
+      rawHeading = (rawHeading + (rng.nextDouble() - 0.5) * 4.0) % 360;
+
+      if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
+      if (onRawAccelUpdated != null) onRawAccelUpdated!(rawAccelX, rawAccelY, rawAccelZ, rawAccelMagnitude);
+    });
+  }
+
+  void stopTelemetryOnly() {
+    _isTelemetryOnlyActive = false;
+    stopPDR();
+  }
+
   void _startNativePDR() {
     _compassSub = FlutterCompass.events?.listen((CompassEvent event) {
       if (event.heading != null) {
         _currentHeading = event.heading!;
+        rawHeading = event.heading!;
+        if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
       }
     });
     _listenToAccelerometer();
@@ -62,6 +150,8 @@ class PDRService {
     // Custom JS interop compass because flutter_compass doesn't support web
     listenToWebCompass((heading) {
       _currentHeading = heading;
+      rawHeading = heading;
+      if (onRawCompassUpdated != null) onRawCompassUpdated!(heading);
     });
     _listenToAccelerometer();
   }
@@ -69,6 +159,15 @@ class PDRService {
   void _listenToAccelerometer() {
     _accelSub = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
       double magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
+
+      rawAccelX = event.x;
+      rawAccelY = event.y;
+      rawAccelZ = event.z;
+      rawAccelMagnitude = magnitude;
+      if (onRawAccelUpdated != null) {
+        onRawAccelUpdated!(event.x, event.y, event.z, magnitude);
+      }
+
       int now = DateTime.now().millisecondsSinceEpoch;
 
       if (magnitude > _stepThreshold && !_isStepHigh) {
@@ -90,11 +189,24 @@ class PDRService {
   void _startWebSimulation() {
     final rng = Random();
     _currentHeading = rng.nextDouble() * 360;
+    rawHeading = _currentHeading;
 
     _simulationTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
       // In web simulation, we step slower to allow interactive overrides
       _stepCount++;
       _currentHeading += (rng.nextDouble() - 0.5) * 15;
+      _currentHeading = (_currentHeading + 360) % 360;
+      rawHeading = _currentHeading;
+
+      // Simulate step accelerometer spikes
+      rawAccelX = (rng.nextDouble() - 0.5) * 1.5;
+      rawAccelY = 2.0 + rng.nextDouble() * 4.0;
+      rawAccelZ = (rng.nextDouble() - 0.5) * 1.5;
+      rawAccelMagnitude = sqrt(rawAccelX * rawAccelX + rawAccelY * rawAccelY + rawAccelZ * rawAccelZ);
+
+      if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
+      if (onRawAccelUpdated != null) onRawAccelUpdated!(rawAccelX, rawAccelY, rawAccelZ, rawAccelMagnitude);
+
       if (onStepDetected != null) onStepDetected!(_stepCount);
       _updatePositionWithPDR();
     });
@@ -102,6 +214,7 @@ class PDRService {
 
   void triggerManualStep(double heading) {
     _currentHeading = heading;
+    rawHeading = heading;
     _stepCount++;
     if (onStepDetected != null) onStepDetected!(_stepCount);
     _updatePositionWithPDR();
@@ -141,5 +254,6 @@ class PDRService {
     _simulationTimer?.cancel();
     _simulationTimer = null;
     _currentPosition = null;
+    _isTelemetryOnlyActive = false;
   }
 }

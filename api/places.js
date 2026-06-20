@@ -1,4 +1,4 @@
-const { kv } = require('@vercel/kv');
+import { kv } from '@vercel/kv';
 
 // Public shared fallback database URL (hosted on npoint) for zero-config out-of-the-box syncing
 const FALLBACK_DB_URL = 'https://api.npoint.io/b3f62804fe66d1f0545f';
@@ -58,8 +58,8 @@ export default async function handler(request, response) {
   }
 
   if (request.method === 'POST') {
+    const newPlace = request.body;
     try {
-      const newPlace = request.body;
       
       // Basic validation
       if (!newPlace || !newPlace.id || !newPlace.name) {
