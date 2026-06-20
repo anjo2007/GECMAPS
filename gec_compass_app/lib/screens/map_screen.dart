@@ -342,33 +342,69 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     _showBuildingDetails(building);
   }
 
-  void _startNavigation() {
+  Future<void> _startNavigation() async {
     if (_selectedBuilding == null) return;
     
     final startPos = _currentPosition ?? _campusCenter;
     final endPos = LatLng(_selectedBuilding!.lat, _selectedBuilding!.lng);
 
-    // Get Dijkstra shortest-path along campus roads
-    final path = _routingService.getFullRoute(startPos, endPos);
-    final instructions = _routingService.getRouteInstructions(path);
-
-    _pdrService.startPDR(startPos);
-    setState(() {
-      _isNavigating = true;
-      _stepCount = 0;
-      _pdrTrail = [startPos];
-      _routingPath = path;
-      _routeInstructions = instructions;
-      _currentInstructionIndex = 0;
-      _simulatedRouteIndex = 0;
-    });
-
+    // Show a loading SnackBar
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Navigation started along campus walkways!'),
-        backgroundColor: Color(0xFF10B981),
+        content: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 16),
+            Text('Calculating route along campus paths...'),
+          ],
+        ),
+        duration: Duration(days: 1), // keeps it open until manually hidden/replaced
+        backgroundColor: Color(0xFF3B82F6),
       ),
     );
+
+    try {
+      // Get OSRM path asynchronously
+      final path = await _routingService.getFullRoute(startPos, endPos);
+      final instructions = _routingService.getRouteInstructions(path);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      _pdrService.startPDR(startPos);
+      setState(() {
+        _isNavigating = true;
+        _stepCount = 0;
+        _pdrTrail = [startPos];
+        _routingPath = path;
+        _routeInstructions = instructions;
+        _currentInstructionIndex = 0;
+        _simulatedRouteIndex = 0;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Navigation started along campus walkways!'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to calculate route: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _startTelemetryListening() {

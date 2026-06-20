@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 class Waypoint {
@@ -82,6 +85,9 @@ class RoutingService {
 
   // Adjacency list: Map<NodeId, List<NeighborId>>
   late final Map<String, List<String>> _graph;
+
+  // Cache turn-by-turn routing instructions from OSRM response
+  List<String> _lastParsedInstructions = [];
 
   RoutingService() {
     _graph = {
@@ -264,12 +270,56 @@ class RoutingService {
   }
 
   // Get complete routing path: Start -> Closest start waypoint -> shortest path waypoints -> Closest end waypoint -> End
-  List<LatLng> getFullRoute(LatLng start, LatLng end) {
+  Future<List<LatLng>> getFullRoute(LatLng start, LatLng end) async {
+    _lastParsedInstructions.clear();
+
     // If start and end are extremely close, just return direct line
     if (distance(start, end) < 15.0) {
       return [start, end];
     }
 
+    try {
+      final url = Uri.parse(
+        'https://router.project-osrm.org/route/v1/foot/'
+        '${start.longitude},${start.latitude};'
+        '${end.longitude},${end.latitude}'
+        '?geometries=geojson&overview=full&steps=true'
+      );
+
+      final response = await http.get(url).timeout(const Duration(seconds: 6));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['code'] == 'Ok' && data['routes'] != null && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final geometry = route['geometry'];
+          if (geometry != null && geometry['coordinates'] != null) {
+            final List<dynamic> coords = geometry['coordinates'];
+            final List<LatLng> path = coords.map((c) {
+              final double lon = c[0] is int ? (c[0] as int).toDouble() : c[0] as double;
+              final double lat = c[1] is int ? (c[1] as int).toDouble() : c[1] as double;
+              return LatLng(lat, lon);
+            }).toList();
+
+            // Parse steps for turn-by-turn instructions
+            final legs = route['legs'] as List<dynamic>?;
+            if (legs != null && legs.isNotEmpty) {
+              final steps = legs[0]['steps'] as List<dynamic>?;
+              if (steps != null) {
+                _lastParsedInstructions = _parseOSRMSteps(steps);
+              }
+            }
+
+            if (path.isNotEmpty) {
+              return path;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("OSRM routing error: $e. Falling back to offline routing.");
+    }
+
+    // Offline Dijkstra fallback
     final startWp = findClosestWaypoint(start);
     final endWp = findClosestWaypoint(end);
 
@@ -290,6 +340,56 @@ class RoutingService {
     ];
   }
 
+  // Parse OSRM steps into human-readable turn-by-turn instructions
+  List<String> _parseOSRMSteps(List<dynamic> stepsJson) {
+    List<String> instructions = [];
+    for (var step in stepsJson) {
+      final distance = step['distance'] is int
+          ? (step['distance'] as int).toDouble()
+          : step['distance'] as double? ?? 0.0;
+      final name = step['name'] as String? ?? '';
+      final maneuver = step['maneuver'] as Map<dynamic, dynamic>?;
+
+      if (maneuver == null) continue;
+
+      final type = maneuver['type'] as String? ?? '';
+      final modifier = maneuver['modifier'] as String? ?? '';
+
+      String action = '';
+      switch (type) {
+        case 'depart':
+          action = 'Start walking';
+          break;
+        case 'arrive':
+          action = 'Arrive at destination';
+          break;
+        case 'turn':
+          if (modifier.contains('left')) {
+            action = 'Turn left';
+          } else if (modifier.contains('right')) {
+            action = 'Turn right';
+          } else {
+            action = 'Turn';
+          }
+          break;
+        case 'new name':
+          action = 'Continue onto';
+          break;
+        case 'continue':
+          action = 'Continue';
+          break;
+        default:
+          action = 'Walk';
+          break;
+      }
+
+      String road = name.isNotEmpty ? ' on $name' : '';
+      String distStr = distance > 0 ? ' (${distance.toStringAsFixed(0)} m)' : '';
+      instructions.add("$action$road$distStr");
+    }
+    return instructions;
+  }
+
   // Calculate total route distance in meters
   double getRouteDistance(List<LatLng> route) {
     double total = 0;
@@ -306,6 +406,10 @@ class RoutingService {
 
   // Generate visual instructions for steps
   List<String> getRouteInstructions(List<LatLng> route) {
+    if (_lastParsedInstructions.isNotEmpty) {
+      return _lastParsedInstructions;
+    }
+
     if (route.length < 2) return ["You have arrived."];
     List<String> instructions = [];
 
