@@ -10,7 +10,7 @@ class DataService {
   static const String _apiUrlCacheKey = 'cached_api_url';
 
   // Default Vercel API URL — used as fallback if dynamic config fetch fails
-  static const String _defaultApiUrl = 'https://gec-compass.vercel.app/api/places';
+  static const String _defaultApiUrl = 'https://gecmaps.vercel.app/api/places';
 
   // GitHub raw URL for the config.json file in the repository
   static const String _configUrl =
