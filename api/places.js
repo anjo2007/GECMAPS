@@ -183,7 +183,8 @@ export default async function handler(request, response) {
 
   if (request.method === 'GET') {
     // Safe environment diagnostic check (does not leak secret values)
-    if (request.query && request.query.debug === 'true') {
+    const urlObj = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+    if (urlObj.searchParams.get('debug') === 'true') {
       return response.status(200).json({
         hasKvUrl: !!kvUrl,
         hasKvToken: !!kvToken,
