@@ -22,8 +22,6 @@ class DataService {
   /// Resolves the API URL dynamically from the GitHub-hosted config.json.
   /// Falls back to the locally cached URL, then to the hardcoded default.
   Future<String> _getApiUrl() async {
-    // For web, always use relative path so it hits the same Vercel deployment
-    if (kIsWeb) return '/api/places';
 
     // Return already-resolved URL if available this session
     if (_resolvedApiUrl != null) return _resolvedApiUrl!;
