@@ -724,6 +724,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   elevation: 5,
                 ),
               ),
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
