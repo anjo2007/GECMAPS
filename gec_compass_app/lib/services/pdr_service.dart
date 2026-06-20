@@ -57,6 +57,14 @@ class PDRService {
     } else {
       _startNativePDR();
     }
+
+    // 3Hz Sensor Fusion Loop (3 times a second)
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 333), (timer) {
+      if (_currentPosition != null && onPositionUpdated != null) {
+        // Fire location update 3 times a second for smooth compass/UI updates
+        onPositionUpdated!(_currentPosition!);
+      }
+    });
   }
 
   void startTelemetryOnly() {
