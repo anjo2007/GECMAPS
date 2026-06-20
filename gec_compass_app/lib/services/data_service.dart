@@ -7,9 +7,66 @@ import '../models/building.dart';
 
 class DataService {
   static const String _customBuildingsKey = 'custom_buildings';
+  static const String _apiUrlCacheKey = 'cached_api_url';
 
-  // API URL for cloud syncing
-  String get _apiUrl => kIsWeb ? '/api/places' : 'https://gec-compass.vercel.app/api/places';
+  // Default Vercel API URL — used as fallback if dynamic config fetch fails
+  static const String _defaultApiUrl = 'https://gec-compass.vercel.app/api/places';
+
+  // GitHub raw URL for the config.json file in the repository
+  static const String _configUrl =
+      'https://raw.githubusercontent.com/anjo2007/GECMAPS/master/config.json';
+
+  // Cached resolved API URL (in-memory for the session)
+  String? _resolvedApiUrl;
+
+  /// Resolves the API URL dynamically from the GitHub-hosted config.json.
+  /// Falls back to the locally cached URL, then to the hardcoded default.
+  Future<String> _getApiUrl() async {
+    // For web, always use relative path so it hits the same Vercel deployment
+    if (kIsWeb) return '/api/places';
+
+    // Return already-resolved URL if available this session
+    if (_resolvedApiUrl != null) return _resolvedApiUrl!;
+
+    // Try fetching from GitHub
+    try {
+      final response = await http
+          .get(Uri.parse(_configUrl))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final config = json.decode(response.body);
+        final url = config['vercel_api_url'] as String?;
+        if (url != null && url.isNotEmpty) {
+          _resolvedApiUrl = url;
+          // Cache locally for offline use
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_apiUrlCacheKey, url);
+          debugPrint('Resolved API URL from GitHub config: $url');
+          return url;
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch config from GitHub: $e');
+    }
+
+    // Try locally cached URL
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_apiUrlCacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        _resolvedApiUrl = cached;
+        debugPrint('Using locally cached API URL: $cached');
+        return cached;
+      }
+    } catch (e) {
+      debugPrint('Failed to read cached API URL: $e');
+    }
+
+    // Fall back to hardcoded default
+    _resolvedApiUrl = _defaultApiUrl;
+    debugPrint('Using default API URL: $_defaultApiUrl');
+    return _defaultApiUrl;
+  }
 
   Future<List<Building>> loadBuildings() async {
     try {
@@ -24,47 +81,37 @@ class DataService {
         return true;
       }).toList();
 
-      // Attempt to load from cloud (Vercel API), fallback to direct public cloud DB, fallback to local cache
+      // Load custom buildings from the cloud API
       List<Building> customBuildings = [];
       bool loadedFromCloud = false;
 
-      // 1. Try Vercel API
       try {
-        final response = await http.get(Uri.parse(_apiUrl)).timeout(const Duration(seconds: 5));
+        final apiUrl = await _getApiUrl();
+        final response = await http
+            .get(Uri.parse(apiUrl))
+            .timeout(const Duration(seconds: 8));
         if (response.statusCode == 200) {
-          final List<dynamic> apiList = json.decode(response.body);
-          customBuildings = apiList.map((j) => Building.fromJson(j)).toList();
+          final decoded = json.decode(response.body);
+          final List<dynamic> apiList =
+              decoded is List ? decoded : [];
+          customBuildings =
+              apiList.map((j) => Building.fromJson(j)).toList();
           await _syncLocalCache(customBuildings);
           loadedFromCloud = true;
-          debugPrint("Loaded places from Vercel API.");
+          debugPrint(
+              'Loaded ${customBuildings.length} places from cloud API.');
         } else {
-          throw Exception("Vercel API returned status ${response.statusCode}");
+          throw Exception('Cloud API returned status ${response.statusCode}');
         }
       } catch (e) {
-        debugPrint("Vercel API load failed, trying direct public DB fallback: $e");
+        debugPrint('Cloud API load failed, loading local cache: $e');
       }
 
-      // 2. Try direct public DB fallback if Vercel failed
-      if (!loadedFromCloud) {
-        try {
-          final response = await http.get(Uri.parse('https://api.npoint.io/b3f62804fe66d1f0545f')).timeout(const Duration(seconds: 5));
-          if (response.statusCode == 200) {
-            final List<dynamic> apiList = json.decode(response.body);
-            customBuildings = apiList.map((j) => Building.fromJson(j)).toList();
-            await _syncLocalCache(customBuildings);
-            loadedFromCloud = true;
-            debugPrint("Loaded places from direct public DB fallback.");
-          } else {
-            throw Exception("Direct public DB returned status ${response.statusCode}");
-          }
-        } catch (e) {
-          debugPrint("Direct public DB load failed, loading local cache: $e");
-        }
-      }
-
-      // 3. Try local cache if both cloud methods failed
+      // Fall back to local cache if cloud fetch failed
       if (!loadedFromCloud) {
         customBuildings = await _loadCustomBuildingsLocal();
+        debugPrint(
+            'Loaded ${customBuildings.length} places from local cache.');
       }
 
       // Deduplicate: custom buildings override default ones if they have the same ID
@@ -72,17 +119,19 @@ class DataService {
       filtered.removeWhere((b) => customIds.contains(b.id));
       filtered.addAll(customBuildings);
 
-      debugPrint("Loaded ${filtered.length - customBuildings.length} standard buildings and ${customBuildings.length} custom buildings.");
+      debugPrint(
+          'Loaded ${filtered.length - customBuildings.length} standard buildings and ${customBuildings.length} custom buildings.');
       return filtered;
     } catch (e) {
-      debugPrint("Error loading buildings: $e");
+      debugPrint('Error loading buildings: $e');
       return [];
     }
   }
 
   Future<void> _syncLocalCache(List<Building> buildings) async {
     final prefs = await SharedPreferences.getInstance();
-    final String customJsonString = json.encode(buildings.map((b) => b.toJson()).toList());
+    final String customJsonString =
+        json.encode(buildings.map((b) => b.toJson()).toList());
     await prefs.setString(_customBuildingsKey, customJsonString);
   }
 
@@ -95,7 +144,8 @@ class DataService {
         return customJsonList.map((json) => Building.fromJson(json)).toList();
       }
     } catch (e) {
-      debugPrint("Error loading custom buildings from SharedPreferences: $e");
+      debugPrint(
+          'Error loading custom buildings from SharedPreferences: $e');
     }
     return [];
   }
@@ -107,49 +157,29 @@ class DataService {
       customBuildings.removeWhere((b) => b.id == building.id);
       customBuildings.add(building);
       await _syncLocalCache(customBuildings);
-      debugPrint("Saved custom building locally: ${building.name}");
+      debugPrint('Saved custom building locally: ${building.name}');
     } catch (e) {
-      debugPrint("Error saving custom building locally: $e");
+      debugPrint('Error saving custom building locally: $e');
     }
 
-    // 2. Sync to Vercel API
-    bool syncedToVercel = false;
+    // 2. Sync to cloud API
     try {
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(building.toJson()),
-      ).timeout(const Duration(seconds: 5));
+      final apiUrl = await _getApiUrl();
+      final response = await http
+          .post(
+            Uri.parse(apiUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(building.toJson()),
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
-        syncedToVercel = true;
-        debugPrint("Synced custom building to Vercel cloud.");
+        debugPrint('Synced custom building to cloud: ${building.name}');
       } else {
-        debugPrint("Vercel sync returned status ${response.statusCode}");
+        debugPrint(
+            'Cloud sync returned status ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      debugPrint("Error syncing to Vercel API: $e");
-    }
-
-    // 3. Fallback: Sync to direct public DB if Vercel sync failed
-    if (!syncedToVercel) {
-      try {
-        final response = await http.get(Uri.parse('https://api.npoint.io/b3f62804fe66d1f0545f')).timeout(const Duration(seconds: 5));
-        if (response.statusCode == 200) {
-          final List<dynamic> apiList = json.decode(response.body);
-          final List<Building> current = apiList.map((j) => Building.fromJson(j)).toList();
-          current.removeWhere((b) => b.id == building.id);
-          current.add(building);
-
-          await http.post(
-            Uri.parse('https://api.npoint.io/b3f62804fe66d1f0545f'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode(current.map((b) => b.toJson()).toList()),
-          ).timeout(const Duration(seconds: 5));
-          debugPrint("Synced custom building to direct public DB fallback.");
-        }
-      } catch (e) {
-        debugPrint("Error syncing to direct public DB fallback: $e");
-      }
+      debugPrint('Error syncing to cloud API: $e');
     }
   }
 }
