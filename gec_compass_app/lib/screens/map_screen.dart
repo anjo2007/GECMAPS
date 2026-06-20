@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
@@ -66,6 +67,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   String _selectedCategory = 'All';
 
   LatLng? _currentPosition;
+  StreamSubscription<Position>? _gpsSubscription;
   bool _isLoading = true;
   String? _loadError;
 
@@ -78,9 +80,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late AnimationController _pulseController;
 
   // Map Type ('dark', 'satellite', 'light', 'ambient')
-  String _mapType = 'dark';
+  String _mapType = 'ambient';
   // App Theme Mode ('dark', 'light', 'ambient')
-  String _appThemeMode = 'dark';
+  String _appThemeMode = 'ambient';
   bool _showLayerSelector = false;
 
   // Telemetry dashboard states
@@ -206,6 +208,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _gpsSubscription?.cancel();
     _pulseController.dispose();
     _pdrService.stopPDR();
     _onboardingPageController.dispose();
@@ -249,12 +252,48 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         _currentPosition = userPos;
         _isLoading = false;
       });
+      _startGPSListening();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loadError = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _startGPSListening() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        _gpsSubscription?.cancel();
+        _gpsSubscription = Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 1, // update every 1 meter
+          ),
+        ).listen((Position position) {
+          if (!mounted) return;
+          final newPos = LatLng(position.latitude, position.longitude);
+          setState(() {
+            _currentPosition = newPos;
+            if (_isNavigating) {
+              _pdrTrail.add(newPos);
+            }
+          });
+          _pdrService.forceSetPosition(newPos);
+        }, onError: (e) {
+          debugPrint("GPS stream error: $e");
+        });
+      }
+    } catch (e) {
+      debugPrint("Error starting GPS listening: $e");
     }
   }
 
@@ -324,22 +363,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _simulatedRouteIndex = 0;
     });
 
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Interactive Web Navigation: Use "Simulate Step" or tap on the map to walk.'),
-          duration: Duration(seconds: 4),
-          backgroundColor: Color(0xFF3B82F6),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Navigation started along campus walkways!'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Navigation started along campus walkways!'),
+        backgroundColor: Color(0xFF10B981),
+      ),
+    );
   }
 
   void _startTelemetryListening() {
@@ -365,36 +394,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     });
   }
 
-  // Handle manual steps for testing in the browser
-  void _simulateNextStep() {
-    if (!_isNavigating || _routingPath.isEmpty) return;
 
-    if (_simulatedRouteIndex < _routingPath.length - 1) {
-      _simulatedRouteIndex++;
-      final nextPos = _routingPath[_simulatedRouteIndex];
-      final prevPos = _currentPosition ?? _campusCenter;
-      
-      // Calculate bearing direction
-      final bearing = _calculateBearing(prevPos, nextPos);
-      
-      _pdrService.forceSetPosition(nextPos);
-      _pdrService.triggerManualStep(bearing);
-
-      setState(() {
-        if (_currentInstructionIndex < _routeInstructions.length - 1) {
-          _currentInstructionIndex = _simulatedRouteIndex - 1;
-        }
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You have arrived at your destination!'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
-      _stopNavigation();
-    }
-  }
 
   double _calculateBearing(LatLng start, LatLng end) {
     final lat1 = start.latitude * pi / 180;
@@ -724,6 +724,27 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   elevation: 5,
                 ),
               ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showEditPlaceModal(building);
+                },
+                icon: Icon(Icons.edit, color: _textColor),
+                label: Text(
+                  "Edit Place Info / Photo",
+                  style: TextStyle(color: _textColor, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  side: BorderSide(color: _borderColor),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -802,12 +823,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                           _currentZoom = newZoom;
                         }
                       },
-                      onTap: (tapPosition, point) {
-                        // Interactive Web debug tapping
-                        if (_isNavigating && kIsWeb) {
-                          _pdrService.forceSetPosition(point);
-                        }
-                      },
+                      onTap: (tapPosition, point) {},
                     ),
                     children: [
                       // Configurable Map Tile Layer
@@ -862,8 +878,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       MarkerLayer(
                         markers: filteredBuildings.map((b) => Marker(
                           point: LatLng(b.lat, b.lng),
-                          width: 60,
-                          height: 60,
+                          width: 48,
+                          height: 48,
                           child: GestureDetector(
                             onTap: () => _selectBuilding(b),
                             child: _buildMarkerIcon(b),
@@ -1181,42 +1197,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     ),
                   ),
           
-                // Web simulated navigation walkthrough buttons
-                if (_isNavigating && kIsWeb)
-                  Positioned(
-                    bottom: MediaQuery.of(context).padding.bottom + 120,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(30),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            color: _scaffoldBgColor.withOpacity(0.85),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ElevatedButton.icon(
-                                  onPressed: _simulateNextStep,
-                                  icon: const Icon(Icons.directions_walk, size: 18, color: Colors.white),
-                                  label: const Text("Simulate Step", style: TextStyle(color: Colors.white, fontSize: 13)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF3B82F6),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text("or Tap map to jump", style: TextStyle(color: _textColor.withOpacity(0.6), fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+
           
                 // Telemetry Sensor Dashboard Overlay
                 if (_showSensorDashboard)
@@ -1337,7 +1318,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Draw customized pins for buildings
+  // Draw customized pins for buildings (reduced sizes)
   Widget _buildMarkerIcon(Building b) {
     final isSelected = _selectedBuilding?.id == b.id;
     final color = isSelected ? Colors.greenAccent : _getMarkerColor(b);
@@ -1345,17 +1326,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
     if (!isSelected) {
       return Container(
-        width: 32,
-        height: 32,
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
           color: _scaffoldBgColor.withOpacity(0.9),
           shape: BoxShape.circle,
-          border: Border.all(color: color, width: 2),
+          border: Border.all(color: color, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.4),
-              blurRadius: 4,
-              spreadRadius: 1,
+              color: color.withOpacity(0.3),
+              blurRadius: 3,
+              spreadRadius: 0.5,
             )
           ],
         ),
@@ -1363,7 +1344,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           child: Icon(
             icon,
             color: color,
-            size: 16,
+            size: 12,
           ),
         ),
       );
@@ -1376,25 +1357,25 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           alignment: Alignment.center,
           children: [
             Container(
-              width: 32 + _pulseController.value * 24,
-              height: 32 + _pulseController.value * 24,
+              width: 24 + _pulseController.value * 18,
+              height: 24 + _pulseController.value * 18,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: color.withOpacity(0.5 * (1.0 - _pulseController.value)),
+                color: color.withOpacity(0.4 * (1.0 - _pulseController.value)),
               ),
             ),
             Container(
-              width: 40,
-              height: 40,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
                 color: _scaffoldBgColor.withOpacity(0.9),
                 shape: BoxShape.circle,
                 border: Border.all(color: color, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.4),
-                    blurRadius: 8,
-                    spreadRadius: 2,
+                    color: color.withOpacity(0.3),
+                    blurRadius: 6,
+                    spreadRadius: 1.5,
                   )
                 ],
               ),
@@ -1402,7 +1383,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 child: Icon(
                   icon,
                   color: color,
-                  size: 22,
+                  size: 15,
                 ),
               ),
             ),
@@ -1795,7 +1776,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         ),
                       );
                       
-                      final url = Uri.parse("https://wa.me/917034667112?text=${Uri.encodeComponent("Compass Feedback: $text")}");
+                      final url = Uri.parse("https://wa.me/918714743183?text=${Uri.encodeComponent("Compass Feedback: $text")}");
                       try {
                         final success = await launchUrl(url, mode: LaunchMode.externalApplication);
                         if (!success) throw Exception("Could not launch URL");
@@ -2056,36 +2037,88 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Add Photo Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          try {
-                            final XFile? image = await picker.pickImage(
-                              source: ImageSource.camera,
-                              imageQuality: 40,
-                              maxWidth: 700,
-                            );
-                            if (image != null) {
-                              final bytes = await image.readAsBytes();
-                              setModalState(() {
-                                photoBase64 = base64Encode(bytes);
-                              });
-                            }
-                          } catch (e) {
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Camera error: $e'), backgroundColor: Colors.redAccent));
-                          }
-                        },
-                        icon: const Icon(Icons.camera_alt),
-                        label: Text(photoBase64 == null ? "Attach Photographic Capture" : "Photo Attached successfully!"),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          side: BorderSide(color: _borderColor),
+                    // Add Photo Buttons (Camera / Gallery)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Add Place Image / Capture:", style: TextStyle(color: _textColor.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  try {
+                                    final XFile? image = await picker.pickImage(
+                                      source: ImageSource.camera,
+                                      imageQuality: 40,
+                                      maxWidth: 700,
+                                    );
+                                    if (image != null) {
+                                      final bytes = await image.readAsBytes();
+                                      setModalState(() {
+                                        photoBase64 = base64Encode(bytes);
+                                      });
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Camera error: $e'), backgroundColor: Colors.redAccent));
+                                  }
+                                },
+                                icon: const Icon(Icons.camera_alt, size: 18),
+                                label: Text(photoBase64 == null ? "Camera" : "Camera (OK)", style: const TextStyle(fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  side: BorderSide(color: _borderColor),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  try {
+                                    final XFile? image = await picker.pickImage(
+                                      source: ImageSource.gallery,
+                                      imageQuality: 40,
+                                      maxWidth: 700,
+                                    );
+                                    if (image != null) {
+                                      final bytes = await image.readAsBytes();
+                                      setModalState(() {
+                                        photoBase64 = base64Encode(bytes);
+                                      });
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gallery error: $e'), backgroundColor: Colors.redAccent));
+                                  }
+                                },
+                                icon: const Icon(Icons.photo_library, size: 18),
+                                label: Text(photoBase64 == null ? "Gallery" : "Gallery (OK)", style: const TextStyle(fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  side: BorderSide(color: _borderColor),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                        if (photoBase64 != null) ...[
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              base64Decode(photoBase64!),
+                              height: 100,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ]
+                      ],
                     ),
                     const SizedBox(height: 28),
 
@@ -2138,6 +2171,394 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         label: const Text("Save Place Globally", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF3B82F6),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showEditPlaceModal(Building building) {
+    final nameController = TextEditingController(text: building.name);
+    final floorController = TextEditingController(text: building.tags['floor']?.toString() ?? '');
+    final roomController = TextEditingController(text: building.tags['ref']?.toString() ?? '');
+    
+    bool isClassroom = building.tags['room'] == 'yes';
+    Building? selectedParent;
+    try {
+      final parentId = building.tags['parent_id'];
+      if (parentId != null) {
+        selectedParent = _buildings.firstWhere((b) => b.id == parentId);
+      }
+    } catch (_) {}
+
+    LatLng? location = LatLng(building.lat, building.lng);
+    bool isFetchingLocation = false;
+    String? photoBase64 = building.photoBase64;
+    final ImagePicker picker = ImagePicker();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: _cardBgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: _borderColor),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: _textColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      "Edit Place Details",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textColor),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Modify coordinates, details, or upload/change the photographic capture.",
+                      style: TextStyle(color: _subTextColor, fontSize: 13),
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // Choice of type
+                    Row(
+                      children: [
+                        Text("Category:", style: TextStyle(color: _textColor, fontSize: 14)),
+                        const SizedBox(width: 16),
+                        ChoiceChip(
+                          label: const Text("Building/Lab"),
+                          selected: !isClassroom,
+                          onSelected: (val) => setModalState(() { isClassroom = false; }),
+                          selectedColor: const Color(0xFF3B82F6),
+                          backgroundColor: _scaffoldBgColor.withOpacity(0.5),
+                          labelStyle: TextStyle(color: !isClassroom ? Colors.white : _textColor.withOpacity(0.7), fontSize: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text("Room/Classroom"),
+                          selected: isClassroom,
+                          onSelected: (val) => setModalState(() { isClassroom = true; }),
+                          selectedColor: const Color(0xFF3B82F6),
+                          backgroundColor: _scaffoldBgColor.withOpacity(0.5),
+                          labelStyle: TextStyle(color: isClassroom ? Colors.white : _textColor.withOpacity(0.7), fontSize: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Name Input
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(color: _textColor),
+                      decoration: InputDecoration(
+                        labelText: "Place Name",
+                        labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 14),
+                        filled: true,
+                        fillColor: _scaffoldBgColor.withOpacity(0.5),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Parent Building Dropdown (if room)
+                    if (isClassroom) ...[
+                      DropdownButtonFormField<Building>(
+                        decoration: InputDecoration(
+                          labelText: "Located In (Building)",
+                          labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 14),
+                          filled: true,
+                          fillColor: _scaffoldBgColor.withOpacity(0.5),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        ),
+                        dropdownColor: _cardBgColor,
+                        initialValue: selectedParent,
+                        items: _buildings.where((b) => b.id != building.id && (b.tags['building'] == 'college' || !b.tags.containsKey('room'))).map((b) {
+                          return DropdownMenuItem(value: b, child: Text(b.name, style: TextStyle(color: _textColor, fontSize: 14)));
+                        }).toList(),
+                        onChanged: (val) {
+                          setModalState(() { selectedParent = val; });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Floor & Room number inputs
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: floorController,
+                            keyboardType: TextInputType.number,
+                            style: TextStyle(color: _textColor),
+                            decoration: InputDecoration(
+                              labelText: "Floor",
+                              labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 13),
+                              filled: true,
+                              fillColor: _scaffoldBgColor.withOpacity(0.5),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextField(
+                            controller: roomController,
+                            style: TextStyle(color: _textColor),
+                            decoration: InputDecoration(
+                              labelText: "Room ID / Number",
+                              labelStyle: TextStyle(color: _textColor.withOpacity(0.5), fontSize: 13),
+                              filled: true,
+                              fillColor: _scaffoldBgColor.withOpacity(0.5),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Location Card
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: _scaffoldBgColor.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: _borderColor),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Geographical Coordinates", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                          const SizedBox(height: 8),
+                          if (location != null)
+                            Row(
+                              children: [
+                                const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Lat: ${location!.latitude.toStringAsFixed(6)}, Lng: ${location!.longitude.toStringAsFixed(6)}",
+                                  style: const TextStyle(color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            )
+                          else
+                            Text("No coordinate assigned yet", style: TextStyle(color: _textColor.withOpacity(0.4), fontSize: 13)),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: isFetchingLocation ? null : () async {
+                                setModalState(() { isFetchingLocation = true; });
+                                try {
+                                  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+                                  if (!serviceEnabled) throw Exception("Location services disabled.");
+                                  
+                                  LocationPermission permission = await Geolocator.checkPermission();
+                                  if (permission == LocationPermission.denied) {
+                                    permission = await Geolocator.requestPermission();
+                                  }
+                                  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+                                    throw Exception("Location permission denied.");
+                                  }
+                                  
+                                  final pos = await Geolocator.getCurrentPosition(
+                                    locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 8)),
+                                  );
+                                  setModalState(() { location = LatLng(pos.latitude, pos.longitude); });
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+                                } finally {
+                                  setModalState(() { isFetchingLocation = false; });
+                                }
+                              },
+                              icon: isFetchingLocation 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent)) 
+                                : const Icon(Icons.gps_fixed, size: 18),
+                              label: Text(isFetchingLocation ? "Acquiring satellites..." : "Update to Current GPS Location"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _scaffoldBgColor,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Add Photo Buttons (Camera / Gallery)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Add / Update Photo:", style: TextStyle(color: _textColor.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  try {
+                                    final XFile? image = await picker.pickImage(
+                                      source: ImageSource.camera,
+                                      imageQuality: 40,
+                                      maxWidth: 700,
+                                    );
+                                    if (image != null) {
+                                      final bytes = await image.readAsBytes();
+                                      setModalState(() {
+                                        photoBase64 = base64Encode(bytes);
+                                      });
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Camera error: $e'), backgroundColor: Colors.redAccent));
+                                  }
+                                },
+                                icon: const Icon(Icons.camera_alt, size: 18),
+                                label: Text(photoBase64 == null ? "Camera" : "Camera (OK)", style: const TextStyle(fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  side: BorderSide(color: _borderColor),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  try {
+                                    final XFile? image = await picker.pickImage(
+                                      source: ImageSource.gallery,
+                                      imageQuality: 40,
+                                      maxWidth: 700,
+                                    );
+                                    if (image != null) {
+                                      final bytes = await image.readAsBytes();
+                                      setModalState(() {
+                                        photoBase64 = base64Encode(bytes);
+                                      });
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gallery error: $e'), backgroundColor: Colors.redAccent));
+                                  }
+                                },
+                                icon: const Icon(Icons.photo_library, size: 18),
+                                label: Text(photoBase64 == null ? "Gallery" : "Gallery (OK)", style: const TextStyle(fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  side: BorderSide(color: _borderColor),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (photoBase64 != null) ...[
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              base64Decode(photoBase64!),
+                              height: 100,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ]
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Submit Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          if (nameController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a name.'), backgroundColor: Colors.redAccent));
+                            return;
+                          }
+                          if (location == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please assign GPS location coordinates.'), backgroundColor: Colors.redAccent));
+                            return;
+                          }
+                          
+                          final updatedBuilding = Building(
+                            id: building.id,
+                            name: nameController.text.trim(),
+                            lat: location!.latitude,
+                            lng: location!.longitude,
+                            photoBase64: photoBase64,
+                            tags: {
+                              ...building.tags,
+                              'custom': true,
+                              if (isClassroom) 'room': 'yes',
+                              if (!isClassroom) ...{'room': null},
+                              'parent_id': isClassroom && selectedParent != null ? selectedParent!.id : null,
+                              'floor': floorController.text.isNotEmpty ? floorController.text.trim() : null,
+                              'ref': roomController.text.isNotEmpty ? roomController.text.trim() : null,
+                            }..removeWhere((k, v) => v == null),
+                          );
+                          
+                          await _dataService.saveCustomBuilding(updatedBuilding);
+                          
+                          setState(() {
+                            final index = _buildings.indexWhere((b) => b.id == building.id);
+                            if (index != -1) {
+                              _buildings[index] = updatedBuilding;
+                            } else {
+                              _buildings.add(updatedBuilding);
+                            }
+                            _selectedBuilding = updatedBuilding;
+                          });
+                          
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Place updated globally in cloud database!'),
+                                backgroundColor: Color(0xFF10B981),
+                              )
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        label: const Text("Save Changes Globally", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),

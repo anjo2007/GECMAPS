@@ -40,7 +40,7 @@ class PDRService {
   int _stepCount = 0;
   LatLng? _currentPosition;
 
-  bool get isActive => _currentPosition != null && (_accelSub != null || _simulationTimer != null || kIsWeb);
+  bool get isActive => _currentPosition != null && (_accelSub != null || kIsWeb);
 
   Future<void> startPDR(LatLng startPosition) async {
     stopPDR(); // Clean up any previous session
@@ -50,8 +50,7 @@ class PDRService {
     if (kIsWeb) {
       bool permissionGranted = await requestWebSensorPermissions();
       if (!permissionGranted) {
-        // Fallback to simulation if user denied sensor permission
-        _startWebSimulation();
+        debugPrint("Web sensor permissions denied.");
         return;
       }
       _startWebPDR();
@@ -95,40 +94,14 @@ class PDRService {
           onRawAccelUpdated!(event.x, event.y, event.z, magnitude);
         }
       }, onError: (e) {
-        debugPrint("Sensors error, running fallback simulation: $e");
-        _startTelemetryFallbackSimulation();
-      });
-
-      // If no events are received (common on desktop web), start fallback simulation after 1 second
-      Timer(const Duration(seconds: 1), () {
-        if (_isTelemetryOnlyActive && rawAccelMagnitude == 0.0) {
-          _startTelemetryFallbackSimulation();
-        }
+        debugPrint("Sensors error: $e");
       });
     } catch (e) {
-      _startTelemetryFallbackSimulation();
+      debugPrint("Error listening to accelerometer: $e");
     }
   }
 
-  void _startTelemetryFallbackSimulation() {
-    _simulationTimer?.cancel();
-    final rng = Random();
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 150), (timer) {
-      if (!_isTelemetryOnlyActive) {
-        timer.cancel();
-        return;
-      }
-      // Generate mild vibration/movement noise
-      rawAccelX = (rng.nextDouble() - 0.5) * 0.4;
-      rawAccelY = (rng.nextDouble() - 0.5) * 0.4;
-      rawAccelZ = (rng.nextDouble() - 0.5) * 0.4;
-      rawAccelMagnitude = sqrt(rawAccelX * rawAccelX + rawAccelY * rawAccelY + rawAccelZ * rawAccelZ);
-      rawHeading = (rawHeading + (rng.nextDouble() - 0.5) * 4.0) % 360;
 
-      if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
-      if (onRawAccelUpdated != null) onRawAccelUpdated!(rawAccelX, rawAccelY, rawAccelZ, rawAccelMagnitude);
-    });
-  }
 
   void stopTelemetryOnly() {
     _isTelemetryOnlyActive = false;
@@ -186,39 +159,7 @@ class PDRService {
     });
   }
 
-  void _startWebSimulation() {
-    final rng = Random();
-    _currentHeading = rng.nextDouble() * 360;
-    rawHeading = _currentHeading;
 
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
-      // In web simulation, we step slower to allow interactive overrides
-      _stepCount++;
-      _currentHeading += (rng.nextDouble() - 0.5) * 15;
-      _currentHeading = (_currentHeading + 360) % 360;
-      rawHeading = _currentHeading;
-
-      // Simulate step accelerometer spikes
-      rawAccelX = (rng.nextDouble() - 0.5) * 1.5;
-      rawAccelY = 2.0 + rng.nextDouble() * 4.0;
-      rawAccelZ = (rng.nextDouble() - 0.5) * 1.5;
-      rawAccelMagnitude = sqrt(rawAccelX * rawAccelX + rawAccelY * rawAccelY + rawAccelZ * rawAccelZ);
-
-      if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
-      if (onRawAccelUpdated != null) onRawAccelUpdated!(rawAccelX, rawAccelY, rawAccelZ, rawAccelMagnitude);
-
-      if (onStepDetected != null) onStepDetected!(_stepCount);
-      _updatePositionWithPDR();
-    });
-  }
-
-  void triggerManualStep(double heading) {
-    _currentHeading = heading;
-    rawHeading = heading;
-    _stepCount++;
-    if (onStepDetected != null) onStepDetected!(_stepCount);
-    _updatePositionWithPDR();
-  }
 
   void forceSetPosition(LatLng position) {
     _currentPosition = position;

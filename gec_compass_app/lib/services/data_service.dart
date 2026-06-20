@@ -67,6 +67,9 @@ class DataService {
         customBuildings = await _loadCustomBuildingsLocal();
       }
 
+      // Deduplicate: custom buildings override default ones if they have the same ID
+      final customIds = customBuildings.map((b) => b.id).toSet();
+      filtered.removeWhere((b) => customIds.contains(b.id));
       filtered.addAll(customBuildings);
 
       debugPrint("Loaded ${filtered.length - customBuildings.length} standard buildings and ${customBuildings.length} custom buildings.");
