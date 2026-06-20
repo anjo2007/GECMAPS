@@ -69,10 +69,19 @@ class DataService {
 
       // Filter out feedback items so they do not render on the map
       customBuildings.removeWhere((b) => b.tags.containsKey('feedback') && b.tags['feedback'] == true);
-      filtered.addAll(customBuildings);
 
-      debugPrint("Loaded ${filtered.length - customBuildings.length} standard buildings and ${customBuildings.length} custom buildings.");
-      return filtered;
+      // Dictionary-based merge: Overwrite base buildings with custom/edited versions by ID
+      final Map<String, Building> merged = {};
+      for (var b in filtered) {
+        merged[b.id] = b;
+      }
+      for (var b in customBuildings) {
+        merged[b.id] = b;
+      }
+      final finalBuildings = merged.values.toList();
+
+      debugPrint("Loaded ${filtered.length} standard buildings, merged with ${customBuildings.length} custom/edited buildings to yield ${finalBuildings.length} total.");
+      return finalBuildings;
     } catch (e) {
       debugPrint("Error loading buildings: $e");
       return [];

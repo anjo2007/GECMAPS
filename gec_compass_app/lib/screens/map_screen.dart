@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/building.dart';
 import '../services/data_service.dart';
 import '../services/pdr_service.dart';
@@ -591,6 +592,28 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ),
             ),
             const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _editBuildingDetails(building);
+                },
+                icon: Icon(Icons.edit_note, color: _textColor),
+                label: Text(
+                  "Edit Details & Upload Photo",
+                  style: TextStyle(color: _textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  side: BorderSide(color: _borderColor),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -955,6 +978,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
           // Theme & Satellite Toggle Controls
           _buildMapControls(),
+
+          // GEC Compass Logo Badge (hidden when navigating to make space for turn instructions)
+          if (!_isNavigating) _buildGECCompassLogoBadge(),
 
           // Floor level switcher
           if (_shouldShowFloorSelector)
@@ -1783,7 +1809,41 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         ),
                       );
 
+                      // 1. Submit to database globally
                       await _dataService.submitFeedback(text);
+
+                      // 2. Format a structured body for mail client
+                      final String email = 'anjo28mj@gmail.com';
+                      final String subject = 'GEC Compass Feedback Report';
+                      final String timestamp = DateTime.now().toLocal().toString();
+                      final String platform = kIsWeb ? 'Web Browser' : 'Android App';
+                      
+                      // Build a clean, readable text template representing the feedback
+                      final String body = 'GEC COMPASS FEEDBACK REPORT\n'
+                          '=================================\n\n'
+                          'Feedback Message:\n'
+                          '---------------------------------\n'
+                          '$text\n'
+                          '---------------------------------\n\n'
+                          'Metadata:\n'
+                          '- Timestamp: $timestamp\n'
+                          '- Platform: $platform\n'
+                          '- Database Status: Synced Successfully\n\n'
+                          'Thank you for contributing to GEC Compass!';
+
+                      final String subjectEncoded = Uri.encodeComponent(subject);
+                      final String bodyEncoded = Uri.encodeComponent(body);
+                      final Uri emailUri = Uri.parse('mailto:$email?subject=$subjectEncoded&body=$bodyEncoded');
+
+                      try {
+                        if (await canLaunchUrl(emailUri)) {
+                          await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+                        } else {
+                          debugPrint("Could not launch $emailUri, email client not found.");
+                        }
+                      } catch (e) {
+                        debugPrint("Error launching email client: $e");
+                      }
 
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1814,6 +1874,336 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGECCompassLogoBadge() {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 12,
+      right: 16,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _panelBgColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF8B5CF6).withOpacity(0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.navigation,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "GEC Compass",
+                  style: TextStyle(
+                    color: _textColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _editBuildingDetails(Building building) {
+    final nameController = TextEditingController(text: building.name);
+    final floorController = TextEditingController(text: building.tags['floor'] ?? '');
+    final roomController = TextEditingController(text: building.tags['ref'] ?? '');
+    
+    String? photoBase64 = building.photoBase64;
+    final ImagePicker picker = ImagePicker();
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: _panelBgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: _borderColor),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: _textColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      "Edit Location Info",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textColor),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Update details or upload a photo for ${building.name}. Changes sync globally.",
+                      style: TextStyle(color: _subTextColor, fontSize: 13),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Name Input
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(color: _textColor),
+                      decoration: InputDecoration(
+                        labelText: "Place Name",
+                        labelStyle: TextStyle(color: _subTextColor, fontSize: 14),
+                        filled: true,
+                        fillColor: _cardBgColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Floor & Room number inputs
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: floorController,
+                            keyboardType: TextInputType.number,
+                            style: TextStyle(color: _textColor),
+                            decoration: InputDecoration(
+                              labelText: "Floor",
+                              labelStyle: TextStyle(color: _subTextColor, fontSize: 13),
+                              filled: true,
+                              fillColor: _cardBgColor,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextField(
+                            controller: roomController,
+                            style: TextStyle(color: _textColor),
+                            decoration: InputDecoration(
+                              labelText: "Room ID / Number",
+                              labelStyle: TextStyle(color: _subTextColor, fontSize: 13),
+                              filled: true,
+                              fillColor: _cardBgColor,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Current Photo Preview (if exists)
+                    if (photoBase64 != null) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.memory(
+                          base64Decode(photoBase64!),
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Attach/Replace Photo Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          try {
+                            final XFile? image = await picker.pickImage(
+                              source: ImageSource.camera,
+                              imageQuality: 40,
+                              maxWidth: 700,
+                            );
+                            if (image != null) {
+                              final bytes = await image.readAsBytes();
+                              setModalState(() {
+                                photoBase64 = base64Encode(bytes);
+                              });
+                            }
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Camera error: $e'), backgroundColor: Colors.redAccent));
+                          }
+                        },
+                        icon: Icon(Icons.camera_alt, color: _textColor),
+                        label: Text(
+                          photoBase64 == null ? "Attach Photographic Capture" : "Replace Photographic Capture",
+                          style: TextStyle(color: _textColor),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          side: BorderSide(color: _borderColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Submit Button
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B82F6), Color(0xFFEC4899)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFEC4899).withOpacity(0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: isSaving ? null : () async {
+                          if (nameController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a name.'), backgroundColor: Colors.redAccent));
+                            return;
+                          }
+                          
+                          setModalState(() {
+                            isSaving = true;
+                          });
+
+                          try {
+                            final Map<String, dynamic> updatedTags = Map<String, dynamic>.from(building.tags);
+                            if (floorController.text.isNotEmpty) {
+                              updatedTags['floor'] = floorController.text.trim();
+                            } else {
+                              updatedTags.remove('floor');
+                            }
+                            if (roomController.text.isNotEmpty) {
+                              updatedTags['ref'] = roomController.text.trim();
+                            } else {
+                              updatedTags.remove('ref');
+                            }
+                            updatedTags['custom'] = true;
+
+                            final updatedBuilding = Building(
+                              id: building.id,
+                              name: nameController.text.trim(),
+                              lat: building.lat,
+                              lng: building.lng,
+                              photoBase64: photoBase64,
+                              tags: updatedTags,
+                            );
+
+                            await _dataService.saveCustomBuilding(updatedBuilding);
+                            
+                            // Re-fetch all buildings
+                            await _initData();
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Place updated globally across all devices!'),
+                                  backgroundColor: Color(0xFF10B981),
+                                )
+                              );
+                              // Reselect the updated building to show changes
+                              setState(() {
+                                final found = _buildings.firstWhere(
+                                  (b) => b.id == building.id,
+                                  orElse: () => updatedBuilding,
+                                );
+                                _selectedBuilding = found;
+                              });
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update error: $e'), backgroundColor: Colors.redAccent));
+                            }
+                          } finally {
+                            setModalState(() {
+                              isSaving = false;
+                            });
+                          }
+                        },
+                        icon: isSaving 
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.check, color: Colors.white),
+                        label: Text(
+                          isSaving ? "Saving changes globally..." : "Save Place Changes",
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
