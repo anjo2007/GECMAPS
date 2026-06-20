@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
@@ -66,6 +67,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   String _lastAnnouncedInstruction = "";
   double _deviceHeading = 0.0;
   bool _expandDirections = false;
+  StreamSubscription<Position>? _gpsSubscription;
 
   // Theme and Style settings
   bool _isDarkMode = false; // default to light glassy theme
@@ -114,6 +116,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     )..repeat();
 
     _initData();
+    _startGPSTracking();
 
     _pdrService.onPositionUpdated = (LatLng newPosition) {
       if (!mounted) return;
@@ -144,6 +147,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   void dispose() {
     _pulseController.dispose();
     _pdrService.stopPDR();
+    _gpsSubscription?.cancel();
     _onboardingPageController.dispose();
     super.dispose();
   }
@@ -194,6 +198,75 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         _isLoading = false;
       });
     }
+  }
+
+  void _startGPSTracking() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      _gpsSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 1,
+        ),
+      ).listen((Position position) {
+        if (!mounted) return;
+        final newLatLng = LatLng(position.latitude, position.longitude);
+        
+        setState(() {
+          _currentPosition = newLatLng;
+          if (_isNavigating) {
+            _pdrTrail.add(newLatLng);
+            if (kIsWeb) {
+              _updateWebNavigation(newLatLng);
+            }
+          }
+        });
+      });
+    } catch (e) {
+      debugPrint("GPS stream subscription error: $e");
+    }
+  }
+
+  void _updateWebNavigation(LatLng newLatLng) {
+    if (_routingPath.isEmpty) return;
+
+    int closestIndex = 0;
+    double minDistance = double.infinity;
+    for (int i = 0; i < _routingPath.length; i++) {
+      double d = _distanceMeters(newLatLng, _routingPath[i]);
+      if (d < minDistance) {
+        minDistance = d;
+        closestIndex = i;
+      }
+    }
+
+    final destLatLng = _routingPath.last;
+    final distToDest = _distanceMeters(newLatLng, destLatLng);
+    if (distToDest < 10.0) {
+      _announceInstruction("You have arrived at your destination!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Arrived at destination!"),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+      _stopNavigation();
+      return;
+    }
+
+    setState(() {
+      _currentInstructionIndex = closestIndex;
+    });
+    _checkAudioNavigation();
   }
 
   Future<void> _checkOnboarding() async {
@@ -301,22 +374,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _announceInstruction(instructions.first);
     }
 
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Interactive Web Navigation: Use "Simulate Step" or tap on the map to walk.'),
-          duration: Duration(seconds: 4),
-          backgroundColor: Color(0xFF3B82F6),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Navigation started along campus walkways!'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Navigation started along campus walkways! Tracking via GPS...'),
+        backgroundColor: Color(0xFF10B981),
+      ),
+    );
   }
 
   void _stopNavigation() {
@@ -659,10 +722,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   if (hasGesture) FocusScope.of(context).unfocus();
                 },
                 onTap: (tapPosition, point) {
-                  // Interactive Web debug tapping
-                  if (_isNavigating && kIsWeb) {
-                    _pdrService.forceSetPosition(point);
-                  }
+                  FocusScope.of(context).unfocus();
                 },
               ),
               children: [
@@ -936,42 +996,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ),
             ),
 
-          // Web simulated navigation walkthrough buttons
-          if (_isNavigating && kIsWeb)
-            Positioned(
-              bottom: MediaQuery.of(context).padding.bottom + 120,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      color: const Color(0xFF0F172A).withOpacity(0.85),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _simulateNextStep,
-                            icon: const Icon(Icons.directions_walk, size: 18, color: Colors.white),
-                            label: const Text("Simulate Step", style: TextStyle(color: Colors.white, fontSize: 13)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF3B82F6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text("or Tap map to jump", style: TextStyle(color: Colors.white60, fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+
 
           // Digital Compass HUD
           _buildCompassHUD(),
@@ -1812,37 +1837,34 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       // 1. Submit to database globally
                       await _dataService.submitFeedback(text);
 
-                      // 2. Format a structured body for mail client
-                      final String email = 'anjo28mj@gmail.com';
-                      final String subject = 'GEC Compass Feedback Report';
+                      // 2. Format a structured message for WhatsApp Click to Chat
+                      final String phone = '918714743183';
                       final String timestamp = DateTime.now().toLocal().toString();
                       final String platform = kIsWeb ? 'Web Browser' : 'Android App';
                       
-                      // Build a clean, readable text template representing the feedback
-                      final String body = 'GEC COMPASS FEEDBACK REPORT\n'
+                      final String message = '*GEC COMPASS FEEDBACK REPORT*\n'
                           '=================================\n\n'
-                          'Feedback Message:\n'
+                          '*Feedback Message:*\n'
                           '---------------------------------\n'
                           '$text\n'
                           '---------------------------------\n\n'
-                          'Metadata:\n'
-                          '- Timestamp: $timestamp\n'
-                          '- Platform: $platform\n'
-                          '- Database Status: Synced Successfully\n\n'
+                          '*Metadata:*\n'
+                          '- *Timestamp:* $timestamp\n'
+                          '- *Platform:* $platform\n'
+                          '- *Database Status:* Synced Successfully\n\n'
                           'Thank you for contributing to GEC Compass!';
 
-                      final String subjectEncoded = Uri.encodeComponent(subject);
-                      final String bodyEncoded = Uri.encodeComponent(body);
-                      final Uri emailUri = Uri.parse('mailto:$email?subject=$subjectEncoded&body=$bodyEncoded');
+                      final String encodedMessage = Uri.encodeComponent(message);
+                      final Uri whatsappUri = Uri.parse('https://wa.me/$phone?text=$encodedMessage');
 
                       try {
-                        if (await canLaunchUrl(emailUri)) {
-                          await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+                        if (await canLaunchUrl(whatsappUri)) {
+                          await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
                         } else {
-                          debugPrint("Could not launch $emailUri, email client not found.");
+                          debugPrint("Could not launch WhatsApp link: $whatsappUri");
                         }
                       } catch (e) {
-                        debugPrint("Error launching email client: $e");
+                        debugPrint("Error launching WhatsApp redirect: $e");
                       }
 
                       if (mounted) {
