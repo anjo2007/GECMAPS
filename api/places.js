@@ -182,6 +182,19 @@ export default async function handler(request, response) {
   const ghRepo = process.env.GITHUB_REPO; // e.g. "anjo2007/GECMAPS"
 
   if (request.method === 'GET') {
+    // Safe environment diagnostic check (does not leak secret values)
+    if (request.query && request.query.debug === 'true') {
+      return response.status(200).json({
+        hasKvUrl: !!kvUrl,
+        hasKvToken: !!kvToken,
+        hasGhToken: !!ghToken,
+        hasGistId: !!gistId,
+        hasGhRepo: !!ghRepo,
+        nodeEnv: process.env.NODE_ENV,
+        isVercel: !!process.env.VERCEL,
+      });
+    }
+
     try {
       // 1. Try Vercel KV first
       if (kvUrl && kvToken) {
