@@ -1,7 +1,7 @@
 {
   "name": "gec_compass_api",
   "version": "1.0.0",
-  "description": "Vercel Serverless API for GEC Compass",
+  "description": "Vercel Serverless API for GECT Compass",
   "type": "module",
   "dependencies": {
     "@vercel/kv": "^3.0.0"

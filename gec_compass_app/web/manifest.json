@@ -1,6 +1,6 @@
 {
-    "name": "GEC Compass",
-    "short_name": "GEC Compass",
+    "name": "GECT Compass",
+    "short_name": "GECT Compass",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#121212",

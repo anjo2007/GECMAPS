@@ -510,7 +510,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "To run GEC Compass as a web app on iOS Safari:",
+              "To run GECT Compass as a web app on iOS Safari:",
               style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -585,7 +585,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           children: [
             Icon(Icons.download_for_offline, color: const Color(0xFF10B981)),
             const SizedBox(width: 10),
-            Text("Download GEC Compass", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+            Text("Download GECT Compass", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -914,7 +914,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                             const SizedBox(width: 8),
                             IconButton(
                               onPressed: () async {
-                                final text = "Hello! I am using the GEC Compass app and wanted to query about ${building.name}.";
+                                final text = "Hello! I am using the GECT Compass app and wanted to query about ${building.name}.";
                                 final url = Uri.parse("https://wa.me/${standardPhone.replaceAll('+', '').replaceAll(' ', '')}?text=${Uri.encodeComponent(text)}");
                                 try {
                                   final success = await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -1138,6 +1138,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               point: _currentPosition!,
                               width: 55,
                               height: 55,
+                              alignment: Alignment.bottomCenter,
                               child: _buildUserLocationMarker(),
                             )
                           ],
@@ -1360,39 +1361,39 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 14),
                       ],
-                      if (!_isNavigating) ...[
-                        // Theme/Layer Switcher Button
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                              child: FloatingActionButton(
-                                heroTag: 'layer_btn',
-                                elevation: 0,
-                                highlightElevation: 0,
-                                backgroundColor: _cardBgColor.withValues(alpha: 0.7),
-                                foregroundColor: const Color(0xFF3B82F6),
-                                onPressed: () {
-                                  setState(() {
-                                    _showLayerSelector = !_showLayerSelector;
-                                  });
-                                },
-                                child: const Icon(Icons.layers),
-                              ),
+                      // Theme/Layer Switcher Button (Visible during navigation!)
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                            child: FloatingActionButton(
+                              heroTag: 'layer_btn',
+                              elevation: 0,
+                              highlightElevation: 0,
+                              backgroundColor: _cardBgColor.withValues(alpha: 0.7),
+                              foregroundColor: const Color(0xFF3B82F6),
+                              onPressed: () {
+                                setState(() {
+                                  _showLayerSelector = !_showLayerSelector;
+                                });
+                              },
+                              child: const Icon(Icons.layers),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                      ),
+                      const SizedBox(height: 14),
+                      if (!_isNavigating) ...[
                         // Add Place Button
                         Container(
                           decoration: BoxDecoration(
@@ -1422,8 +1423,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 14),
                       ],
-                      if (kIsWeb) ...[
-                        // Download App Button
+                      if (kIsWeb && !_isNavigating) ...[
+                        // Download App Button (Hidden during navigation!)
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -1678,52 +1679,40 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ),
                 // Pulsing background circle
                 Container(
-                  width: 22 + _pulseController.value * 12,
-                  height: 22 + _pulseController.value * 12,
+                  width: 26 + _pulseController.value * 16,
+                  height: 26 + _pulseController.value * 16,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.3 * (1.0 - _pulseController.value)),
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.2 * (1.0 - _pulseController.value)),
                   ),
                 ),
-                // White core border
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
-                      )
-                    ],
-                  ),
-                  child: Center(
-                    // Blue core dot
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF3B82F6),
-                      ),
+                // Standard location tear drop (pin)
+                const Icon(
+                  Icons.location_on,
+                  color: Color(0xFF3B82F6),
+                  size: 45,
+                ),
+                // White background circle for the inner arrow
+                Transform.translate(
+                  offset: const Offset(0, -5), // Shift slightly up to align with the hole of location_on
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-                // Front pointing tip
-                Transform.rotate(
-                  angle: headingRad,
-                  child: Align(
-                    alignment: const Alignment(0, -0.65),
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
+                // Heading navigation arrow (person/arrow like in gmap)
+                Transform.translate(
+                  offset: const Offset(0, -5), // Shift slightly up to align with the hole of location_on
+                  child: Transform.rotate(
+                    angle: headingRad,
+                    child: const Icon(
+                      Icons.navigation,
+                      color: Color(0xFF3B82F6),
+                      size: 11,
                     ),
                   ),
                 ),
@@ -2052,7 +2041,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           ),
         ),
       _buildOnboardingSlide(
-        title: "Welcome to GEC Compass",
+        title: "Welcome to GECT Compass",
         desc: "Interactive navigation along campus walkways, department buildings, labs, workshops, and facilities at GEC Thrissur.",
         icon: Icons.explore,
         iconColor: const Color(0xFF3B82F6),
