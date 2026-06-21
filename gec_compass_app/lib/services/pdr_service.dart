@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'web_sensors_stub.dart' if (dart.library.html) 'web_sensors_web.dart';
 
 class PDRService {
+  static const EventChannel _stepDetectorChannel = EventChannel('com.gec.compass/step_detector');
+  StreamSubscription? _nativeStepSub;
+
   StreamSubscription? _accelSub;
   StreamSubscription? _compassSub;
   Timer? _simulationTimer;
@@ -141,7 +146,7 @@ class PDRService {
     stopPDR();
   }
 
-  void _startNativePDR() {
+  Future<void> _startNativePDR() async {
     _compassSub = FlutterCompass.events?.listen((CompassEvent event) {
       if (event.heading != null) {
         _hasCompassData = true;
@@ -150,7 +155,29 @@ class PDRService {
         if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
       }
     });
-    _listenToAccelerometer();
+
+    // Request Android physical activity recognition permission
+    try {
+      final status = await Permission.activityRecognition.request();
+      if (status.isGranted) {
+        debugPrint("Android Activity Recognition permission granted. Starting hardware Step Detector...");
+        _nativeStepSub = _stepDetectorChannel.receiveBroadcastStream().listen((dynamic event) {
+          _hasAccelerometerData = true; // Mark motion sensor as active
+          _stepCount++;
+          if (onStepDetected != null) onStepDetected!(_stepCount);
+          _updatePositionWithPDR();
+        }, onError: (dynamic error) {
+          debugPrint("Native step detector stream error: $error. Falling back to accelerometer peak detection.");
+          _listenToAccelerometer();
+        });
+      } else {
+        debugPrint("Android Activity Recognition permission denied. Falling back to accelerometer peak detection.");
+        _listenToAccelerometer();
+      }
+    } catch (e) {
+      debugPrint("Error requesting Activity Recognition permission: $e. Falling back to accelerometer peak detection.");
+      _listenToAccelerometer();
+    }
   }
 
   void _startWebPDR() {
@@ -265,6 +292,8 @@ class PDRService {
     _accelSub = null;
     _compassSub?.cancel();
     _compassSub = null;
+    _nativeStepSub?.cancel();
+    _nativeStepSub = null;
     _simulationTimer?.cancel();
     _simulationTimer = null;
     _currentPosition = null;
