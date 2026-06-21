@@ -452,6 +452,186 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _downloadIpa() async {
+    try {
+      final base = Uri.base;
+      final downloadUrl = Uri(
+        scheme: base.scheme,
+        host: base.host,
+        port: base.port,
+        path: '/app-release.ipa',
+      );
+      final success = await launchUrl(downloadUrl, mode: LaunchMode.externalApplication);
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not trigger IPA download. Please make sure the file is hosted on the server.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading IPA: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showIosInstructionsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: BorderSide(color: _borderColor)),
+        title: Row(
+          children: [
+            Icon(Icons.apple, color: _textColor),
+            const SizedBox(width: 10),
+            Text("Install on iOS", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "To run GEC Compass as a web app on iOS Safari:",
+              style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildIosStep("1", "Open this website in your Safari browser."),
+            const SizedBox(height: 12),
+            _buildIosStep("2", "Tap the Share button at the bottom of Safari."),
+            const SizedBox(height: 12),
+            _buildIosStep("3", "Scroll down and select 'Add to Home Screen'."),
+            const SizedBox(height: 20),
+            Text(
+              "Alternative option:",
+              style: TextStyle(color: _textColor, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _downloadIpa();
+              },
+              child: Row(
+                children: [
+                  const Icon(Icons.download, color: Color(0xFF3B82F6), size: 18),
+                  const SizedBox(width: 8),
+                  Text("Download iOS .ipa file directly", style: TextStyle(color: const Color(0xFF3B82F6), fontSize: 13, decoration: TextDecoration.underline)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Note: Sideloading raw .ipa files on iOS requires AltStore, Developer mode, or enterprise deployment. PWAs are recommended.",
+              style: TextStyle(color: _textColor.withValues(alpha: 0.5), fontSize: 10, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Got It", style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIosStep(String number, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 10,
+          backgroundColor: const Color(0xFF10B981),
+          child: Text(number, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: _textColor.withValues(alpha: 0.8), fontSize: 13),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showDownloadOptionsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: BorderSide(color: _borderColor)),
+        title: Row(
+          children: [
+            Icon(Icons.download_for_offline, color: const Color(0xFF10B981)),
+            const SizedBox(width: 10),
+            Text("Download GEC Compass", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Choose your platform to install the mobile application:",
+              style: TextStyle(color: _textColor.withValues(alpha: 0.8), fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.15), shape: BoxShape.circle),
+                child: const Icon(Icons.android, color: Colors.green),
+              ),
+              title: Text("Android App (.apk)", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+              subtitle: Text("Direct download & install on Android devices", style: TextStyle(color: _textColor.withValues(alpha: 0.5), fontSize: 11)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadApk();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.15), shape: BoxShape.circle),
+                child: const Icon(Icons.phone_iphone, color: Colors.blue),
+              ),
+              title: Text("iOS App (Safari PWA)", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+              subtitle: Text("Install directly without App Store using Safari", style: TextStyle(color: _textColor.withValues(alpha: 0.5), fontSize: 11)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                _showIosInstructionsDialog();
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel", style: TextStyle(color: _textColor.withValues(alpha: 0.6))),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 
 
@@ -514,19 +694,23 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: _cardBgColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(color: _borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: _appThemeMode == 'light' ? 0.15 : 0.6),
-              blurRadius: 25,
-              spreadRadius: 8,
-            )
-          ],
-        ),
+      builder: (context) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _cardBgColor.withValues(alpha: 0.85),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(color: _borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: _appThemeMode == 'light' ? 0.15 : 0.6),
+                  blurRadius: 25,
+                  spreadRadius: 8,
+                )
+              ],
+            ),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -799,7 +983,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   @override
@@ -1116,27 +1302,29 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Telemetry Dashboard Toggle
-                      FloatingActionButton(
-                        heroTag: 'sensors_btn',
-                        backgroundColor: _showSensorDashboard ? const Color(0xFF10B981) : _cardBgColor,
-                        foregroundColor: _showSensorDashboard ? Colors.white : const Color(0xFF3B82F6),
-                        onPressed: () {
-                          setState(() {
-                            _showSensorDashboard = !_showSensorDashboard;
-                            _showLayerSelector = false;
-                            if (_showSensorDashboard) {
-                              _startTelemetryListening();
-                            } else {
-                              if (!_isNavigating) {
-                                _stopTelemetryListening();
+                      // Telemetry Dashboard Toggle (Hidden on Web)
+                      if (!kIsWeb) ...[
+                        FloatingActionButton(
+                          heroTag: 'sensors_btn',
+                          backgroundColor: _showSensorDashboard ? const Color(0xFF10B981) : _cardBgColor,
+                          foregroundColor: _showSensorDashboard ? Colors.white : const Color(0xFF3B82F6),
+                          onPressed: () {
+                            setState(() {
+                              _showSensorDashboard = !_showSensorDashboard;
+                              _showLayerSelector = false;
+                              if (_showSensorDashboard) {
+                                _startTelemetryListening();
+                              } else {
+                                if (!_isNavigating) {
+                                  _stopTelemetryListening();
+                                }
                               }
-                            }
-                          });
-                        },
-                        child: Icon(_showSensorDashboard ? Icons.sensors : Icons.sensors_off),
-                      ),
-                      const SizedBox(height: 14),
+                            });
+                          },
+                          child: Icon(_showSensorDashboard ? Icons.sensors : Icons.sensors_off),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       if (!_isNavigating) ...[
                         // Theme/Layer Switcher Button
                         FloatingActionButton(
@@ -1162,12 +1350,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       ],
                       if (kIsWeb) ...[
                         FloatingActionButton(
-                          heroTag: 'download_apk_btn',
+                          heroTag: 'download_app_btn',
                           backgroundColor: const Color(0xFF10B981),
                           foregroundColor: Colors.white,
-                          tooltip: 'Download Android App APK',
-                          onPressed: _downloadApk,
-                          child: const Icon(Icons.android),
+                          tooltip: 'Download Mobile App',
+                          onPressed: _showDownloadOptionsDialog,
+                          child: const Icon(Icons.install_mobile),
                         ),
                         const SizedBox(height: 14),
                       ],
@@ -1262,8 +1450,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           
 
           
-                // Telemetry Sensor Dashboard Overlay
-                if (_showSensorDashboard)
+                // Telemetry Sensor Dashboard Overlay (Hidden on Web)
+                if (_showSensorDashboard && !kIsWeb)
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 80,
                     left: 16,
@@ -1801,13 +1989,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       isScrollControlled: true,
       builder: (context) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _cardBgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(color: _borderColor),
-          ),
-          padding: const EdgeInsets.all(24),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardBgColor.withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: _borderColor),
+              ),
+              padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1898,7 +2090,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   void _showAddPlaceModal() {
@@ -1921,14 +2115,18 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         builder: (context, setModalState) {
           return Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.85,
-              decoration: BoxDecoration(
-                color: _cardBgColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border.all(color: _borderColor),
-              ),
-              padding: const EdgeInsets.all(24),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.85,
+                  decoration: BoxDecoration(
+                    color: _cardBgColor.withValues(alpha: 0.85),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border.all(color: _borderColor),
+                  ),
+                  padding: const EdgeInsets.all(24),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2268,10 +2466,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   void _showEditPlaceModal(Building building) {
@@ -2301,14 +2501,18 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         builder: (context, setModalState) {
           return Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.85,
-              decoration: BoxDecoration(
-                color: _cardBgColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border.all(color: _borderColor),
-              ),
-              padding: const EdgeInsets.all(24),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.85,
+                  decoration: BoxDecoration(
+                    color: _cardBgColor.withValues(alpha: 0.85),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border.all(color: _borderColor),
+                  ),
+                  padding: const EdgeInsets.all(24),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2656,10 +2860,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   // --- Glassmorphic Telemetry Dashboard Widgets & Helpers ---
