@@ -53,6 +53,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   List<Building> _buildings = [];
   Building? _selectedBuilding;
   bool _isNavigating = false;
+  bool _staircaseCompleted = false;
+  int? _stepsAtStairsZoneEnter;
   int _stepCount = 0;
   List<LatLng> _pdrTrail = [];
 
@@ -327,6 +329,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _selectedBuilding = building;
       if (_isNavigating) {
         _isNavigating = false;
+        _staircaseCompleted = false;
+        _stepsAtStairsZoneEnter = null;
         _pdrTrail.clear();
         _routingPath.clear();
         _routeInstructions.clear();
@@ -377,6 +381,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _pdrService.startPDR(startPos);
       setState(() {
         _isNavigating = true;
+        _staircaseCompleted = false;
+        _stepsAtStairsZoneEnter = null;
         _stepCount = 0;
         _pdrTrail = [startPos];
         _routingPath = path;
@@ -413,6 +419,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   void _stopNavigation() {
     setState(() {
       _isNavigating = false;
+      _staircaseCompleted = false;
+      _stepsAtStairsZoneEnter = null;
       _pdrTrail.clear();
       _routingPath.clear();
       _routeInstructions.clear();
@@ -1822,12 +1830,40 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       }
     }
 
-    if (dist < 15.0 && floorTag != null && floorTag.toString().isNotEmpty) {
+    final bool showStairs = dist < 15.0 && floorTag != null && floorTag.toString().isNotEmpty && !_staircaseCompleted;
+
+    int stepsWalkedInZone = 0;
+    int targetSteps = 18;
+
+    if (showStairs) {
+      final int floorsToClimb = int.tryParse(floorTag.toString()) ?? 1;
+      targetSteps = floorsToClimb > 0 ? floorsToClimb * 18 : 18;
+
+      _stepsAtStairsZoneEnter ??= _stepCount;
+      stepsWalkedInZone = _stepCount - _stepsAtStairsZoneEnter!;
+      if (stepsWalkedInZone < 0) {
+        _stepsAtStairsZoneEnter = _stepCount;
+        stepsWalkedInZone = 0;
+      }
+
+      if (stepsWalkedInZone >= targetSteps) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_staircaseCompleted) {
+            HapticFeedback.mediumImpact();
+            setState(() {
+              _staircaseCompleted = true;
+            });
+          }
+        });
+      }
+    }
+
+    if (showStairs) {
       primaryInstruction = "Take stairs to Floor $floorTag";
       secondaryInstruction = "Then proceed to ${_selectedBuilding!.name}";
       turnIcon = Icons.stairs;
       topBarColor = const Color(0xFF3B82F6); // Blue for indoor instructions
-    } else if (dist < 5.0) {
+    } else if (dist < 5.0 || (dist < 15.0 && _staircaseCompleted)) {
       primaryInstruction = "You have arrived";
       secondaryInstruction = _selectedBuilding!.name;
       turnIcon = Icons.place;
@@ -1878,9 +1914,58 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                             secondaryInstruction,
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                           ),
+                          if (showStairs) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 80,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: (stepsWalkedInZone / targetSteps).clamp(0.0, 1.0),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.greenAccent),
+                                      minHeight: 6,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Climbing: $stepsWalkedInZone / $targetSteps steps",
+                                  style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
+                    if (showStairs) ...[
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          setState(() {
+                            _staircaseCompleted = true;
+                          });
+                        },
+                        icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
+                        label: const Text(
+                          "Done",
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1948,6 +2033,24 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   // Render onboarding/instructional carousel
   Widget _buildOnboardingOverlay() {
     final slides = [
+      if (kIsWeb)
+        _buildOnboardingSlide(
+          title: "Download Mobile App",
+          desc: "For the absolute best experience on campus with native step-tracking, offline navigation, and real-time haptic feedback, download our Android App.",
+          icon: Icons.install_mobile,
+          iconColor: const Color(0xFF3DDC84),
+          actionButton: ElevatedButton.icon(
+            onPressed: _downloadApk,
+            icon: const Icon(Icons.android, color: Colors.white),
+            label: const Text("Download Android App", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3DDC84),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              elevation: 4,
+            ),
+          ),
+        ),
       _buildOnboardingSlide(
         title: "Welcome to GEC Compass",
         desc: "Interactive navigation along campus walkways, department buildings, labs, workshops, and facilities at GEC Thrissur.",
@@ -1977,7 +2080,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
               width: MediaQuery.of(context).size.width * 0.88,
-              height: 480,
+              height: 500,
               decoration: BoxDecoration(
                 color: _cardBgColor,
                 borderRadius: BorderRadius.circular(28),
@@ -2052,23 +2155,33 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildOnboardingSlide({required String title, required String desc, required IconData icon, required Color iconColor}) {
+  Widget _buildOnboardingSlide({
+    required String title,
+    required String desc,
+    required IconData icon,
+    required Color iconColor,
+    Widget? actionButton,
+  }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(icon, size: 80, color: iconColor),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         Text(
           title,
           style: TextStyle(color: _textColor, fontSize: 24, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text(
           desc,
-          style: TextStyle(color: _textColor.withValues(alpha: 0.7), fontSize: 14, height: 1.5),
+          style: TextStyle(color: _textColor.withValues(alpha: 0.7), fontSize: 14, height: 1.4),
           textAlign: TextAlign.center,
         ),
+        if (actionButton != null) ...[
+          const SizedBox(height: 18),
+          actionButton,
+        ],
       ],
     );
   }
