@@ -1119,15 +1119,20 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           
                       // Building markers
                       MarkerLayer(
-                        markers: filteredBuildings.map((b) => Marker(
-                          point: LatLng(b.lat, b.lng),
-                          width: 48,
-                          height: 48,
-                          child: GestureDetector(
-                            onTap: () => _selectBuilding(b),
-                            child: _buildMarkerIcon(b),
-                          ),
-                        )).toList(),
+                        markers: filteredBuildings.map((b) {
+                          final isSelected = _selectedBuilding?.id == b.id;
+                          final double size = isSelected ? 48.0 : 36.0;
+                          return Marker(
+                            point: LatLng(b.lat, b.lng),
+                            width: size,
+                            height: size,
+                            alignment: Alignment.bottomCenter,
+                            child: GestureDetector(
+                              onTap: () => _selectBuilding(b),
+                              child: _buildMarkerIcon(b),
+                            ),
+                          );
+                        }).toList(),
                       ),
           
                       // User position marker
@@ -1138,7 +1143,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               point: _currentPosition!,
                               width: 55,
                               height: 55,
-                              alignment: Alignment.bottomCenter,
+                              alignment: Alignment.center,
                               child: _buildUserLocationMarker(),
                             )
                           ],
@@ -1669,7 +1674,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             return Stack(
               alignment: Alignment.center,
               children: [
-                // Directional Beam (pointing forward)
+                // Directional Beam (pointing forward, Google Maps style)
                 Transform.rotate(
                   angle: headingRad,
                   child: CustomPaint(
@@ -1683,36 +1688,43 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   height: 26 + _pulseController.value * 16,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.2 * (1.0 - _pulseController.value)),
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.25 * (1.0 - _pulseController.value)),
                   ),
                 ),
-                // Standard location tear drop (pin)
-                const Icon(
-                  Icons.location_on,
-                  color: Color(0xFF3B82F6),
-                  size: 45,
-                ),
-                // White background circle for the inner arrow
-                Transform.translate(
-                  offset: const Offset(0, -5), // Shift slightly up to align with the hole of location_on
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                    ),
+                // Blue outer circle border with white core
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
                   ),
-                ),
-                // Heading navigation arrow (person/arrow like in gmap)
-                Transform.translate(
-                  offset: const Offset(0, -5), // Shift slightly up to align with the hole of location_on
-                  child: Transform.rotate(
-                    angle: headingRad,
-                    child: const Icon(
-                      Icons.navigation,
-                      color: Color(0xFF3B82F6),
-                      size: 11,
+                  child: Center(
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF3B82F6),
+                      ),
+                      child: Center(
+                        // Google Maps style navigation arrow
+                        child: Transform.rotate(
+                          angle: headingRad,
+                          child: const Icon(
+                            Icons.navigation,
+                            color: Colors.white,
+                            size: 11,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1724,35 +1736,44 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Draw customized pins for buildings (reduced sizes)
   Widget _buildMarkerIcon(Building b) {
     final isSelected = _selectedBuilding?.id == b.id;
     final color = isSelected ? Colors.greenAccent : _getMarkerColor(b);
     final icon = _getMarkerIcon(b);
 
+    final double pinSize = isSelected ? 48.0 : 36.0;
+    final double innerCircleSize = isSelected ? 18.0 : 13.0;
+    final double iconSize = isSelected ? 13.0 : 9.0;
+    final double offsetUp = isSelected ? -5.0 : -3.5;
+
     if (!isSelected) {
-      return Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          color: _scaffoldBgColor.withValues(alpha: 0.9),
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.3),
-              blurRadius: 3,
-              spreadRadius: 0.5,
-            )
-          ],
-        ),
-        child: Center(
-          child: Icon(
-            icon,
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            Icons.location_on,
             color: color,
-            size: 12,
+            size: pinSize,
           ),
-        ),
+          Transform.translate(
+            offset: Offset(0, offsetUp),
+            child: Container(
+              width: innerCircleSize,
+              height: innerCircleSize,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: Center(
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: iconSize,
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -1762,34 +1783,37 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         return Stack(
           alignment: Alignment.center,
           children: [
-            Container(
-              width: 24 + _pulseController.value * 18,
-              height: 24 + _pulseController.value * 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(alpha: 0.4 * (1.0 - _pulseController.value)),
+            Transform.translate(
+              offset: Offset(0, offsetUp),
+              child: Container(
+                width: innerCircleSize + _pulseController.value * 20,
+                height: innerCircleSize + _pulseController.value * 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.4 * (1.0 - _pulseController.value)),
+                ),
               ),
             ),
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: _scaffoldBgColor.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                border: Border.all(color: color, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    spreadRadius: 1.5,
-                  )
-                ],
-              ),
-              child: Center(
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 15,
+            Icon(
+              Icons.location_on,
+              color: color,
+              size: pinSize,
+            ),
+            Transform.translate(
+              offset: Offset(0, offsetUp),
+              child: Container(
+                width: innerCircleSize,
+                height: innerCircleSize,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: iconSize,
+                  ),
                 ),
               ),
             ),
