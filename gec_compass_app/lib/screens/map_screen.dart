@@ -420,6 +420,38 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _downloadApk() async {
+    try {
+      final base = Uri.base;
+      final downloadUrl = Uri(
+        scheme: base.scheme,
+        host: base.host,
+        port: base.port,
+        path: '/app-release.apk',
+      );
+      final success = await launchUrl(downloadUrl, mode: LaunchMode.externalApplication);
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not trigger APK download. Please try opening the link directly.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading APK: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
 
 
 
@@ -1128,6 +1160,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 14),
                       ],
+                      if (kIsWeb) ...[
+                        FloatingActionButton(
+                          heroTag: 'download_apk_btn',
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          tooltip: 'Download Android App APK',
+                          onPressed: _downloadApk,
+                          child: const Icon(Icons.android),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       FloatingActionButton(
                         heroTag: 'recenter_btn',
                         backgroundColor: _cardBgColor,
@@ -1566,14 +1609,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                           Text("$minutes min", style: const TextStyle(color: Color(0xFF10B981), fontSize: 28, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 12),
                           Text(_formatDistance(dist), style: TextStyle(color: _textColor.withValues(alpha: 0.8), fontSize: 18)),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.directions_walk, color: _textColor.withValues(alpha: 0.5), size: 16),
-                          const SizedBox(width: 4),
-                          Text("$_stepCount steps taken", style: TextStyle(color: _textColor.withValues(alpha: 0.5), fontSize: 14)),
                         ],
                       ),
                     ],
