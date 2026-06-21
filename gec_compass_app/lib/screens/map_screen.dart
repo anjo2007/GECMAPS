@@ -1267,25 +1267,31 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               final isSelected = _selectedCategory == cat;
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
-                                child: ChoiceChip(
-                                  label: Text(cat),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    if (selected) {
-                                      setState(() {
-                                        _selectedCategory = cat;
-                                      });
-                                    }
-                                  },
-                                  labelStyle: TextStyle(
-                                    color: isSelected ? Colors.white : _textColor.withValues(alpha: 0.8),
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    fontSize: 13,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                    child: ChoiceChip(
+                                      label: Text(cat),
+                                      selected: isSelected,
+                                      onSelected: (selected) {
+                                        if (selected) {
+                                          setState(() {
+                                            _selectedCategory = cat;
+                                          });
+                                        }
+                                      },
+                                      labelStyle: TextStyle(
+                                        color: isSelected ? Colors.white : _textColor.withValues(alpha: 0.8),
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: 13,
+                                      ),
+                                      selectedColor: const Color(0xFF3B82F6).withValues(alpha: 0.85),
+                                      backgroundColor: _cardBgColor.withValues(alpha: 0.5),
+                                      side: BorderSide(color: isSelected ? Colors.transparent : _borderColor),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    ),
                                   ),
-                                  selectedColor: const Color(0xFF3B82F6),
-                                  backgroundColor: _cardBgColor.withValues(alpha: 0.8),
-                                  side: BorderSide(color: isSelected ? Colors.transparent : _borderColor),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 ),
                               );
                             },
@@ -1304,76 +1310,176 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     children: [
                       // Telemetry Dashboard Toggle (Hidden on Web)
                       if (!kIsWeb) ...[
-                        FloatingActionButton(
-                          heroTag: 'sensors_btn',
-                          backgroundColor: _showSensorDashboard ? const Color(0xFF10B981) : _cardBgColor,
-                          foregroundColor: _showSensorDashboard ? Colors.white : const Color(0xFF3B82F6),
-                          onPressed: () {
-                            setState(() {
-                              _showSensorDashboard = !_showSensorDashboard;
-                              _showLayerSelector = false;
-                              if (_showSensorDashboard) {
-                                _startTelemetryListening();
-                              } else {
-                                if (!_isNavigating) {
-                                  _stopTelemetryListening();
-                                }
-                              }
-                            });
-                          },
-                          child: Icon(_showSensorDashboard ? Icons.sensors : Icons.sensors_off),
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: FloatingActionButton(
+                                heroTag: 'sensors_btn',
+                                elevation: 0,
+                                highlightElevation: 0,
+                                backgroundColor: _showSensorDashboard 
+                                    ? const Color(0xFF10B981).withValues(alpha: 0.85) 
+                                    : _cardBgColor.withValues(alpha: 0.7),
+                                foregroundColor: _showSensorDashboard ? Colors.white : const Color(0xFF3B82F6),
+                                onPressed: () {
+                                  setState(() {
+                                    _showSensorDashboard = !_showSensorDashboard;
+                                    _showLayerSelector = false;
+                                    if (_showSensorDashboard) {
+                                      _startTelemetryListening();
+                                    } else {
+                                      if (!_isNavigating) {
+                                        _stopTelemetryListening();
+                                      }
+                                    }
+                                  });
+                                },
+                                child: Icon(_showSensorDashboard ? Icons.sensors : Icons.sensors_off),
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 14),
                       ],
                       if (!_isNavigating) ...[
                         // Theme/Layer Switcher Button
-                        FloatingActionButton(
-                          heroTag: 'layer_btn',
-                          backgroundColor: _cardBgColor,
-                          foregroundColor: const Color(0xFF3B82F6),
-                          onPressed: () {
-                            setState(() {
-                              _showLayerSelector = !_showLayerSelector;
-                            });
-                          },
-                          child: const Icon(Icons.layers),
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: FloatingActionButton(
+                                heroTag: 'layer_btn',
+                                elevation: 0,
+                                highlightElevation: 0,
+                                backgroundColor: _cardBgColor.withValues(alpha: 0.7),
+                                foregroundColor: const Color(0xFF3B82F6),
+                                onPressed: () {
+                                  setState(() {
+                                    _showLayerSelector = !_showLayerSelector;
+                                  });
+                                },
+                                child: const Icon(Icons.layers),
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 14),
-                        FloatingActionButton(
-                          heroTag: 'add_place_btn',
-                          backgroundColor: const Color(0xFF3B82F6),
-                          foregroundColor: Colors.white,
-                          onPressed: _showAddPlaceModal,
-                          child: const Icon(Icons.add_location_alt),
+                        // Add Place Button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: FloatingActionButton(
+                                heroTag: 'add_place_btn',
+                                elevation: 0,
+                                highlightElevation: 0,
+                                backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.85),
+                                foregroundColor: Colors.white,
+                                onPressed: _showAddPlaceModal,
+                                child: const Icon(Icons.add_location_alt),
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 14),
                       ],
                       if (kIsWeb) ...[
-                        FloatingActionButton(
-                          heroTag: 'download_app_btn',
-                          backgroundColor: const Color(0xFF10B981),
-                          foregroundColor: Colors.white,
-                          tooltip: 'Download Mobile App',
-                          onPressed: _showDownloadOptionsDialog,
-                          child: const Icon(Icons.install_mobile),
+                        // Download App Button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: FloatingActionButton(
+                                heroTag: 'download_app_btn',
+                                elevation: 0,
+                                highlightElevation: 0,
+                                backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.85),
+                                foregroundColor: Colors.white,
+                                tooltip: 'Download Mobile App',
+                                onPressed: _showDownloadOptionsDialog,
+                                child: const Icon(Icons.install_mobile),
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 14),
                       ],
-                      FloatingActionButton(
-                        heroTag: 'recenter_btn',
-                        backgroundColor: _cardBgColor,
-                        foregroundColor: const Color(0xFF3B82F6),
-                        onPressed: () async {
-                          if (kIsWeb) {
-                            await _pdrService.startPDR(_currentPosition ?? _campusCenter);
-                          }
-                          if (_currentPosition != null) {
-                            _mapController.move(_currentPosition!, 18.5);
-                          } else {
-                            _mapController.move(_campusCenter, 16.5);
-                          }
-                        },
-                        child: const Icon(Icons.my_location),
+                      // Recenter Button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                            child: FloatingActionButton(
+                              heroTag: 'recenter_btn',
+                              elevation: 0,
+                              highlightElevation: 0,
+                              backgroundColor: _cardBgColor.withValues(alpha: 0.7),
+                              foregroundColor: const Color(0xFF3B82F6),
+                              onPressed: () async {
+                                if (kIsWeb) {
+                                  await _pdrService.startPDR(_currentPosition ?? _campusCenter);
+                                }
+                                if (_currentPosition != null) {
+                                  _mapController.move(_currentPosition!, 18.5);
+                                } else {
+                                  _mapController.move(_campusCenter, 16.5);
+                                }
+                              },
+                              child: const Icon(Icons.my_location),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1437,14 +1543,34 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   Positioned(
                     bottom: 32,
                     left: 16,
-                    child: FloatingActionButton.extended(
-                      heroTag: 'feedback_btn',
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      icon: const Icon(Icons.rate_review),
-                      label: const Text('Feedback',
-                          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                      onPressed: _showFeedbackModal,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                          child: FloatingActionButton.extended(
+                            heroTag: 'feedback_btn',
+                            elevation: 0,
+                            highlightElevation: 0,
+                            backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.85),
+                            foregroundColor: Colors.white,
+                            icon: const Icon(Icons.rate_review),
+                            label: const Text('Feedback',
+                                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                            onPressed: _showFeedbackModal,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
           
