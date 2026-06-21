@@ -1500,9 +1500,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ),
           
                 // Theme & Layer Selector Panel
-                if (_showLayerSelector && !_isNavigating)
+                if (_showLayerSelector)
                   Positioned(
-                    bottom: 32 + 190,
+                    bottom: _isNavigating ? 210 : 222,
                     right: 16,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
