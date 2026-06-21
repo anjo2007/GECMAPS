@@ -40,28 +40,50 @@ class PDRService {
   int _stepCount = 0;
   LatLng? _currentPosition;
 
+  bool _hasAccelerometerData = false;
+  bool _hasCompassData = false;
+  double _lastGpsSpeed = 0.0;
+
   bool get isActive => _currentPosition != null && (_accelSub != null || kIsWeb);
 
   Future<void> startPDR(LatLng startPosition) async {
     stopPDR(); // Clean up any previous session
     _currentPosition = startPosition;
     _stepCount = 0;
+    _hasAccelerometerData = false;
+    _hasCompassData = false;
+    _lastGpsSpeed = 0.0;
 
     if (kIsWeb) {
       bool permissionGranted = await requestWebSensorPermissions();
       if (!permissionGranted) {
-        debugPrint("Web sensor permissions denied.");
-        return;
+        debugPrint("Web sensor permissions denied. Running in GPS-only mode.");
+      } else {
+        _startWebPDR();
       }
-      _startWebPDR();
     } else {
       _startNativePDR();
     }
 
     // 3Hz Sensor Fusion Loop (3 times a second)
     _simulationTimer = Timer.periodic(const Duration(milliseconds: 333), (timer) {
-      if (_currentPosition != null && onPositionUpdated != null) {
-        // Fire location update 3 times a second for smooth compass/UI updates
+      if (_currentPosition == null) return;
+
+      // GPS-only dead reckoning projection fallback if no accelerometer data is active
+      if (!_hasAccelerometerData && _lastGpsSpeed > 0.5) {
+        double headingRad = _currentHeading * (pi / 180.0);
+        double dist = _lastGpsSpeed * 0.333; // 333ms elapsed
+
+        double dx = dist * sin(headingRad);
+        double dy = dist * cos(headingRad);
+
+        double dLat = (dy / _earthRadius) * (180.0 / pi);
+        double dLng = (dx / (_earthRadius * cos(_currentPosition!.latitude * pi / 180.0))) * (180.0 / pi);
+
+        _currentPosition = LatLng(_currentPosition!.latitude + dLat, _currentPosition!.longitude + dLng);
+      }
+
+      if (onPositionUpdated != null) {
         onPositionUpdated!(_currentPosition!);
       }
     });
@@ -70,9 +92,12 @@ class PDRService {
   void startTelemetryOnly() {
     if (isActive || _isTelemetryOnlyActive) return;
     _isTelemetryOnlyActive = true;
+    _hasAccelerometerData = false;
+    _hasCompassData = false;
 
     if (kIsWeb) {
       listenToWebCompass((heading) {
+        _hasCompassData = true;
         _currentHeading = heading;
         rawHeading = heading;
         if (onRawCompassUpdated != null) onRawCompassUpdated!(heading);
@@ -81,6 +106,7 @@ class PDRService {
     } else {
       _compassSub = FlutterCompass.events?.listen((CompassEvent event) {
         if (event.heading != null) {
+          _hasCompassData = true;
           _currentHeading = event.heading!;
           rawHeading = event.heading!;
           if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
@@ -93,6 +119,7 @@ class PDRService {
   void _listenToAccelerometerTelemetry() {
     try {
       _accelSub = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
+        _hasAccelerometerData = true;
         double magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
         rawAccelX = event.x;
         rawAccelY = event.y;
@@ -109,8 +136,6 @@ class PDRService {
     }
   }
 
-
-
   void stopTelemetryOnly() {
     _isTelemetryOnlyActive = false;
     stopPDR();
@@ -119,6 +144,7 @@ class PDRService {
   void _startNativePDR() {
     _compassSub = FlutterCompass.events?.listen((CompassEvent event) {
       if (event.heading != null) {
+        _hasCompassData = true;
         _currentHeading = event.heading!;
         rawHeading = event.heading!;
         if (onRawCompassUpdated != null) onRawCompassUpdated!(rawHeading);
@@ -130,6 +156,7 @@ class PDRService {
   void _startWebPDR() {
     // Custom JS interop compass because flutter_compass doesn't support web
     listenToWebCompass((heading) {
+      _hasCompassData = true;
       _currentHeading = heading;
       rawHeading = heading;
       if (onRawCompassUpdated != null) onRawCompassUpdated!(heading);
@@ -139,6 +166,7 @@ class PDRService {
 
   void _listenToAccelerometer() {
     _accelSub = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
+      _hasAccelerometerData = true;
       double magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
 
       rawAccelX = event.x;
@@ -167,11 +195,48 @@ class PDRService {
     });
   }
 
-
-
   void forceSetPosition(LatLng position) {
     _currentPosition = position;
     if (onPositionUpdated != null) onPositionUpdated!(position);
+  }
+
+  void updateGPSPosition(LatLng gpsPos, double accuracy, double speed, double heading) {
+    _lastGpsSpeed = speed;
+    if (heading >= 0.0) {
+      if (!_hasCompassData) {
+        _currentHeading = heading; // Fallback to GPS heading
+        if (onRawCompassUpdated != null) onRawCompassUpdated!(heading);
+      }
+    }
+
+    if (_currentPosition == null) {
+      _currentPosition = gpsPos;
+      if (onPositionUpdated != null) onPositionUpdated!(gpsPos);
+      return;
+    }
+
+    // Weighted sensor fusion
+    // Trust GPS more if it reports high accuracy (small radius)
+    // Trust PDR step-counting/projection more if GPS has poor accuracy (large radius)
+    double alpha;
+    if (accuracy < 5.0) {
+      alpha = 0.8;
+    } else if (accuracy < 12.0) {
+      alpha = 0.55;
+    } else if (accuracy < 25.0) {
+      alpha = 0.3;
+    } else {
+      alpha = 0.1; // rely heavily on PDR
+    }
+
+    // Blend coordinates
+    double fusedLat = alpha * gpsPos.latitude + (1 - alpha) * _currentPosition!.latitude;
+    double fusedLng = alpha * gpsPos.longitude + (1 - alpha) * _currentPosition!.longitude;
+    _currentPosition = LatLng(fusedLat, fusedLng);
+
+    if (onPositionUpdated != null) {
+      onPositionUpdated!(_currentPosition!);
+    }
   }
 
   void _updatePositionWithPDR() {

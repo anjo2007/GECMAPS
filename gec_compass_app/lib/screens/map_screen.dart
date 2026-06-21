@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -252,6 +252,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         _currentPosition = userPos;
         _isLoading = false;
       });
+      if (userPos != null) {
+        _pdrService.startPDR(userPos);
+      }
       _startGPSListening();
     } catch (e) {
       if (!mounted) return;
@@ -281,13 +284,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         ).listen((Position position) {
           if (!mounted) return;
           final newPos = LatLng(position.latitude, position.longitude);
-          setState(() {
-            _currentPosition = newPos;
-            if (_isNavigating) {
-              _pdrTrail.add(newPos);
-            }
-          });
-          _pdrService.forceSetPosition(newPos);
+          
+          if (!_pdrService.isActive) {
+            _pdrService.startPDR(newPos);
+          }
+          
+          _pdrService.updateGPSPosition(
+            newPos,
+            position.accuracy,
+            position.speed,
+            position.heading,
+          );
         }, onError: (e) {
           debugPrint("GPS stream error: $e");
         });
@@ -329,7 +336,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     setState(() {
       _selectedBuilding = building;
       if (_isNavigating) {
-        _pdrService.stopPDR();
         _isNavigating = false;
         _pdrTrail.clear();
         _routingPath.clear();
@@ -416,7 +422,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   void _stopNavigation() {
-    _pdrService.stopPDR();
     setState(() {
       _isNavigating = false;
       _pdrTrail.clear();
@@ -424,9 +429,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _routeInstructions.clear();
       _currentInstructionIndex = 0;
       _simulatedRouteIndex = 0;
-      if (_showSensorDashboard) {
-        _startTelemetryListening();
-      }
     });
   }
 
@@ -1152,7 +1154,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         heroTag: 'recenter_btn',
                         backgroundColor: _cardBgColor,
                         foregroundColor: const Color(0xFF3B82F6),
-                        onPressed: () {
+                        onPressed: () async {
+                          if (kIsWeb) {
+                            await _pdrService.startPDR(_currentPosition ?? _campusCenter);
+                          }
                           if (_currentPosition != null) {
                             _mapController.move(_currentPosition!, 18.5);
                           } else {
@@ -1310,46 +1315,78 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   // Draw user position with smooth pulsing outer glow
   Widget _buildUserLocationMarker() {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 30 + _pulseController.value * 25,
-              height: 30 + _pulseController.value * 25,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6).withOpacity(0.4 * (1.0 - _pulseController.value)),
-              ),
-            ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 4,
-                    spreadRadius: 1,
-                  )
-                ],
-              ),
-              child: Center(
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF3B82F6),
+    return ValueListenableBuilder<TelemetryData>(
+      valueListenable: _telemetryNotifier,
+      builder: (context, telemetry, child) {
+        final headingRad = telemetry.heading * (pi / 180.0);
+        return AnimatedBuilder(
+          animation: _pulseController,
+          builder: (context, child) {
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                // Directional Beam (pointing forward)
+                Transform.rotate(
+                  angle: headingRad,
+                  child: CustomPaint(
+                    size: const Size(65, 65),
+                    painter: DirectionBeamPainter(),
                   ),
                 ),
-              ),
-            )
-          ],
+                // Pulsing background circle
+                Container(
+                  width: 22 + _pulseController.value * 12,
+                  height: 22 + _pulseController.value * 12,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF3B82F6).withOpacity(0.3 * (1.0 - _pulseController.value)),
+                  ),
+                ),
+                // White core border
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      )
+                    ],
+                  ),
+                  child: Center(
+                    // Blue core dot
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF3B82F6),
+                      ),
+                    ),
+                  ),
+                ),
+                // Front pointing tip
+                Transform.rotate(
+                  angle: headingRad,
+                  child: Align(
+                    alignment: const Alignment(0, -0.65),
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -3113,4 +3150,41 @@ class CompassDialPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CompassDialPainter oldDelegate) =>
       oldDelegate.textColor != textColor;
+}
+
+class DirectionBeamPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF3B82F6).withOpacity(0.4),
+          const Color(0xFF3B82F6).withOpacity(0.0),
+        ],
+        stops: const [0.25, 1.0],
+      ).createShader(Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: size.width / 2))
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // A 40-degree wide field-of-view cone pointing UP (-90 degrees / -pi/2)
+    const double coneAngleRad = 40.0 * (pi / 180.0);
+    const double startAngle = -pi / 2.0 - coneAngleRad / 2.0;
+
+    path.moveTo(center.dx, center.dy);
+    path.arcTo(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      coneAngleRad,
+      false,
+    );
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
