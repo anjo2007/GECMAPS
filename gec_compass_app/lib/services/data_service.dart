@@ -149,35 +149,40 @@ class DataService {
   }
 
   Future<void> saveCustomBuilding(Building building) async {
-    // 1. Save locally first for immediate availability
-    try {
-      final customBuildings = await _loadCustomBuildingsLocal();
-      customBuildings.removeWhere((b) => b.id == building.id);
-      customBuildings.add(building);
-      await _syncLocalCache(customBuildings);
-      debugPrint('Saved custom building locally: ${building.name}');
-    } catch (e) {
-      debugPrint('Error saving custom building locally: $e');
-    }
+    // 1. Sync to cloud API first for server validation
+    final apiUrl = await _getApiUrl();
+    final response = await http
+        .post(
+          Uri.parse(apiUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(building.toJson()),
+        )
+        .timeout(const Duration(seconds: 10));
 
-    // 2. Sync to cloud API
-    try {
-      final apiUrl = await _getApiUrl();
-      final response = await http
-          .post(
-            Uri.parse(apiUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode(building.toJson()),
-          )
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        debugPrint('Synced custom building to cloud: ${building.name}');
-      } else {
-        debugPrint(
-            'Cloud sync returned status ${response.statusCode}: ${response.body}');
+    if (response.statusCode == 200) {
+      debugPrint('Synced custom building to cloud: ${building.name}');
+      
+      // 2. Persist locally only if cloud sync succeeded
+      try {
+        final customBuildings = await _loadCustomBuildingsLocal();
+        customBuildings.removeWhere((b) => b.id == building.id);
+        customBuildings.add(building);
+        await _syncLocalCache(customBuildings);
+        debugPrint('Saved custom building locally: ${building.name}');
+      } catch (e) {
+        debugPrint('Error saving custom building locally: $e');
       }
-    } catch (e) {
-      debugPrint('Error syncing to cloud API: $e');
+    } else {
+      String errorMessage = 'Failed to save place globally.';
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded.containsKey('error')) {
+          errorMessage = decoded['error'] as String;
+        }
+      } catch (_) {}
+      
+      debugPrint('Cloud sync error ${response.statusCode}: $errorMessage');
+      throw Exception(errorMessage);
     }
   }
 }

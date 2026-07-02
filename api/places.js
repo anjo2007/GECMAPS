@@ -388,6 +388,53 @@ export default async function handler(request, response) {
         }
       }
 
+      // Check if this is a new place (id not in existing list)
+      const isNewPlace = !placesList.some(p => p.id === newPlace.id);
+
+      if (isNewPlace) {
+        // Distance calculation helper (Haversine in meters)
+        function getDistanceMeters(lat1, lon1, lat2, lon2) {
+          const R = 6371000;
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLon = (lon2 - lon1) * Math.PI / 180;
+          const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          return R * c;
+        }
+
+        const hasDuplicate = placesList.some(p => {
+          const pNameClean = (p.name || '').trim().toLowerCase();
+          const newNameClean = (newPlace.name || '').trim().toLowerCase();
+          
+          const dist = getDistanceMeters(p.lat, p.lng, newPlace.lat, newPlace.lng);
+          const coordsMatch = dist < 2.0;
+
+          const pFloor = p.tags && p.tags.floor ? p.tags.floor.toString().trim().toLowerCase() : '';
+          const newFloor = newPlace.tags && newPlace.tags.floor ? newPlace.tags.floor.toString().trim().toLowerCase() : '';
+          const pRef = p.tags && p.tags.ref ? p.tags.ref.toString().trim().toLowerCase() : '';
+          const newRef = newPlace.tags && newPlace.tags.ref ? newPlace.tags.ref.toString().trim().toLowerCase() : '';
+          
+          const floorMatch = pFloor === newFloor;
+          const refMatch = pRef === newRef;
+
+          // Duplicate checks:
+          // 1. Same name AND coordinates within 2 meters
+          // 2. Same name AND same floor AND same room ref (only if room ref is not empty)
+          // 3. Same coordinates AND same floor AND same room ref (only if room ref is not empty)
+          return (pNameClean === newNameClean && coordsMatch) ||
+                 (pNameClean === newNameClean && floorMatch && refMatch && newRef !== '') ||
+                 (coordsMatch && floorMatch && refMatch && newRef !== '');
+        });
+
+        if (hasDuplicate) {
+          return response.status(409).json({
+            error: 'Duplicate place detected. A place with the same name, coordinates, or room details already exists.'
+          });
+        }
+      }
+
       // De-duplicate items (newer place overrides older place with same ID)
       const filtered = placesList.filter(p => p.id !== newPlace.id);
       filtered.push(newPlace);
