@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv, createClient } from '@vercel/kv';
 import fs from 'fs';
 import path from 'path';
 
@@ -162,6 +162,74 @@ function writeLocalCache(places) {
   }
 }
 
+// Unified read function
+async function readPlaces(driver, isBackup, context) {
+  const { kvUrl, kvToken, ghToken, gistId, ghRepo, backupKvUrl, backupKvToken, backupGistId, backupGhRepo, PLACES_KEY } = context;
+  
+  switch (driver) {
+    case 'kv':
+      if (isBackup && backupKvUrl && backupKvToken) {
+        const customKv = createClient({ url: backupKvUrl, token: backupKvToken });
+        const data = await customKv.get(PLACES_KEY);
+        return data || [];
+      }
+      const data = await kv.get(PLACES_KEY);
+      return data || [];
+      
+    case 'gist':
+      const targetGistId = isBackup ? (backupGistId || gistId) : gistId;
+      return await getGistPlaces(ghToken, targetGistId);
+      
+    case 'repo':
+      const targetRepo = isBackup ? (backupGhRepo || ghRepo) : ghRepo;
+      return await getRepoPlaces(ghToken, targetRepo);
+      
+    case 'local':
+      return readLocalCache();
+      
+    case 'memory':
+      if (!memoryCache) memoryCache = [];
+      return memoryCache;
+      
+    default:
+      return [];
+  }
+}
+
+// Unified write function
+async function writePlaces(driver, isBackup, places, context) {
+  const { kvUrl, kvToken, ghToken, gistId, ghRepo, backupKvUrl, backupKvToken, backupGistId, backupGhRepo, PLACES_KEY } = context;
+  
+  switch (driver) {
+    case 'kv':
+      if (isBackup && backupKvUrl && backupKvToken) {
+        const customKv = createClient({ url: backupKvUrl, token: backupKvToken });
+        await customKv.set(PLACES_KEY, places);
+        return true;
+      }
+      await kv.set(PLACES_KEY, places);
+      return true;
+      
+    case 'gist':
+      const targetGistId = isBackup ? (backupGistId || gistId) : gistId;
+      return await saveGistPlaces(ghToken, targetGistId, places);
+      
+    case 'repo':
+      const targetRepo = isBackup ? (backupGhRepo || ghRepo) : ghRepo;
+      return await saveRepoPlaces(ghToken, targetRepo, 'places.json', places);
+      
+    case 'local':
+      return writeLocalCache(places);
+      
+    case 'memory':
+      memoryCache = places;
+      return true;
+      
+    default:
+      return false;
+  }
+}
+
 export default async function handler(request, response) {
   // CORS Headers
   response.setHeader('Access-Control-Allow-Origin', '*');
@@ -181,34 +249,96 @@ export default async function handler(request, response) {
   const gistId = process.env.GIST_ID;
   const ghRepo = process.env.GITHUB_REPO; // e.g. "anjo2007/GECMAPS"
 
-  if (request.method === 'GET') {
-    try {
-      // 1. Try Vercel KV first
-      if (kvUrl && kvToken) {
-        const places = await kv.get(PLACES_KEY) || [];
-        return response.status(200).json(places);
-      }
-      // 2. Try GitHub Gist
-      if (ghToken && gistId) {
-        const places = await getGistPlaces(ghToken, gistId);
-        return response.status(200).json(places);
-      }
-      // 3. Try GitHub Repo
-      if (ghToken && ghRepo) {
-        const places = await getRepoPlaces(ghToken, ghRepo);
-        return response.status(200).json(places);
-      }
-      // 4. Try local file if in dev mode
-      if (isDev) {
-        const places = readLocalCache();
-        return response.status(200).json(places);
-      }
-      
-      // 5. Ephemeral cache fallback
-      console.warn('No cloud database configured. Using ephemeral memory cache.');
-      if (!memoryCache) memoryCache = [];
-      return response.status(200).json(memoryCache);
+  const backupKvUrl = process.env.BACKUP_KV_REST_API_URL;
+  const backupKvToken = process.env.BACKUP_KV_REST_API_TOKEN;
+  const backupGistId = process.env.BACKUP_GIST_ID;
+  const backupGhRepo = process.env.BACKUP_GITHUB_REPO;
 
+  const context = {
+    kvUrl,
+    kvToken,
+    ghToken,
+    gistId,
+    ghRepo,
+    backupKvUrl,
+    backupKvToken,
+    backupGistId,
+    backupGhRepo,
+    PLACES_KEY
+  };
+
+  // Determine primary driver
+  let primaryDriver = 'memory';
+  if (kvUrl && kvToken) {
+    primaryDriver = 'kv';
+  } else if (ghToken && gistId) {
+    primaryDriver = 'gist';
+  } else if (ghToken && ghRepo) {
+    primaryDriver = 'repo';
+  } else if (isDev) {
+    primaryDriver = 'local';
+  }
+
+  // Determine backup driver (exclude primary driver from acting as backup)
+  let backupDriver = null;
+  if (backupGhRepo || (ghToken && ghRepo && primaryDriver !== 'repo')) {
+    backupDriver = 'repo';
+  } else if ((backupKvUrl && backupKvToken) || (kvUrl && kvToken && primaryDriver !== 'kv')) {
+    backupDriver = 'kv';
+  } else if (backupGistId || (ghToken && gistId && primaryDriver !== 'gist')) {
+    backupDriver = 'gist';
+  }
+
+  if (request.method === 'GET') {
+    // Safe environment diagnostic check (does not leak secret values)
+    const urlObj = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+    if (urlObj.searchParams.get('debug') === 'true') {
+      return response.status(200).json({
+        hasKvUrl: !!kvUrl,
+        hasKvToken: !!kvToken,
+        hasGhToken: !!ghToken,
+        hasGistId: !!gistId,
+        hasGhRepo: !!ghRepo,
+        hasBackupKvUrl: !!backupKvUrl,
+        hasBackupKvToken: !!backupKvToken,
+        hasBackupGistId: !!backupGistId,
+        hasBackupGhRepo: !!backupGhRepo,
+        primaryDriver,
+        backupDriver,
+        nodeEnv: process.env.NODE_ENV,
+        isVercel: !!process.env.VERCEL,
+      });
+    }
+
+    try {
+      // Try primary driver first
+      try {
+        const places = await readPlaces(primaryDriver, false, context);
+        return response.status(200).json(places);
+      } catch (primaryError) {
+        console.error(`Primary driver (${primaryDriver}) read failed:`, primaryError);
+        
+        // Try backup driver if configured
+        if (backupDriver) {
+          console.log(`Attempting read from backup driver: ${backupDriver}`);
+          try {
+            const places = await readPlaces(backupDriver, true, context);
+            return response.status(200).json(places);
+          } catch (backupError) {
+            console.error(`Backup driver (${backupDriver}) read failed:`, backupError);
+          }
+        }
+        
+        // Fallback to local (if dev) or memory
+        if (isDev && primaryDriver !== 'local' && backupDriver !== 'local') {
+          console.log('Falling back to local cache read');
+          return response.status(200).json(readLocalCache());
+        }
+        
+        console.log('Falling back to memory cache read');
+        if (!memoryCache) memoryCache = [];
+        return response.status(200).json(memoryCache);
+      }
     } catch (error) {
       console.error('Read handler error:', error);
       return response.status(500).json({ error: 'Failed to read places data', details: error.message });
@@ -227,46 +357,110 @@ export default async function handler(request, response) {
       let placesList = [];
       let source = 'memory';
 
-      // Fetch existing list based on configured driver
-      if (kvUrl && kvToken) {
-        placesList = await kv.get(PLACES_KEY) || [];
-        source = 'kv';
-      } else if (ghToken && gistId) {
-        placesList = await getGistPlaces(ghToken, gistId);
-        source = 'gist';
-      } else if (ghToken && ghRepo) {
-        placesList = await getRepoPlaces(ghToken, ghRepo);
-        source = 'repo';
-      } else if (isDev) {
-        placesList = readLocalCache();
-        source = 'local';
-      } else {
-        if (!memoryCache) memoryCache = [];
-        placesList = memoryCache;
+      // Fetch existing list (try primary, fallback to backup, then local/memory)
+      try {
+        placesList = await readPlaces(primaryDriver, false, context);
+        source = primaryDriver;
+      } catch (primaryError) {
+        console.error(`Primary driver (${primaryDriver}) read failed during save:`, primaryError);
+        if (backupDriver) {
+          try {
+            placesList = await readPlaces(backupDriver, true, context);
+            source = backupDriver + '_backup';
+          } catch (backupError) {
+            console.error(`Backup driver (${backupDriver}) read failed during save:`, backupError);
+            if (isDev) {
+              placesList = readLocalCache();
+              source = 'local';
+            } else {
+              placesList = memoryCache || [];
+              source = 'memory';
+            }
+          }
+        } else {
+          if (isDev) {
+            placesList = readLocalCache();
+            source = 'local';
+          } else {
+            placesList = memoryCache || [];
+            source = 'memory';
+          }
+        }
       }
 
       // De-duplicate items (newer place overrides older place with same ID)
       const filtered = placesList.filter(p => p.id !== newPlace.id);
       filtered.push(newPlace);
 
-      // Save list back
-      if (kvUrl && kvToken) {
-        await kv.set(PLACES_KEY, filtered);
-      } else if (ghToken && gistId) {
-        await saveGistPlaces(ghToken, gistId, filtered);
-      } else if (ghToken && ghRepo) {
-        await saveRepoPlaces(ghToken, ghRepo, 'places.json', filtered);
-      } else if (isDev) {
-        writeLocalCache(filtered);
-      } else {
-        memoryCache = filtered;
+      // Save to primary driver
+      let primarySaveSuccess = false;
+      let primarySaveError = null;
+      try {
+        primarySaveSuccess = await writePlaces(primaryDriver, false, filtered, context);
+      } catch (e) {
+        primarySaveError = e.message;
+        console.error(`Primary driver (${primaryDriver}) write failed:`, e);
       }
 
-      return response.status(200).json({ success: true, place: newPlace, source });
+      // Save to backup driver if configured
+      let backupSaveSuccess = false;
+      let backupSaveError = null;
+      if (backupDriver) {
+        try {
+          backupSaveSuccess = await writePlaces(backupDriver, true, filtered, context);
+        } catch (e) {
+          backupSaveError = e.message;
+          console.error(`Backup driver (${backupDriver}) write failed:`, e);
+        }
+      }
+
+      // Return response indicating status of saves
+      if (primarySaveSuccess) {
+        return response.status(200).json({
+          success: true,
+          place: newPlace,
+          source,
+          backupSaved: backupDriver ? backupSaveSuccess : undefined,
+          backupError: backupSaveError || undefined
+        });
+      } else if (backupSaveSuccess) {
+        // Primary failed but backup succeeded
+        return response.status(200).json({
+          success: true,
+          place: newPlace,
+          source,
+          primaryError: primarySaveError || 'Primary write failed',
+          backupSaved: true
+        });
+      } else {
+        // Both failed
+        throw new Error(primarySaveError || 'Write failed to all configured storage drivers');
+      }
 
     } catch (error) {
       console.error('Write handler error:', error);
       return response.status(500).json({ error: 'Failed to save place data', details: error.message });
+    }
+  }
+
+  if (request.method === 'DELETE') {
+    try {
+      const writePrimary = await writePlaces(primaryDriver, false, [], context);
+      let writeBackup = true;
+      if (backupDriver) {
+        writeBackup = await writePlaces(backupDriver, true, [], context);
+      }
+      return response.status(200).json({
+        success: true,
+        message: 'All custom places deleted successfully',
+        primaryDriver,
+        backupDriver,
+        primarySaved: writePrimary,
+        backupSaved: writeBackup
+      });
+    } catch (error) {
+      console.error('DELETE handler error:', error);
+      return response.status(500).json({ error: 'Failed to delete places data', details: error.message });
     }
   }
 

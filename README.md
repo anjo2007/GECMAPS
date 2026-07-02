@@ -89,7 +89,10 @@ flutter build web --release
 
 ## ☁️ Cloud Sync Setup
 
-The serverless API (`api/places.js`) supports multiple database backends. Configure via Vercel environment variables:
+The serverless API (`api/places.js`) supports multiple database backends and a **secondary backup option** to ensure reliability.
+
+### Primary Storage Options
+Configure one of the following as primary:
 
 | Backend | Environment Variables | Description |
 |---------|----------------------|-------------|
@@ -97,14 +100,26 @@ The serverless API (`api/places.js`) supports multiple database backends. Config
 | **GitHub Gist** | `GITHUB_TOKEN`, `GIST_ID` | Stores places in a GitHub Gist |
 | **GitHub Repo** | `GITHUB_TOKEN`, `GITHUB_REPO` | Stores `places.json` in a repository |
 
-If no backend is configured, the API uses an ephemeral in-memory cache (data resets on cold starts).
+### Secondary Backup Options
+You can configure a backup storage option that runs alongside the primary. If both a primary and backup are configured, the API performs **dual-writes** on every `POST` and **read failover** on `GET` (if the primary store fails/rate-limits).
+
+| Backup Backend | Environment Variables | Description |
+|---------|----------------------|-------------|
+| **GitHub Repo Backup** | `BACKUP_GITHUB_REPO` | Backup repository path (e.g., `username/repo`). Uses `GITHUB_TOKEN` |
+| **Vercel KV Backup** | `BACKUP_KV_REST_API_URL`, `BACKUP_KV_REST_API_TOKEN` | Secondary Vercel KV store |
+| **GitHub Gist Backup** | `BACKUP_GIST_ID` | Secondary GitHub Gist ID. Uses `GITHUB_TOKEN` |
+
+> [!NOTE]
+> If no explicit backup environment variable is set, any configured non-primary credentials (for example, configuring both `GIST_ID` and `GITHUB_REPO` concurrently) will automatically act as the backup driver.
+> If no backend is configured, the API uses an ephemeral in-memory cache.
 
 ### Deploy to Vercel
 
 1. Push this repository to GitHub
 2. Import the project on [Vercel](https://vercel.com)
 3. Vercel will automatically detect the configuration from `vercel.json`
-4. (Optional) Link a Vercel KV store for persistent cloud sync
+4. Configure environment variables for primary and backup storage options under Project Settings.
+5. (Optional) Link a Vercel KV store for persistent cloud sync
 
 ---
 
