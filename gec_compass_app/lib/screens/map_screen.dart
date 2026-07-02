@@ -65,6 +65,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   List<LatLng> _routingPath = [];
   List<String> _routeInstructions = [];
   int _currentInstructionIndex = 0;
+  String _navMode = 'walking';
+  List<double> _speedHistory = [];
 
   // Category filter state
   final List<String> _categories = ['All', 'Departments', 'Workshops', 'Hostels', 'Cafes/ATMs', 'Rooms/Labs'];
@@ -282,6 +284,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         ).listen((Position position) {
           if (!mounted) return;
           final newPos = LatLng(position.latitude, position.longitude);
+          
+          setState(() {
+            if (_isNavigating && position.speed > 0) {
+              _speedHistory.add(position.speed);
+              if (_speedHistory.length > 8) {
+                _speedHistory.removeAt(0);
+              }
+            }
+          });
           
           if (!_pdrService.isActive) {
             _pdrService.startPDR(newPos);
@@ -509,6 +520,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         _stepsAtStairsZoneEnter = null;
         _stepCount = 0;
         _pdrTrail = [startPos];
+        _speedHistory = [];
         _routingPath = path;
         _originalRoutingPath = List<LatLng>.from(path);
         _lastClosestRouteIndex = 0;
@@ -548,6 +560,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _staircaseCompleted = false;
       _stepsAtStairsZoneEnter = null;
       _pdrTrail.clear();
+      _speedHistory.clear();
       _routingPath.clear();
       _routeInstructions.clear();
       _currentInstructionIndex = 0;
@@ -1974,10 +1987,71 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
+  double get _calculatedSpeed {
+    if (_navMode == 'walking') {
+      return 1.3;
+    } else if (_navMode == 'cycling') {
+      return 4.5;
+    } else { // auto mode
+      if (_speedHistory.isEmpty) return 1.3;
+      final avg = _speedHistory.reduce((a, b) => a + b) / _speedHistory.length;
+      if (avg < 0.5) return 1.3;
+      return avg.clamp(0.5, 10.0);
+    }
+  }
+
+  Widget _buildModeChip(String mode, IconData icon, String label) {
+    final isSelected = _navMode == mode;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _navMode = mode;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? const Color(0xFF10B981) 
+              : (_appThemeMode == 'light' ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.transparent : _borderColor,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.white : _textColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : _textColor.withValues(alpha: 0.8),
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildNavigationOverlay() {
     if (_selectedBuilding == null || _currentPosition == null) return const SizedBox.shrink();
 
     final dist = _distanceMeters(_currentPosition!, LatLng(_selectedBuilding!.lat, _selectedBuilding!.lng));
+    double pathDistance = 0.0;
+    if (_routingPath.length >= 2) {
+      for (int i = 0; i < _routingPath.length - 1; i++) {
+        pathDistance += _distanceMeters(_routingPath[i], _routingPath[i + 1]);
+      }
+    } else {
+      pathDistance = dist;
+    }
     final floorTag = _selectedBuilding!.tags['floor'];
     
     String primaryInstruction = "Head towards ${_selectedBuilding!.name}";
@@ -2052,8 +2126,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       topBarColor = const Color(0xFF10B981); // Emerald green for arrival
     }
 
-    // Average walking speed ~1.3 m/s
-    final double timeSeconds = dist / 1.3;
+    // Calculate time to reach based on speed of movement and path distance
+    final double timeSeconds = pathDistance / _calculatedSpeed;
     int minutes = (timeSeconds / 60).ceil();
     if (minutes < 1) minutes = 1;
 
@@ -2189,8 +2263,25 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         children: [
                           Text("$minutes min", style: const TextStyle(color: Color(0xFF10B981), fontSize: 28, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 12),
-                          Text(_formatDistance(dist), style: TextStyle(color: _textColor.withValues(alpha: 0.8), fontSize: 18)),
+                          Text(_formatDistance(pathDistance), style: TextStyle(color: _textColor.withValues(alpha: 0.8), fontSize: 18)),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildModeChip('walking', Icons.directions_walk, "Walk"),
+                            const SizedBox(width: 6),
+                            _buildModeChip('cycling', Icons.directions_bike, "Cycle"),
+                            const SizedBox(width: 6),
+                            _buildModeChip(
+                              'auto', 
+                              Icons.speed, 
+                              "Auto ${(_calculatedSpeed * 3.6).toStringAsFixed(1)} km/h"
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

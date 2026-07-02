@@ -311,6 +311,7 @@ export default async function handler(request, response) {
     }
 
     try {
+      response.setHeader('x-storage-persistence', primaryDriver === 'memory' ? 'none' : 'persistent');
       // Try primary driver first
       try {
         const places = await readPlaces(primaryDriver, false, context);

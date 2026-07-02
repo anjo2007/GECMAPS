@@ -94,7 +94,20 @@ class DataService {
               decoded is List ? decoded : [];
           customBuildings =
               apiList.map((j) => Building.fromJson(j)).toList();
-          await _syncLocalCache(customBuildings);
+          
+          final persistenceHeader = response.headers['x-storage-persistence'];
+          if (persistenceHeader == 'none') {
+            debugPrint('Cloud database is not persistent (memory mode). Merging local cache to avoid data loss.');
+            final localPlaces = await _loadCustomBuildingsLocal();
+            final Map<String, Building> merged = {
+              for (var b in localPlaces) b.id: b,
+              for (var b in customBuildings) b.id: b,
+            };
+            customBuildings = merged.values.toList();
+          } else {
+            await _syncLocalCache(customBuildings);
+          }
+          
           loadedFromCloud = true;
           debugPrint(
               'Loaded ${customBuildings.length} places from cloud API.');
