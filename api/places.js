@@ -493,7 +493,7 @@ export default async function handler(request, response) {
   if (request.method === 'DELETE') {
     try {
       const urlObj = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
-      const idToDelete = urlObj.searchParams.get('id');
+      const idToDelete = (request.query && request.query.id) || urlObj.searchParams.get('id');
 
       if (idToDelete) {
         // Fetch existing list
