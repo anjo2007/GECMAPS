@@ -3348,6 +3348,83 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    backgroundColor: _cardBgColor,
+                                    title: Text('Delete Place', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+                                    content: Text('Are you sure you want to delete "${building.name}" permanently?', style: TextStyle(color: _textColor)),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, false),
+                                        child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        child: const Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                
+                                if (confirm == true) {
+                                  setModalState(() {
+                                    isSaving = true;
+                                  });
+                                  try {
+                                    await _dataService.deleteCustomBuilding(building.id);
+                                    
+                                    setState(() {
+                                      _buildings.removeWhere((b) => b.id == building.id);
+                                      _selectedBuilding = null;
+                                    });
+                                    
+                                    if (context.mounted) {
+                                      Navigator.pop(context); // close modal
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('"${building.name}" deleted successfully!'),
+                                          backgroundColor: Colors.redAccent,
+                                        )
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Failed to delete: $e'),
+                                          backgroundColor: Colors.redAccent,
+                                        )
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setModalState(() {
+                                        isSaving = false;
+                                      });
+                                    }
+                                  }
+                                }
+                              },
+                        icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                        label: const Text(
+                          "Delete Place",
+                          style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Colors.redAccent, width: 2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -492,19 +492,44 @@ export default async function handler(request, response) {
 
   if (request.method === 'DELETE') {
     try {
-      const writePrimary = await writePlaces(primaryDriver, false, [], context);
-      let writeBackup = true;
-      if (backupDriver) {
-        writeBackup = await writePlaces(backupDriver, true, [], context);
+      const urlObj = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+      const idToDelete = urlObj.searchParams.get('id');
+
+      if (idToDelete) {
+        // Fetch existing list
+        const placesList = await readPlaces(primaryDriver, false, context);
+        const filtered = placesList.filter(p => p.id !== idToDelete);
+
+        const writePrimary = await writePlaces(primaryDriver, false, filtered, context);
+        let writeBackup = true;
+        if (backupDriver) {
+          writeBackup = await writePlaces(backupDriver, true, filtered, context);
+        }
+
+        return response.status(200).json({
+          success: true,
+          message: `Place ${idToDelete} deleted successfully`,
+          primaryDriver,
+          backupDriver,
+          primarySaved: writePrimary,
+          backupSaved: writeBackup
+        });
+      } else {
+        // Clear all custom places
+        const writePrimary = await writePlaces(primaryDriver, false, [], context);
+        let writeBackup = true;
+        if (backupDriver) {
+          writeBackup = await writePlaces(backupDriver, true, [], context);
+        }
+        return response.status(200).json({
+          success: true,
+          message: 'All custom places deleted successfully',
+          primaryDriver,
+          backupDriver,
+          primarySaved: writePrimary,
+          backupSaved: writeBackup
+        });
       }
-      return response.status(200).json({
-        success: true,
-        message: 'All custom places deleted successfully',
-        primaryDriver,
-        backupDriver,
-        primarySaved: writePrimary,
-        backupSaved: writeBackup
-      });
     } catch (error) {
       console.error('DELETE handler error:', error);
       return response.status(500).json({ error: 'Failed to delete places data', details: error.message });

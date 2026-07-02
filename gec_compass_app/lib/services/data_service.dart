@@ -185,4 +185,32 @@ class DataService {
       throw Exception(errorMessage);
     }
   }
+
+  Future<void> deleteCustomBuilding(String id) async {
+    final apiUrl = await _getApiUrl();
+    final response = await http
+        .delete(Uri.parse('$apiUrl?id=$id'))
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      debugPrint('Deleted custom building from cloud: $id');
+      try {
+        final customBuildings = await _loadCustomBuildingsLocal();
+        customBuildings.removeWhere((b) => b.id == id);
+        await _syncLocalCache(customBuildings);
+        debugPrint('Removed custom building locally: $id');
+      } catch (e) {
+        debugPrint('Error removing custom building locally: $e');
+      }
+    } else {
+      String errorMessage = 'Failed to delete place from cloud.';
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded.containsKey('error')) {
+          errorMessage = decoded['error'] as String;
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
+    }
+  }
 }
