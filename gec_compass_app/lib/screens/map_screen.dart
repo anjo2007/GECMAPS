@@ -3355,31 +3355,71 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         onPressed: isSaving
                             ? null
                             : () async {
-                                final confirm = await showDialog<bool>(
+                                final String? enteredCode = await showDialog<String>(
                                   context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    backgroundColor: _cardBgColor,
-                                    title: Text('Delete Place', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
-                                    content: Text('Are you sure you want to delete "${building.name}" permanently?', style: TextStyle(color: _textColor)),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(ctx, false),
-                                        child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                  builder: (ctx) {
+                                    final controller = TextEditingController();
+                                    return AlertDialog(
+                                      backgroundColor: _cardBgColor,
+                                      title: Text('Security Verification', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Are you sure you want to delete "${building.name}" permanently?', style: TextStyle(color: _textColor)),
+                                          const SizedBox(height: 16),
+                                          Text('Enter security code to delete:', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 6),
+                                          TextField(
+                                            controller: controller,
+                                            style: TextStyle(color: _textColor),
+                                            decoration: InputDecoration(
+                                              hintText: 'Security Code',
+                                              hintStyle: TextStyle(color: _textColor.withValues(alpha: 0.5)),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderSide: BorderSide(color: _borderColor),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderSide: BorderSide(color: Colors.redAccent),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(ctx, true),
-                                        child: const Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                                      ),
-                                    ],
-                                  ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx, null),
+                                          child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                                          child: const Text('Confirm Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 );
                                 
-                                if (confirm == true) {
+                                if (enteredCode != null) {
+                                  if (!context.mounted) return;
+                                  if (enteredCode.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Delete cancelled: Security code cannot be empty.'),
+                                        backgroundColor: Colors.redAccent,
+                                      )
+                                    );
+                                    return;
+                                  }
+
                                   setModalState(() {
                                     isSaving = true;
                                   });
                                   try {
-                                    await _dataService.deleteCustomBuilding(building.id);
+                                    await _dataService.deleteCustomBuilding(building.id, enteredCode);
                                     
                                     setState(() {
                                       _buildings.removeWhere((b) => b.id == building.id);

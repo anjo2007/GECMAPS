@@ -186,10 +186,13 @@ class DataService {
     }
   }
 
-  Future<void> deleteCustomBuilding(String id) async {
+  Future<void> deleteCustomBuilding(String id, String code) async {
     final apiUrl = await _getApiUrl();
     final response = await http
-        .delete(Uri.parse('$apiUrl?id=$id'))
+        .delete(
+          Uri.parse('$apiUrl?id=$id&code=$code'),
+          headers: {'x-security-code': code},
+        )
         .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 200) {

@@ -494,6 +494,11 @@ export default async function handler(request, response) {
     try {
       const urlObj = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
       const idToDelete = (request.query && request.query.id) || urlObj.searchParams.get('id');
+      const enteredCode = (request.query && request.query.code) || urlObj.searchParams.get('code') || request.headers['x-security-code'];
+
+      if (enteredCode !== '8714743183') {
+        return response.status(403).json({ error: 'Unauthorized: Invalid or missing security code' });
+      }
 
       if (idToDelete) {
         // Fetch existing list
