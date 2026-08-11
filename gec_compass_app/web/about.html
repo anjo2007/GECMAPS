@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  
+  <title>About GECT Compass | GEC Maps & GECT Maps Navigation</title>
+  <meta name="title" content="About GECT Compass | GEC Maps & GECT Maps Navigation">
+  <meta name="description" content="Discover GECT Compass (GEC Maps & GECT Maps) - community-built campus navigation system for Government Engineering College (GEC) Thrissur created by Gectians. Built by Anjo M J, Aman Hemanth, and ABID MUHAMMED N.">
+  <meta name="keywords" content="gec maps, gect maps, GECT Compass, About GECT Compass, GEC Compass Team, GEC Maps Creators, Anjo M J, Aman Hemanth, ABID MUHAMMED N, GEC Thrissur Community Project, GECT Campus Navigation, GEC TCR Maps">
+  <meta name="author" content="Gectians Community Project">
+  <meta name="robots" content="index, follow">
+
+  <link rel="canonical" href="https://gecmaps.vercel.app/about">
+
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gecmaps.vercel.app/about">
+  <meta property="og:title" content="About GECT Compass | GEC Maps & GECT Maps">
+  <meta property="og:description" content="GECT Compass (GEC Maps & GECT Maps) community-built campus navigation system for Government Engineering College (GEC) Thrissur created by Gectians.">
+  <meta property="og:image" content="https://gecmaps.vercel.app/icons/Icon-512.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://gecmaps.vercel.app/about">
+  <meta name="twitter:title" content="About GECT Compass | GEC Maps & GECT Maps">
+  <meta name="twitter:description" content="GECT Compass (GEC Maps & GECT Maps) community-built campus navigation system for Government Engineering College (GEC) Thrissur created by Gectians.">
+  <meta name="twitter:image" content="https://gecmaps.vercel.app/icons/Icon-512.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- JSON-LD Structured Data for About Page & Creators -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "name": "About GECT Compass",
+    "url": "https://gecmaps.vercel.app/about",
+    "description": "About GECT Compass campus navigation system created as a community project by Gectians for Government Engineering College Thrissur.",
+    "mainEntity": {
+      "@type": "SoftwareApplication",
+      "name": "GECT Compass",
+      "applicationCategory": "NavigationApplication",
+      "operatingSystem": "Android, iOS, Web",
+      "creator": [
+        {
+          "@type": "Person",
+          "name": "Anjo M J",
+          "jobTitle": "Team Leader & Head of Tech"
+        },
+        {
+          "@type": "Person",
+          "name": "Aman Hemanth",
+          "jobTitle": "Core Contributor"
+        },
+        {
+          "@type": "Person",
+          "name": "ABID MUHAMMED N",
+          "jobTitle": "Core Contributor"
+        }
+      ],
+      "sponsor": {
+        "@type": "EducationalOrganization",
+        "name": "Government Engineering College Thrissur",
+        "url": "http://gectcr.ac.in/"
+      }
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg-dark: #0B0F17;
+      --card-bg: rgba(18, 24, 38, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-blue: #2563EB;
+      --accent-cyan: #06B6D4;
+      --accent-purple: #8B5CF6;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(6, 182, 212, 0.12) 0%, transparent 40%);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    /* Header & Hero */
+    header {
+      text-align: center;
+      padding: 60px 20px 40px;
+      position: relative;
+    }
+
+    .community-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(37, 99, 235, 0.2), rgba(6, 182, 212, 0.2));
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      color: #38BDF8;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.15);
+    }
+
+    .hero-title {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #FFFFFF 30%, #94A3B8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #3B82F6, #06B6D4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 750px;
+      margin: 0 auto 32px;
+      font-weight: 400;
+    }
+
+    /* Grid Layouts */
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 60px 0 28px;
+      text-align: center;
+      position: relative;
+    }
+
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+      margin: 10px auto 0;
+      border-radius: 2px;
+    }
+
+    /* Glass Cards */
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(59, 130, 246, 0.4);
+      box-shadow: 0 20px 40px rgba(37, 99, 235, 0.15);
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 16px;
+      display: inline-block;
+      padding: 12px;
+      background: rgba(37, 99, 235, 0.1);
+      border-radius: 14px;
+      color: #3B82F6;
+    }
+
+    .feature-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #F8FAFC;
+    }
+
+    .feature-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    /* Team Grid */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      margin-top: 30px;
+    }
+
+    .team-card {
+      text-align: center;
+      padding: 36px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .team-avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, #2563EB, #06B6D4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+      border: 3px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .team-name {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 6px;
+    }
+
+    .team-role {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #38BDF8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+
+    .team-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* CTA Section */
+    .cta-section {
+      text-align: center;
+      padding: 60px 32px;
+      margin-top: 60px;
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.08));
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 24px;
+    }
+
+    .cta-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.25s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563EB, #06B6D4);
+      color: #FFFFFF;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #F8FAFC;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--card-border);
+      margin-top: 60px;
+    }
+
+    @media (max-width: 768px) {
+      .hero-title { font-size: 2.2rem; }
+      .hero-subtitle { font-size: 1rem; }
+      .container { padding: 20px 16px; }
+      .glass-card { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="community-badge">
+        <span>🤝</span> A Community Project by Gectians for GEC TCR
+      </div>
+      <h1 class="hero-title">About <span>GECT Compass</span></h1>
+      <p class="hero-subtitle">
+        The ultimate indoor and outdoor campus navigation system for Government Engineering College (GEC) Thrissur. Designed to help students, faculty, staff, and visitors navigate every department, lab, classroom, and amenity seamlessly.
+      </p>
+    </header>
+
+    <!-- Mission & Overview -->
+    <section>
+      <div class="glass-card">
+        <h2 style="font-size: 1.6rem; font-weight: 700; margin-bottom: 16px; color: #38BDF8;">Our Mission</h2>
+        <p style="color: #CBD5E1; font-size: 1.05rem; line-height: 1.8;">
+          Navigating a sprawling 120-acre engineering campus like GEC Thrissur can be challenging for freshers, event attendees, and visitors. <strong>GECT Compass</strong> was built to solve campus navigation through accurate Dijkstra road-network routing, real-time GPS tracking, live compass direction, and offline capability.
+        </p>
+        <p style="color: #94A3B8; margin-top: 12px; font-size: 0.98rem;">
+          Created as a non-profit community project by passionate students and alumni (Gectians), GECT Compass delivers a state-of-the-art digital mapping experience dedicated to serving the entire GEC TCR family.
+        </p>
+      </div>
+    </section>
+
+    <!-- Key Features -->
+    <h2 class="section-title">App Features</h2>
+    <div class="features-grid">
+      <div class="glass-card">
+        <div class="feature-icon">🗺️</div>
+        <h3 class="feature-title">High-Definition Campus Map</h3>
+        <p class="feature-desc">Detailed satellite and labeled vector map covering all main blocks, department workshops, auditoriums, hostels, and amenities.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="feature-icon">🚶</div>
+        <h3 class="feature-title">Turn-by-Turn Road Routing</h3>
+        <p class="feature-desc">Powered by Dijkstra shortest-path algorithms mapped precisely along internal campus walkways and roads.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="feature-icon">📍</div>
+        <h3 class="feature-title">Real-Time GPS & Compass</h3>
+        <p class="feature-desc">Live blue-dot location indicator with hardware compass heading detection to keep you oriented on campus grounds.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="feature-icon">⚡</div>
+        <h3 class="feature-title">Offline Routing Capability</h3>
+        <p class="feature-desc">Engineered with offline caching so navigation functions seamlessly even in low connectivity zones.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="feature-icon">🏢</div>
+        <h3 class="feature-title">Complete Room Directory</h3>
+        <p class="feature-desc">Quick search directory for CSE, ECE, EEE, ME, CE, CHE, PE, MCA departments, CCF, central library, and labs.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="feature-icon">☁️</div>
+        <h3 class="feature-title">Cloud Place Sync</h3>
+        <p class="feature-desc">Real-time serverless synchronization enabling custom place updates across mobile and web platforms.</p>
+      </div>
+    </div>
+
+    <!-- Meet the Team -->
+    <h2 class="section-title">Meet the Team</h2>
+    <p style="text-align: center; color: var(--text-muted); max-width: 600px; margin: -10px auto 20px;">
+      GECT Compass is proud to be a community project built by Gectians for GEC TCR.
+    </p>
+
+    <div class="team-grid">
+      <!-- Team Lead -->
+      <div class="glass-card team-card">
+        <div class="team-avatar">AM</div>
+        <h3 class="team-name">Anjo M J</h3>
+        <div class="team-role">Team Leader & Head of Tech</div>
+        <p class="team-desc">Lead software architect driving application design, Flutter cross-platform engine, routing logic, and cloud deployment.</p>
+      </div>
+
+      <!-- Core Contributor 1 -->
+      <div class="glass-card team-card">
+        <div class="team-avatar">AH</div>
+        <h3 class="team-name">Aman Hemanth</h3>
+        <div class="team-role">Core Contributor</div>
+        <p class="team-desc">Key developer specializing in spatial mapping data, algorithm optimization, and campus asset validation.</p>
+      </div>
+
+      <!-- Core Contributor 2 -->
+      <div class="glass-card team-card">
+        <div class="team-avatar">AN</div>
+        <h3 class="team-name">ABID MUHAMMED N</h3>
+        <div class="team-role">Core Contributor</div>
+        <p class="team-desc">Core contributor focusing on campus road graph mapping, user interface polish, and community outreach.</p>
+      </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="cta-section">
+      <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 12px;">Experience GECT Compass Today</h2>
+      <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto;">Available directly on your browser or as a lightweight native Android APK.</p>
+      <div class="cta-buttons">
+        <a href="/" class="btn btn-primary">🌐 Open Web Application</a>
+        <a href="/app-release.apk" class="btn btn-secondary">📲 Download Android APK</a>
+      </div>
+    </div>
+
+    <footer>
+      <p>© 2026 GECT Compass. Built with ❤️ by Gectians for Government Engineering College Thrissur.</p>
+    </footer>
+  </div>
+
+</body>
+</html>

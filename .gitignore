@@ -1,0 +1,16 @@
+# IDE & System
+.idea/
+.DS_Store
+*.log
+
+# Node & Flutter build tools
+node_modules/
+.dart_tool/
+.pub/
+.pub-cache/
+gec_compass_app/.dart_tool/
+gec_compass_app/.pub/
+gec_compass_app/build/
+sensor_logger_app/.dart_tool/
+sensor_logger_app/.pub/
+sensor_logger_app/build/

@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /icons/
+Allow: /favicon.png
+Allow: /manifest.json
+Allow: /api/
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+Sitemap: https://gecmaps.vercel.app/sitemap.xml

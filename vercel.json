@@ -1,0 +1,23 @@
+{
+  "installCommand": "npm install",
+  "buildCommand": "bash vercel-build.sh",
+  "outputDirectory": "gec_compass_app/build/web",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/about",
+      "destination": "/about.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

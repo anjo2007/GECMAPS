@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://gecmaps.vercel.app/</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/icons/Icon-512.png</image:loc>
+      <image:title>GECT Compass - GEC Thrissur Campus Map</image:title>
+      <image:caption>Interactive campus map &amp; navigation system for Government Engineering College Thrissur.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/about</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=3673608143</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=3673608143&amp;image=true</image:loc>
+      <image:title>State Bank of India - GEC Thrissur</image:title>
+      <image:caption>Location of State Bank of India at Government Engineering College Thrissur (Lat: 10.5540944, Lng: 76.2264121).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5491824377</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5491824377&amp;image=true</image:loc>
+      <image:title>Ushus - GEC Thrissur</image:title>
+      <image:caption>Location of Ushus at Government Engineering College Thrissur (Lat: 10.5524399, Lng: 76.2282883).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907766702</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907766702&amp;image=true</image:loc>
+      <image:title>South Indian Bank - GEC Thrissur</image:title>
+      <image:caption>Location of South Indian Bank at Government Engineering College Thrissur (Lat: 10.5520774, Lng: 76.2267813).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907766703</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907766703&amp;image=true</image:loc>
+      <image:title>Vimala College Chapel - GEC Thrissur</image:title>
+      <image:caption>Location of Vimala College Chapel at Government Engineering College Thrissur (Lat: 10.5523134, Lng: 76.2264343).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907766705</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907766705&amp;image=true</image:loc>
+      <image:title>Milma Store - GEC Thrissur</image:title>
+      <image:caption>Location of Milma Store at Government Engineering College Thrissur (Lat: 10.5535849, Lng: 76.2261035).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907766712</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907766712&amp;image=true</image:loc>
+      <image:title>Ice and Bakes - GEC Thrissur</image:title>
+      <image:caption>Location of Ice and Bakes at Government Engineering College Thrissur (Lat: 10.5545195, Lng: 76.2267115).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907781916</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907781916&amp;image=true</image:loc>
+      <image:title>Bay Leaf Restaurant - GEC Thrissur</image:title>
+      <image:caption>Location of Bay Leaf Restaurant at Government Engineering College Thrissur (Lat: 10.5558752, Lng: 76.2273301).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907781917</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907781917&amp;image=true</image:loc>
+      <image:title>Rockland - GEC Thrissur</image:title>
+      <image:caption>Location of Rockland at Government Engineering College Thrissur (Lat: 10.5558108, Lng: 76.22717).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907781918</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907781918&amp;image=true</image:loc>
+      <image:title>MEA Masjid - GEC Thrissur</image:title>
+      <image:caption>Location of MEA Masjid at Government Engineering College Thrissur (Lat: 10.5551133, Lng: 76.228247).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907781920</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907781920&amp;image=true</image:loc>
+      <image:title>Police Dog Squad Thrissur - GEC Thrissur</image:title>
+      <image:caption>Location of Police Dog Squad Thrissur at Government Engineering College Thrissur (Lat: 10.5561828, Lng: 76.2265405).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907781921</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907781921&amp;image=true</image:loc>
+      <image:title>Office of The Deputy Commandant, Dist. Armed Reserve, Ramavarmapuram,Thrissur - GEC Thrissur</image:title>
+      <image:caption>Location of Office of The Deputy Commandant, Dist. Armed Reserve, Ramavarmapuram,Thrissur at Government Engineering College Thrissur (Lat: 10.5565513, Lng: 76.2272391).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907781922</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907781922&amp;image=true</image:loc>
+      <image:title>916 Fried Chicken - GEC Thrissur</image:title>
+      <image:caption>Location of 916 Fried Chicken at Government Engineering College Thrissur (Lat: 10.556258, Lng: 76.2281124).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907781923</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907781923&amp;image=true</image:loc>
+      <image:title>Lassi Corner - GEC Thrissur</image:title>
+      <image:caption>Location of Lassi Corner at Government Engineering College Thrissur (Lat: 10.5569722, Lng: 76.2285766).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=5907816966</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=5907816966&amp;image=true</image:loc>
+      <image:title>Juma Masji - GEC Thrissur</image:title>
+      <image:caption>Location of Juma Masji at Government Engineering College Thrissur (Lat: 10.557934, Lng: 76.2299149).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=7736908650</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=7736908650&amp;image=true</image:loc>
+      <image:title>Thrissur Engineering College Sub-Post Office - GEC Thrissur</image:title>
+      <image:caption>Location of Thrissur Engineering College Sub-Post Office at Government Engineering College Thrissur (Lat: 10.5540642, Lng: 76.2264114).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=8344921530</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=8344921530&amp;image=true</image:loc>
+      <image:title>Akshaya Centre, Pallimoola - GEC Thrissur</image:title>
+      <image:caption>Location of Akshaya Centre, Pallimoola at Government Engineering College Thrissur (Lat: 10.5554878, Lng: 76.2271479).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=8833391700</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=8833391700&amp;image=true</image:loc>
+      <image:title>Green Pharma - GEC Thrissur</image:title>
+      <image:caption>Location of Green Pharma at Government Engineering College Thrissur (Lat: 10.5560978, Lng: 76.2278388).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=9537578161</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=9537578161&amp;image=true</image:loc>
+      <image:title>Gloria Gopikumar Hall (Wester Amphitheatre) - GEC Thrissur</image:title>
+      <image:caption>Location of Gloria Gopikumar Hall (Wester Amphitheatre) at Government Engineering College Thrissur (Lat: 10.5545006, Lng: 76.2241289).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=9537578162</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=9537578162&amp;image=true</image:loc>
+      <image:title>Eastern Amphitheatre - GEC Thrissur</image:title>
+      <image:caption>Location of Eastern Amphitheatre at Government Engineering College Thrissur (Lat: 10.5545058, Lng: 76.2252164).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=9537578167</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=9537578167&amp;image=true</image:loc>
+      <image:title>GECT Cafeteria - GEC Thrissur</image:title>
+      <image:caption>Location of GECT Cafeteria at Government Engineering College Thrissur (Lat: 10.5539729, Lng: 76.2242327).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=10841759609</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=10841759609&amp;image=true</image:loc>
+      <image:title>Cake With Us - GEC Thrissur</image:title>
+      <image:caption>Location of Cake With Us at Government Engineering College Thrissur (Lat: 10.5545964, Lng: 76.2265357).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=115714366</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=115714366&amp;image=true</image:loc>
+      <image:title>Central Auditorium - GEC Thrissur</image:title>
+      <image:caption>Location of Central Auditorium at Government Engineering College Thrissur (Lat: 10.5535948, Lng: 76.2245669).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=115714450</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=115714450&amp;image=true</image:loc>
+      <image:title>Mechanical Engineering Workshops - GEC Thrissur</image:title>
+      <image:caption>Location of Mechanical Engineering Workshops at Government Engineering College Thrissur (Lat: 10.552883, Lng: 76.2246257).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=115714487</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=115714487&amp;image=true</image:loc>
+      <image:title>Electrical Engineering workshops - GEC Thrissur</image:title>
+      <image:caption>Location of Electrical Engineering workshops at Government Engineering College Thrissur (Lat: 10.5530023, Lng: 76.2259154).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=115714492</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=115714492&amp;image=true</image:loc>
+      <image:title>Civil Engineering Workshop - GEC Thrissur</image:title>
+      <image:caption>Location of Civil Engineering Workshop at Government Engineering College Thrissur (Lat: 10.5537076, Lng: 76.2258611).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=115714570</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=115714570&amp;image=true</image:loc>
+      <image:title>Vimala College Thrissur - GEC Thrissur</image:title>
+      <image:caption>Location of Vimala College Thrissur at Government Engineering College Thrissur (Lat: 10.5530736, Lng: 76.2268773).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=115714680</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=115714680&amp;image=true</image:loc>
+      <image:title>Dept. of Chemical Engineering - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Chemical Engineering at Government Engineering College Thrissur (Lat: 10.552614, Lng: 76.2232924).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=315753702</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=315753702&amp;image=true</image:loc>
+      <image:title>St. Francis Xavier&apos;s Church Vijayapuram - GEC Thrissur</image:title>
+      <image:caption>Location of St. Francis Xavier&apos;s Church Vijayapuram at Government Engineering College Thrissur (Lat: 10.5550309, Lng: 76.226831).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=315753811</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=315753811&amp;image=true</image:loc>
+      <image:title>Jubilee Parish Hall - GEC Thrissur</image:title>
+      <image:caption>Location of Jubilee Parish Hall at Government Engineering College Thrissur (Lat: 10.5548361, Lng: 76.2271242).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=333757869</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=333757869&amp;image=true</image:loc>
+      <image:title>Dept. of Electronics and Communication Engineering, GECT - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Electronics and Communication Engineering, GECT at Government Engineering College Thrissur (Lat: 10.5527095, Lng: 76.2216185).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=333758244</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=333758244&amp;image=true</image:loc>
+      <image:title>Dept. of Computer Science and Engineering - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Computer Science and Engineering at Government Engineering College Thrissur (Lat: 10.5527399, Lng: 76.2220205).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=333758245</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=333758245&amp;image=true</image:loc>
+      <image:title>Dept. of Production Engineering - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Production Engineering at Government Engineering College Thrissur (Lat: 10.5527995, Lng: 76.2225682).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=363172473</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=363172473&amp;image=true</image:loc>
+      <image:title>Main Building - GEC Thrissur</image:title>
+      <image:caption>Location of Main Building at Government Engineering College Thrissur (Lat: 10.5544176, Lng: 76.2246677).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=363172794</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=363172794&amp;image=true</image:loc>
+      <image:title>A-Block Mens Hostel - GEC Thrissur</image:title>
+      <image:caption>Location of A-Block Mens Hostel at Government Engineering College Thrissur (Lat: 10.5544423, Lng: 76.2221209).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=425745732</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=425745732&amp;image=true</image:loc>
+      <image:title>vimala college hostel - GEC Thrissur</image:title>
+      <image:caption>Location of vimala college hostel at Government Engineering College Thrissur (Lat: 10.5522469, Lng: 76.2262863).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=429995792</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=429995792&amp;image=true</image:loc>
+      <image:title>I.M.A. Blood Bank Complex and Research Centre - GEC Thrissur</image:title>
+      <image:caption>Location of I.M.A. Blood Bank Complex and Research Centre at Government Engineering College Thrissur (Lat: 10.5598421, Lng: 76.2268681).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=453249819</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=453249819&amp;image=true</image:loc>
+      <image:title>Fire and Rescue Station, Viyyur - GEC Thrissur</image:title>
+      <image:caption>Location of Fire and Rescue Station, Viyyur at Government Engineering College Thrissur (Lat: 10.5558619, Lng: 76.2237502).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=664126474</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=664126474&amp;image=true</image:loc>
+      <image:title>Canteen - GEC Thrissur</image:title>
+      <image:caption>Location of Canteen at Government Engineering College Thrissur (Lat: 10.5523325, Lng: 76.2243316).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=673856257</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=673856257&amp;image=true</image:loc>
+      <image:title>South Indian Bank - GEC Thrissur</image:title>
+      <image:caption>Location of South Indian Bank at Government Engineering College Thrissur (Lat: 10.552176, Lng: 76.2268524).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=673856472</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=673856472&amp;image=true</image:loc>
+      <image:title>South Indian Bank - GEC Thrissur</image:title>
+      <image:caption>Location of South Indian Bank at Government Engineering College Thrissur (Lat: 10.5519768, Lng: 76.2268941).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=726612600</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=726612600&amp;image=true</image:loc>
+      <image:title>Dept. of Architecture - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Architecture at Government Engineering College Thrissur (Lat: 10.553398, Lng: 76.2211375).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=726628926</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=726628926&amp;image=true</image:loc>
+      <image:title>Dept. of Civil Engineering - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Civil Engineering at Government Engineering College Thrissur (Lat: 10.5539403, Lng: 76.2251566).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=726629162</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=726629162&amp;image=true</image:loc>
+      <image:title>GECT Library - GEC Thrissur</image:title>
+      <image:caption>Location of GECT Library at Government Engineering College Thrissur (Lat: 10.5539858, Lng: 76.2247009).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=726764417</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=726764417&amp;image=true</image:loc>
+      <image:title>Ladies Amenity Centre - GEC Thrissur</image:title>
+      <image:caption>Location of Ladies Amenity Centre at Government Engineering College Thrissur (Lat: 10.5538525, Lng: 76.2249177).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=726764929</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=726764929&amp;image=true</image:loc>
+      <image:title>Dept. of Physical Education and gym - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Physical Education and gym at Government Engineering College Thrissur (Lat: 10.5539421, Lng: 76.2242923).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=760600128</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=760600128&amp;image=true</image:loc>
+      <image:title>Post Graduate block - GEC Thrissur</image:title>
+      <image:caption>Location of Post Graduate block at Government Engineering College Thrissur (Lat: 10.5534405, Lng: 76.2205772).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=760600129</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=760600129&amp;image=true</image:loc>
+      <image:title>E-Block Mens Hostel - GEC Thrissur</image:title>
+      <image:caption>Location of E-Block Mens Hostel at Government Engineering College Thrissur (Lat: 10.553727, Lng: 76.2206448).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=760602029</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=760602029&amp;image=true</image:loc>
+      <image:title>Dept. of Electrical and Electronics Engineering - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Electrical and Electronics Engineering at Government Engineering College Thrissur (Lat: 10.5521713, Lng: 76.2237962).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=798214455</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=798214455&amp;image=true</image:loc>
+      <image:title>Little Star Restaurant - GEC Thrissur</image:title>
+      <image:caption>Location of Little Star Restaurant at Government Engineering College Thrissur (Lat: 10.5542094, Lng: 76.2266852).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=799003385</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=799003385&amp;image=true</image:loc>
+      <image:title>District institution of education and training,Thrissur - GEC Thrissur</image:title>
+      <image:caption>Location of District institution of education and training,Thrissur at Government Engineering College Thrissur (Lat: 10.5556283, Lng: 76.2256698).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=800962532</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=800962532&amp;image=true</image:loc>
+      <image:title>MEA masjid - GEC Thrissur</image:title>
+      <image:caption>Location of MEA masjid at Government Engineering College Thrissur (Lat: 10.5550963, Lng: 76.2282792).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=800969715</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=800969715&amp;image=true</image:loc>
+      <image:title>Pee Jey complex - GEC Thrissur</image:title>
+      <image:caption>Location of Pee Jey complex at Government Engineering College Thrissur (Lat: 10.5544531, Lng: 76.2267137).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=824615089</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=824615089&amp;image=true</image:loc>
+      <image:title>Quarters - GEC Thrissur</image:title>
+      <image:caption>Location of Quarters at Government Engineering College Thrissur (Lat: 10.5531721, Lng: 76.2203488).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=824615428</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=824615428&amp;image=true</image:loc>
+      <image:title>Quarters - GEC Thrissur</image:title>
+      <image:caption>Location of Quarters at Government Engineering College Thrissur (Lat: 10.5532238, Lng: 76.2201514).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=824616928</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=824616928&amp;image=true</image:loc>
+      <image:title>Co Operative Store - GEC Thrissur</image:title>
+      <image:caption>Location of Co Operative Store at Government Engineering College Thrissur (Lat: 10.5539061, Lng: 76.2240978).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=839560996</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=839560996&amp;image=true</image:loc>
+      <image:title>Government Vocational Higher Secondary School, Ramavarmapuram - GEC Thrissur</image:title>
+      <image:caption>Location of Government Vocational Higher Secondary School, Ramavarmapuram at Government Engineering College Thrissur (Lat: 10.5595864, Lng: 76.2259272).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=839561005</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=839561005&amp;image=true</image:loc>
+      <image:title>Government Vocational Higher Secondary School, Ramavarmapuram - GEC Thrissur</image:title>
+      <image:caption>Location of Government Vocational Higher Secondary School, Ramavarmapuram at Government Engineering College Thrissur (Lat: 10.5594212, Lng: 76.225361).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=843061098</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=843061098&amp;image=true</image:loc>
+      <image:title>Fire and Rescue Station Thrissur - GEC Thrissur</image:title>
+      <image:caption>Location of Fire and Rescue Station Thrissur at Government Engineering College Thrissur (Lat: 10.5586782, Lng: 76.2265309).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=866736396</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=866736396&amp;image=true</image:loc>
+      <image:title>Vignan Sagar Science and Technology Park - GEC Thrissur</image:title>
+      <image:caption>Location of Vignan Sagar Science and Technology Park at Government Engineering College Thrissur (Lat: 10.5581686, Lng: 76.225602).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=893279304</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=893279304&amp;image=true</image:loc>
+      <image:title>Central Computing Facility (CCF) - GEC Thrissur</image:title>
+      <image:caption>Location of Central Computing Facility (CCF) at Government Engineering College Thrissur (Lat: 10.5536573, Lng: 76.2251171).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=954403683</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=954403683&amp;image=true</image:loc>
+      <image:title>District Institute Of Education And Training Men&apos;s Hostel - GEC Thrissur</image:title>
+      <image:caption>Location of District Institute Of Education And Training Men&apos;s Hostel at Government Engineering College Thrissur (Lat: 10.556052, Lng: 76.2261015).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=954403684</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=954403684&amp;image=true</image:loc>
+      <image:title>Geetha Homes - GEC Thrissur</image:title>
+      <image:caption>Location of Geetha Homes at Government Engineering College Thrissur (Lat: 10.5552649, Lng: 76.2249632).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=954403685</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=954403685&amp;image=true</image:loc>
+      <image:title>Madathilparambil Hostel - GEC Thrissur</image:title>
+      <image:caption>Location of Madathilparambil Hostel at Government Engineering College Thrissur (Lat: 10.5561744, Lng: 76.2242336).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=954403686</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=954403686&amp;image=true</image:loc>
+      <image:title>Varappilli Shiva Temple - GEC Thrissur</image:title>
+      <image:caption>Location of Varappilli Shiva Temple at Government Engineering College Thrissur (Lat: 10.556444, Lng: 76.2245815).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=954403687</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=954403687&amp;image=true</image:loc>
+      <image:title>Preethi Hostel - GEC Thrissur</image:title>
+      <image:caption>Location of Preethi Hostel at Government Engineering College Thrissur (Lat: 10.5561652, Lng: 76.2246143).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035390651</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035390651&amp;image=true</image:loc>
+      <image:title>Bus Garage - GEC Thrissur</image:title>
+      <image:caption>Location of Bus Garage at Government Engineering College Thrissur (Lat: 10.5524794, Lng: 76.2239685).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035390652</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035390652&amp;image=true</image:loc>
+      <image:title>Dept. of Electrical and Electronics Engineering extension - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Electrical and Electronics Engineering extension at Government Engineering College Thrissur (Lat: 10.5533335, Lng: 76.2258053).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035390653</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035390653&amp;image=true</image:loc>
+      <image:title>Environmental Engineering block - GEC Thrissur</image:title>
+      <image:caption>Location of Environmental Engineering block at Government Engineering College Thrissur (Lat: 10.5528104, Lng: 76.2255582).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035390654</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035390654&amp;image=true</image:loc>
+      <image:title>Academic Block - GEC Thrissur</image:title>
+      <image:caption>Location of Academic Block at Government Engineering College Thrissur (Lat: 10.553437, Lng: 76.2250819).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035390655</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035390655&amp;image=true</image:loc>
+      <image:title>NSS GECT - GEC Thrissur</image:title>
+      <image:caption>Location of NSS GECT at Government Engineering College Thrissur (Lat: 10.5540112, Lng: 76.2262909).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035390656</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035390656&amp;image=true</image:loc>
+      <image:title>Dept. of Mechanical Engineering extension - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Mechanical Engineering extension at Government Engineering College Thrissur (Lat: 10.5526897, Lng: 76.2254346).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035400071</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035400071&amp;image=true</image:loc>
+      <image:title>Mens Hostel Mess B - GEC Thrissur</image:title>
+      <image:caption>Location of Mens Hostel Mess B at Government Engineering College Thrissur (Lat: 10.5538387, Lng: 76.2211766).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035400072</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035400072&amp;image=true</image:loc>
+      <image:title>Mens Hoste Mess A - GEC Thrissur</image:title>
+      <image:caption>Location of Mens Hoste Mess A at Government Engineering College Thrissur (Lat: 10.5536843, Lng: 76.2221877).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035563836</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035563836&amp;image=true</image:loc>
+      <image:title>Dyuthi Room - GEC Thrissur</image:title>
+      <image:caption>Location of Dyuthi Room at Government Engineering College Thrissur (Lat: 10.5534669, Lng: 76.2257176).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=1035563841</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=1035563841&amp;image=true</image:loc>
+      <image:title>Dept. of Computer Schience Engineering extension - GEC Thrissur</image:title>
+      <image:caption>Location of Dept. of Computer Schience Engineering extension at Government Engineering College Thrissur (Lat: 10.5525513, Lng: 76.2219875).</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gecmaps.vercel.app/api/share?id=custom_room_101</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://gecmaps.vercel.app/api/share?id=custom_room_101&amp;image=true</image:loc>
+      <image:title>Prof. Smith&apos;s Secret Lab (Mock Navigation Target) - GEC Thrissur</image:title>
+      <image:caption>Location of Prof. Smith&apos;s Secret Lab (Mock Navigation Target) at Government Engineering College Thrissur (Lat: 10.5561, Lng: 76.2245).</image:caption>
+    </image:image>
+  </url>
+</urlset>

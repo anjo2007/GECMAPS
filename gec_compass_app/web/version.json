@@ -1,0 +1,8 @@
+{
+  "version": "1.2.0",
+  "buildNumber": 12,
+  "releaseNotes": "• Dynamic GEC campus area theme projection\n• Enhanced offline road graph navigation\n• Building text labels on zoom & navigation\n• Location range alerts & recentering",
+  "downloadUrl": "http://localhost:8080/app-release.apk",
+  "minRequiredBuildNumber": 1,
+  "forceUpdate": false
+}
