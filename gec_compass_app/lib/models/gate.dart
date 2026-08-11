@@ -21,8 +21,8 @@ class Gate {
     return Gate(
       id: json['id'] as String? ?? 'gate_${json['graphNodeId'] ?? DateTime.now().millisecondsSinceEpoch}',
       name: json['name'] as String? ?? 'Campus Gate',
-      latitude: (json['latitude'] ?? json['lat'] as num).toDouble(),
-      longitude: (json['longitude'] ?? json['lng'] as num).toDouble(),
+      latitude: ((json['latitude'] ?? json['lat']) as num).toDouble(),
+      longitude: ((json['longitude'] ?? json['lng']) as num).toDouble(),
       graphNodeId: json['graphNodeId'] as String? ?? json['graph_node_id'] as String? ?? 'gate_main',
     );
   }

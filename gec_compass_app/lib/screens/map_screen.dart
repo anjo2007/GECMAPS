@@ -386,6 +386,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     _onboardingPageController.dispose();
     _positionNotifier.dispose();
     _telemetryNotifier.dispose();
+    _stepCountNotifier.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -418,7 +419,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           _userGates = gates;
         }).catchError((e) {
           debugPrint('Error loading custom gates: $e');
-          return <Gate>[];
         }),
       ]);
 
@@ -550,15 +550,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
   // Fix 1: Real-time remaining distance & ETA calculation
   void _updateRemaining(LatLng currentPosition) {
-    if (_routePolyline == null || _routePolyline!.length < 2) return;
+    if (_routingPath.length < 2) return;
 
     double minDistance = double.infinity;
     int nearestIndex = 0;
-    LatLng nearestPointOnSegment = _routePolyline![0];
+    LatLng nearestPointOnSegment = _routingPath[0];
 
-    for (int i = 0; i < _routePolyline!.length - 1; i++) {
-      LatLng p1 = _routePolyline![i];
-      LatLng p2 = _routePolyline![i + 1];
+    for (int i = 0; i < _routingPath.length - 1; i++) {
+      LatLng p1 = _routingPath[i];
+      LatLng p2 = _routingPath[i + 1];
       LatLng projection = _projectPointOnSegment(currentPosition, p1, p2);
       double dist = _distanceBetween(currentPosition, projection);
       if (dist < minDistance) {
@@ -568,15 +568,13 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       }
     }
 
-    double lengthFromStartOfSegment = _distanceBetween(
-        _routePolyline![nearestIndex], nearestPointOnSegment);
     double lengthToEnd = 0;
-    for (int i = nearestIndex + 1; i < _routePolyline!.length - 1; i++) {
+    for (int i = nearestIndex + 1; i < _routingPath.length - 1; i++) {
       lengthToEnd += _distanceBetween(
-          _routePolyline![i], _routePolyline![i + 1]);
+          _routingPath[i], _routingPath[i + 1]);
     }
     lengthToEnd += _distanceBetween(
-        nearestPointOnSegment, _routePolyline![nearestIndex + 1]);
+        nearestPointOnSegment, _routingPath[nearestIndex + 1]);
 
     double remaining = lengthToEnd < 0 ? 0 : lengthToEnd;
     if (mounted) {
@@ -634,10 +632,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       _currentPosition = pos;
       _positionNotifier.value = pos;
     });
-    final double moveDist = _routingService.distance(_mapController.camera.center, pos);
-    if (moveDist > 0.4) {
-      _mapController.move(pos, _mapController.camera.zoom);
-    }
   }
 
   @override

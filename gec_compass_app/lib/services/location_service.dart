@@ -38,14 +38,12 @@ class LocationService with WidgetsBindingObserver {
         settings = const LocationSettings(
           accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: 2,       // 2 meters – still realtime
-          intervalDuration: Duration(seconds: 1), // update every second
         );
         break;
       case LocationMode.idle:
         settings = const LocationSettings(
           accuracy: LocationAccuracy.high,
           distanceFilter: 10,
-          intervalDuration: Duration(seconds: 10),
         );
         break;
     }

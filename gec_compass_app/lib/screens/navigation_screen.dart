@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import '../models/gate.dart';
 import '../services/location_service.dart';
-import '../services/path_finder.dart';
 import '../widgets/navigation_hud_banner.dart';
 
 class NavigationScreen extends StatefulWidget {
@@ -31,16 +29,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
   final LocationService _locationService = LocationService();
   StreamSubscription<LatLng>? _positionSubscription;
 
-  // Fix 1: Real-time remaining distance & ETA variables
   double _remainingDistance = 0;
-  double _etaSeconds = 0;
-  List<LatLng>? _routePolyline; // set this when route is generated
+  List<LatLng>? _routePolyline;
 
-  // Fix 5: Smooth Marker Movement & Camera variables
   Timer? _animationTimer;
   LatLng? _previousPosition;
   LatLng? _currentPosition;
-  Map<MarkerId, Marker> _markers = {};
   bool _audioEnabled = true;
 
   @override
@@ -48,24 +42,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
     super.initState();
     _currentPosition = widget.startPosition;
     _previousPosition = widget.startPosition;
-    
-    // Set route polyline from initial route or direct line
+
     _routePolyline = widget.initialRoute ?? [widget.startPosition, widget.destination];
     _updateRemaining(widget.startPosition);
 
-    // Fix 3: Enable realtime high-frequency navigation mode
     _locationService.setMode(LocationMode.navigation);
 
-    // Integration: In the location stream listener, after updating the marker, call _updateRemaining(currentLatLng)
     _positionSubscription = _locationService.positionStream.listen((LatLng newPosition) {
       _updateUserMarker(newPosition);
       _updateRemaining(newPosition);
     });
-
-    _setMarkerPosition(widget.startPosition);
   }
 
-  // Fix 1: Real-time remaining distance & ETA calculation
   void _updateRemaining(LatLng currentPosition) {
     if (_routePolyline == null || _routePolyline!.length < 2) return;
 
@@ -85,8 +73,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
       }
     }
 
-    double lengthFromStartOfSegment = _distanceBetween(
-        _routePolyline![nearestIndex], nearestPointOnSegment);
     double lengthToEnd = 0;
     for (int i = nearestIndex + 1; i < _routePolyline!.length - 1; i++) {
       lengthToEnd += _distanceBetween(
@@ -98,7 +84,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
     double remaining = lengthToEnd < 0 ? 0 : lengthToEnd;
     setState(() {
       _remainingDistance = remaining;
-      _etaSeconds = remaining / 1.4; // walking speed (m/s)
     });
   }
 
@@ -116,15 +101,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
   }
 
   double _distanceBetween(LatLng a, LatLng b) {
-    // Use Geolocator or your own Haversine
     return Geolocator.distanceBetween(
         a.latitude, a.longitude, b.latitude, b.longitude);
   }
 
-  // Fix 5: Smooth Marker Movement & Camera
   void _updateUserMarker(LatLng newPosition) {
     if (_previousPosition == null) {
-      _setMarkerPosition(newPosition);
+      setState(() { _currentPosition = newPosition; });
       _previousPosition = newPosition;
       return;
     }
@@ -138,29 +121,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
       final t = (elapsed.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
       final lat = start.latitude + (end.latitude - start.latitude) * t;
       final lng = start.longitude + (end.longitude - start.longitude) * t;
-      _setMarkerPosition(LatLng(lat, lng));
+      if (mounted) {
+        setState(() { _currentPosition = LatLng(lat, lng); });
+      }
       if (t >= 1.0) timer.cancel();
     });
     _previousPosition = end;
-  }
-
-  void _setMarkerPosition(LatLng pos) {
-    _currentPosition = pos;
-    // Update marker and optionally animate camera
-    setState(() {
-      _markers[const MarkerId('user')] = Marker(
-        markerId: const MarkerId('user'),
-        position: pos,
-      );
-    });
-    _mapController.move(pos, _mapController.camera.zoom);
   }
 
   @override
   void dispose() {
     _animationTimer?.cancel();
     _positionSubscription?.cancel();
-    // Fix 3: Reset location service to idle mode when navigating disposed
     _locationService.setMode(LocationMode.idle);
     _locationService.dispose();
     super.dispose();
@@ -244,17 +216,4 @@ class _NavigationScreenState extends State<NavigationScreen> {
       ),
     );
   }
-}
-
-class MarkerId {
-  final String value;
-  const MarkerId(this.value);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is MarkerId && runtimeType == other.runtimeType && value == other.value;
-
-  @override
-  int get hashCode => value.hashCode;
 }

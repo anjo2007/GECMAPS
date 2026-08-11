@@ -159,9 +159,7 @@ class PathFinder {
           bestCost = total;
           bestPath = [
             start,
-            entryNode.latLng,
             ...graph.getShortestPath(entryNode, exitNode).latLngs,
-            exitNode.latLng,
             end,
           ];
         }
