@@ -37,12 +37,12 @@ void main() {
         resultPos = pos;
       };
 
-      // High accuracy (alpha = 0.8) -> heavily trusts new GPS position
+      // Medium accuracy (alpha = 0.45 for accuracy=4.0)
       pdrService.updateGPSPosition(newGpsPos, 4.0, 1.0, 0.0);
 
       expect(resultPos, isNotNull);
-      expect(resultPos!.latitude, closeTo(10.55416, 0.00005));
-      expect(resultPos!.longitude, closeTo(76.22656, 0.00005));
+      expect(resultPos!.latitude, closeTo(10.55409, 0.00005));
+      expect(resultPos!.longitude, closeTo(76.22649, 0.00005));
     });
   });
 }

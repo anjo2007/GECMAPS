@@ -1571,17 +1571,21 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: _cardBgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(color: _borderColor.withValues(alpha: 0.5)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: _cardBgColor.withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: _borderColor.withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
                 width: 40,
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 24),
@@ -1623,6 +1627,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
               ),
             ],
           ),
+        ),
+        ),
         );
       },
     );

@@ -649,6 +649,8 @@ class RoutingService {
     }
 
     if (bestRoadPath.isNotEmpty) {
+      bestRoadPath = _smoothPath(bestRoadPath);
+
       List<LatLng> startAccess = [];
       if (distance(start, bestRoadPath.first) > 1.5) {
         startAccess = [start, bestRoadPath.first];
@@ -684,6 +686,25 @@ class RoutingService {
       endAccessPath: [],
       instructions: ['Walk directly to destination'],
     );
+  }
+
+  /// Softens sharp corners on the campus graph for a more natural walking trajectory
+  List<LatLng> _smoothPath(List<LatLng> path, {int iterations = 1}) {
+    if (path.length <= 2) return path;
+    List<LatLng> currentPath = List.from(path);
+    for (int i = 0; i < iterations; i++) {
+      List<LatLng> newPath = [currentPath.first];
+      for (int j = 1; j < currentPath.length - 1; j++) {
+        final prev = currentPath[j - 1];
+        final next = currentPath[j + 1];
+        final double smoothedLat = (prev.latitude + next.latitude + currentPath[j].latitude * 2) / 4;
+        final double smoothedLng = (prev.longitude + next.longitude + currentPath[j].longitude * 2) / 4;
+        newPath.add(LatLng(smoothedLat, smoothedLng));
+      }
+      newPath.add(currentPath.last);
+      currentPath = newPath;
+    }
+    return currentPath;
   }
 
   // Backward compatible getFullRoute

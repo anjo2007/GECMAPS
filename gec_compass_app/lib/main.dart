@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'screens/map_screen.dart';
 
 void main() async {
@@ -38,7 +39,9 @@ class GecCompassApp extends StatelessWidget {
           surface: Colors.white,
           onSurface: Color(0xFF0F172A),
         ),
-        fontFamily: 'Roboto',
+        textTheme: GoogleFonts.interTextTheme(
+          Theme.of(context).textTheme,
+        ),
         useMaterial3: true,
       ),
       home: const MapScreen(),

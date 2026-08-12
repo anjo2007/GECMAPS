@@ -70,7 +70,7 @@ class PDRService {
     } else {
       double radSmooth = _smoothHeading * (pi / 180.0);
       double radNew = newHeading * (pi / 180.0);
-      double alpha = 0.25; // Responsive yet smooth filter factor
+      double alpha = 0.15; // Responsive yet smooth filter factor
       double sinAvg = (1 - alpha) * sin(radSmooth) + alpha * sin(radNew);
       double cosAvg = (1 - alpha) * cos(radSmooth) + alpha * cos(radNew);
       double smoothed = atan2(sinAvg, cosAvg) * (180.0 / pi);
@@ -340,15 +340,15 @@ class PDRService {
 
     double alpha;
     if (accuracy < 4.0) {
-      alpha = 0.85;
+      alpha = 0.75;
     } else if (accuracy < 10.0) {
-      alpha = 0.60;
+      alpha = 0.45;
     } else if (accuracy < 20.0) {
-      alpha = 0.35;
+      alpha = 0.20;
     } else if (accuracy < 50.0) {
-      alpha = 0.12; // Rely heavily on step dead reckoning
+      alpha = 0.08; // Rely heavily on step dead reckoning
     } else {
-      alpha = 0.06; // Very low weight for poor GPS — keeps marker roughly correct
+      alpha = 0.03; // Very low weight for poor GPS — keeps marker roughly correct
     }
 
     // Blend coordinates smoothly
