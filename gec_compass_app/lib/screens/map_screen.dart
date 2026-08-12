@@ -32,7 +32,6 @@ import '../services/gate_service.dart';
 import '../services/location_service.dart';
 import '../config/app_gates.dart';
 import '../services/gate_route_planner.dart';
-import '../services/gate_adapters.dart';
 
 class TelemetryData {
   final double heading;
@@ -1192,8 +1191,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       }
 
       final planner = GateRoutePlanner(
-        externalRouter: AppExternalRouter(_routingService),
-        internalRouter: AppInternalRouter(_routingService),
+        routingService: _routingService,
       );
 
       for (final gate in customGates) {
@@ -1309,8 +1307,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       }
 
       final planner = GateRoutePlanner(
-        externalRouter: AppExternalRouter(_routingService),
-        internalRouter: AppInternalRouter(_routingService),
+        routingService: _routingService,
       );
 
       for (final gate in customGates) {
