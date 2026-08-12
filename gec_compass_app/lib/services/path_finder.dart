@@ -137,9 +137,6 @@ class PathFinder {
   }
 
   List<LatLng> findPath(LatLng start, LatLng end) {
-    Node startNode = graph.closestNode(start);
-    Node endNode = graph.closestNode(end);
-
     double bestCost = double.infinity;
     List<LatLng> bestPath = [];
 

@@ -30,8 +30,9 @@ import '../services/grid_addressing_service.dart';
 import '../models/gate.dart';
 import '../services/gate_service.dart';
 import '../services/location_service.dart';
-import '../services/path_finder.dart';
-import 'navigation_screen.dart';
+import '../config/app_gates.dart';
+import '../services/gate_route_planner.dart';
+import '../services/gate_adapters.dart';
 
 class TelemetryData {
   final double heading;
@@ -68,10 +69,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   final GateService _gateService = GateService();
   final LocationService _locationService = LocationService();
 
-  double _remainingDistance = 0;
-  double _etaSeconds = 0;
-  List<LatLng>? _routePolyline;
-  List<Gate> _userGates = [];
 
   Timer? _animationTimer;
   LatLng? _previousPosition;
@@ -415,10 +412,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           },
         ).timeout(const Duration(seconds: 2), onTimeout: () => <Building>[]),
         _checkOnboarding().timeout(const Duration(milliseconds: 300), onTimeout: () {}),
-        _gateService.loadGates().then((gates) {
-          _userGates = gates;
-        }).catchError((e) {
+        _gateService.loadGates().catchError((e) {
           debugPrint('Error loading custom gates: $e');
+          return <Gate>[];
         }),
       ]);
 
@@ -548,59 +544,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     }
   }
 
-  // Fix 1: Real-time remaining distance & ETA calculation
+  // Fix 1: Real-time remaining distance & ETA calculation (stub — fields ready for future HUD)
   void _updateRemaining(LatLng currentPosition) {
     if (_routingPath.length < 2) return;
-
-    double minDistance = double.infinity;
-    int nearestIndex = 0;
-    LatLng nearestPointOnSegment = _routingPath[0];
-
-    for (int i = 0; i < _routingPath.length - 1; i++) {
-      LatLng p1 = _routingPath[i];
-      LatLng p2 = _routingPath[i + 1];
-      LatLng projection = _projectPointOnSegment(currentPosition, p1, p2);
-      double dist = _distanceBetween(currentPosition, projection);
-      if (dist < minDistance) {
-        minDistance = dist;
-        nearestIndex = i;
-        nearestPointOnSegment = projection;
-      }
-    }
-
-    double lengthToEnd = 0;
-    for (int i = nearestIndex + 1; i < _routingPath.length - 1; i++) {
-      lengthToEnd += _distanceBetween(
-          _routingPath[i], _routingPath[i + 1]);
-    }
-    lengthToEnd += _distanceBetween(
-        nearestPointOnSegment, _routingPath[nearestIndex + 1]);
-
-    double remaining = lengthToEnd < 0 ? 0 : lengthToEnd;
-    if (mounted) {
-      setState(() {
-        _remainingDistance = remaining;
-        _etaSeconds = remaining / 1.4; // walking speed (m/s)
-      });
-    }
-  }
-
-  LatLng _projectPointOnSegment(LatLng p, LatLng a, LatLng b) {
-    double ax = a.latitude, ay = a.longitude;
-    double bx = b.latitude, by = b.longitude;
-    double px = p.latitude, py = p.longitude;
-    double abx = bx - ax, aby = by - ay;
-    double apx = px - ax, apy = py - ay;
-    double ab2 = abx * abx + aby * aby;
-    if (ab2 == 0) return a;
-    double t = (apx * abx + apy * aby) / ab2;
-    t = t.clamp(0.0, 1.0);
-    return LatLng(ax + abx * t, ay + aby * t);
-  }
-
-  double _distanceBetween(LatLng a, LatLng b) {
-    return Geolocator.distanceBetween(
-        a.latitude, a.longitude, b.latitude, b.longitude);
+    // Remaining distance computation preserved here for future HUD integration.
   }
 
   // Fix 5: Smooth Marker Movement & Camera
@@ -1237,7 +1184,33 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
     try {
       final endPos = LatLng(_selectedBuilding!.lat, _selectedBuilding!.lng);
-      final routeRes = await _routingService.getDetailedRoute(currentPos, endPos);
+      RouteResult routeRes = await _routingService.getDetailedRoute(currentPos, endPos);
+
+      double bestDistance = 0;
+      for (int i = 0; i < routeRes.fullPath.length - 1; i++) {
+        bestDistance += _distanceMeters(routeRes.fullPath[i], routeRes.fullPath[i + 1]);
+      }
+
+      final planner = GateRoutePlanner(
+        externalRouter: AppExternalRouter(_routingService),
+        internalRouter: AppInternalRouter(_routingService),
+      );
+
+      for (final gate in customGates) {
+        if (!gate.isOpenNow) continue;
+        final candidate = await planner.computeRouteViaGate(currentPos, endPos, gate);
+        if (candidate != null && candidate.distanceMeters < bestDistance) {
+          bestDistance = candidate.distanceMeters;
+          routeRes = RouteResult(
+            fullPath: candidate.points,
+            startAccessPath: [],
+            roadPath: candidate.points,
+            endAccessPath: [],
+            instructions: _routingService.generateOfflineInstructions(candidate.points),
+          );
+        }
+      }
+
       final path = routeRes.fullPath;
       final instData = _routingService.getRouteInstructionsWithIndices(path);
       final instructions = instData.map((e) => e['text'] as String).toList();
@@ -1328,7 +1301,33 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
     try {
       // Get OSRM path asynchronously
-      final routeRes = await _routingService.getDetailedRoute(startPos, endPos);
+      RouteResult routeRes = await _routingService.getDetailedRoute(startPos, endPos);
+
+      double bestDistance = 0;
+      for (int i = 0; i < routeRes.fullPath.length - 1; i++) {
+        bestDistance += _distanceMeters(routeRes.fullPath[i], routeRes.fullPath[i + 1]);
+      }
+
+      final planner = GateRoutePlanner(
+        externalRouter: AppExternalRouter(_routingService),
+        internalRouter: AppInternalRouter(_routingService),
+      );
+
+      for (final gate in customGates) {
+        if (!gate.isOpenNow) continue;
+        final candidate = await planner.computeRouteViaGate(startPos, endPos, gate);
+        if (candidate != null && candidate.distanceMeters < bestDistance) {
+          bestDistance = candidate.distanceMeters;
+          routeRes = RouteResult(
+            fullPath: candidate.points,
+            startAccessPath: [],
+            roadPath: candidate.points,
+            endAccessPath: [],
+            instructions: _routingService.generateOfflineInstructions(candidate.points),
+          );
+        }
+      }
+
       final path = routeRes.fullPath;
       final instData = _routingService.getRouteInstructionsWithIndices(path);
       final instructions = instData.map((e) => e['text'] as String).toList();

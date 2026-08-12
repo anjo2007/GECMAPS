@@ -460,7 +460,7 @@ class RoutingService {
   }
 
   /// Online routing fetcher with primary + secondary server fallback
-  Future<List<LatLng>?> _tryOnlineOSRM(LatLng start, LatLng end) async {
+  Future<List<LatLng>?> tryOnlineOSRM(LatLng start, LatLng end) async {
     final urls = [
       'https://router.project-osrm.org/route/v1/foot/'
           '${start.longitude},${start.latitude};'
@@ -560,7 +560,7 @@ class RoutingService {
       final gatePos = _waypointMap[bestGateId]!.position;
 
       if (startIsOutside && !endIsOutside) {
-        final onlinePath = await _tryOnlineOSRM(start, gatePos);
+        final onlinePath = await tryOnlineOSRM(start, gatePos);
         if (onlinePath != null && onlinePath.isNotEmpty) {
           final campusRoute = await getDetailedRoute(gatePos, end);
           final fullPath = <LatLng>[...onlinePath, ...campusRoute.fullPath.skip(1)];
@@ -576,7 +576,7 @@ class RoutingService {
         }
       } else if (!startIsOutside && endIsOutside) {
         final campusRoute = await getDetailedRoute(start, gatePos);
-        final onlinePath = await _tryOnlineOSRM(gatePos, end);
+        final onlinePath = await tryOnlineOSRM(gatePos, end);
         if (onlinePath != null && onlinePath.isNotEmpty) {
           final fullPath = <LatLng>[...campusRoute.fullPath, ...onlinePath.skip(1)];
           final instructions = generateOfflineInstructions(fullPath);
@@ -593,7 +593,7 @@ class RoutingService {
     }
 
     // 2. Try Standard OSRM (for purely internal or purely external routes)
-    final onlinePath = await _tryOnlineOSRM(start, end);
+    final onlinePath = await tryOnlineOSRM(start, end);
     if (onlinePath != null && onlinePath.length >= 2) {
       final roadStart = onlinePath.first;
       final roadEnd = onlinePath.last;
