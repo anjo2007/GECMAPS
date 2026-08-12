@@ -28,26 +28,25 @@ class GateRoutePlanner {
     final distToGate = const Distance().as(LengthUnit.Meter, snappedPoint, gatePos);
     final walkTime = distToGate / walkSpeed;
 
-    // 2. Route from the same snapped point to the destination (internal roads)
-    //    This uses OSRM as well, so it follows campus roads.
-    final internal = await routingService.getRoute(snappedPoint, destination);
+    // 2. Route from the gate to the destination (internal roads)
+    //    This uses OSRM as well, so it follows campus roads starting from the gate.
+    final internal = await routingService.getRoute(gatePos, destination);
     if (internal == null || internal.points.isEmpty) return null;
 
-    // 3. Combine the three legs:
-    //    external polyline, a spur to the gate, back to the snapped point, then internal polyline
+    // 3. Combine the two legs:
+    //    external polyline to snapped point, spur to gate, then internal polyline from gate to destination
     final combinedPoints = <LatLng>[
       ...external.points,      // road to snapped point
       gatePos,                 // walk to gate
-      snappedPoint,            // walk back to road
-      ...internal.points,      // internal road to destination
+      ...internal.points.skip(1), // internal road to destination (skip first point to avoid duplicate gatePos if snapped)
     ];
 
     final totalDistance = external.distanceMeters +
-        2 * distToGate +           // there and back
+        distToGate +               // walk to gate
         internal.distanceMeters;
 
     final totalDuration = external.durationSeconds +
-        2 * walkTime +
+        walkTime +
         internal.durationSeconds;
 
     return CombinedRoute(
