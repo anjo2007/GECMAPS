@@ -928,39 +928,6 @@ class RoutingService {
     }
     return point;
   }
-
-  /// Unified route calculator using OSRM with automatic fallback
-  Future<SimpleRouteResult?> getRoute(LatLng from, LatLng to) async {
-    final path = await tryOnlineOSRM(from, to);
-    if (path != null && path.length >= 2) {
-      final dist = getRouteDistance(path);
-      return SimpleRouteResult(
-        points: path,
-        distanceMeters: dist,
-        durationSeconds: dist / 1.4,
-      );
-    }
-    final fallback = await getDetailedRoute(from, to);
-    if (fallback.fullPath.length >= 2) {
-      final dist = getRouteDistance(fallback.fullPath);
-      return SimpleRouteResult(
-        points: fallback.fullPath,
-        distanceMeters: dist,
-        durationSeconds: dist / 1.4,
-      );
-    }
-    return null;
-  }
 }
 
-class SimpleRouteResult {
-  final List<LatLng> points;
-  final double distanceMeters;
-  final double durationSeconds;
 
-  SimpleRouteResult({
-    required this.points,
-    required this.distanceMeters,
-    required this.durationSeconds,
-  });
-}

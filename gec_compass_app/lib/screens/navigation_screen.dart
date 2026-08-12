@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import '../config/app_gates.dart';
-import '../services/gate_route_planner.dart';
 import '../services/location_service.dart';
-import '../services/routing_service.dart';
 import '../widgets/navigation_hud_banner.dart';
 
 class NavigationScreen extends StatefulWidget {
@@ -30,7 +27,6 @@ class NavigationScreen extends StatefulWidget {
 class _NavigationScreenState extends State<NavigationScreen> {
   final MapController _mapController = MapController();
   final LocationService _locationService = LocationService();
-  final RoutingService _routingService = RoutingService();
   StreamSubscription<LatLng>? _positionSubscription;
 
   double _remainingDistance = 0;
@@ -56,46 +52,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
       _updateUserMarker(newPosition);
       _updateRemaining(newPosition);
     });
-
-    _calculateRoute();
-  }
-
-  Future<void> _calculateRoute() async {
-    final origin = widget.startPosition;
-    final destination = widget.destination;
-
-    final gatePlanner = GateRoutePlanner(routingService: _routingService);
-
-    // 1. Get the default direct route (no gates)
-    final defaultRoute = await _routingService.getRoute(origin, destination);
-    CombinedRoute? bestRoute;
-    if (defaultRoute != null && defaultRoute.points.isNotEmpty) {
-      bestRoute = CombinedRoute(
-        points: defaultRoute.points,
-        distanceMeters: defaultRoute.distanceMeters,
-        durationSeconds: defaultRoute.durationSeconds,
-      );
-    }
-
-    // 2. Try each custom gate if it's currently open
-    for (final gate in customGates) {
-      if (!gate.isOpenNow) continue; // gate closed -> skip
-
-      final candidate = await gatePlanner.computeRouteViaGate(origin, destination, gate);
-      if (candidate == null) continue;
-
-      if (bestRoute == null || candidate.distanceMeters < bestRoute.distanceMeters) {
-        bestRoute = candidate;
-      }
-    }
-
-    // 3. Display the best route
-    if (bestRoute != null && mounted) {
-      setState(() {
-        _routePolyline = bestRoute!.points;
-        _updateRemaining(widget.startPosition);
-      });
-    }
   }
 
   void _updateRemaining(LatLng currentPosition) {
