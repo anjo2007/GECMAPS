@@ -50,14 +50,12 @@ class PDRService {
 
   bool _isTelemetryOnlyActive = false;
   int _stepCount = 0;
-  int _consecutiveGpsRejections = 0;
   LatLng? _currentPosition;
 
   bool _hasAccelerometerData = false;
   bool _hasCompassData = false;
   double _lastGpsSpeed = 0.0;
   int _lastGpsUpdateTime = 0;
-  double _lastAcceptedAccuracy = 999.0;
   LatLng? _lastGpsPosition;
 
   // VPS Ground-Truth GPS Bias Calibration State
@@ -286,7 +284,6 @@ class PDRService {
 
   void forceSetPosition(LatLng position) {
     _currentPosition = position;
-    _consecutiveGpsRejections = 0;
     if (onPositionUpdated != null) onPositionUpdated!(position);
   }
 
@@ -334,60 +331,28 @@ class PDRService {
 
     if (_currentPosition == null) {
       _currentPosition = effectiveGpsPos;
-      _consecutiveGpsRejections = 0;
       if (onPositionUpdated != null) onPositionUpdated!(effectiveGpsPos);
       return;
     }
 
-    // Distance calculation from current fused position
-    final Distance distCalculator = const Distance();
-    double jumpMeters = distCalculator.as(LengthUnit.Meter, _currentPosition!, effectiveGpsPos);
-
-    // Filter stationary GPS noise — but allow accuracy refinement
-    if (jumpMeters < 0.3 && speed < 0.4 && accuracy >= _lastAcceptedAccuracy) {
-      return;
-    }
-
-    // Reject GPS multipath: either poor accuracy with large jump, or impossible teleport speed
-    if ((accuracy > 25.0 && jumpMeters > 35.0) || jumpMeters > 80.0) {
-      _consecutiveGpsRejections++;
-      debugPrint("GPS outlier rejected ($_consecutiveGpsRejections/5): jump ${jumpMeters.toStringAsFixed(1)}m with accuracy ${accuracy.toStringAsFixed(1)}m");
-      if (_consecutiveGpsRejections >= 5) {
-        debugPrint("Escape hatch triggered after 5 consecutive outlier rejections. Resetting filter to GPS position.");
-        _currentPosition = effectiveGpsPos;
-        _consecutiveGpsRejections = 0;
-        if (onPositionUpdated != null) onPositionUpdated!(_currentPosition!);
-      }
-      return;
-    }
-
-    _consecutiveGpsRejections = 0;
-    _lastAcceptedAccuracy = accuracy;
+    final double jumpMeters = const Distance().as(LengthUnit.Meter, _currentPosition!, effectiveGpsPos);
     _lastGpsPosition = effectiveGpsPos;
     _lastGpsSpeed = speed;
     _lastGpsUpdateTime = DateTime.now().millisecondsSinceEpoch;
 
-    // Weighted sensor fusion with dynamic responsiveness:
-    // When user is walking or GPS accuracy is good, sync immediately to avoid lag
+    // Direct adaptive sensor fusion:
+    // Syncs immediately on movement, accuracy improvement, or location jump
     double alpha;
-    if (speed > 0.3) {
-      if (accuracy < 12.0) {
-        alpha = 0.95; // Virtually instantaneous response when moving
-      } else if (accuracy < 25.0) {
-        alpha = 0.85;
-      } else {
-        alpha = 0.60;
-      }
+    if (speed > 0.2 || accuracy <= 15.0) {
+      alpha = 0.95;
+    } else if (accuracy <= 30.0) {
+      alpha = 0.85;
     } else {
-      if (accuracy < 5.0) {
-        alpha = 0.90;
-      } else if (accuracy < 15.0) {
-        alpha = 0.75;
-      } else if (accuracy < 30.0) {
-        alpha = 0.45;
-      } else {
-        alpha = 0.20;
-      }
+      alpha = 0.65;
+    }
+
+    if (jumpMeters > 25.0) {
+      alpha = 1.0; // Snap immediately on initial fix or large step
     }
 
     // Blend coordinates smoothly without lagging

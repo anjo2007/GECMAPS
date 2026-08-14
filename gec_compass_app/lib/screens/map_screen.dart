@@ -295,39 +295,29 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       if (!mounted) return;
       _rawDeviceGpsPosition = newPosition;
       LatLng displayPos = newPosition;
-      final double distToCampus = _routingService.distance(newPosition, _campusCenter);
-      final bool isOutsideCampus = distToCampus > 2500.0;
 
-      if (isOutsideCampus) {
-        _currentPosition = _campusCenter;
-      } else {
-        if (_isNavigating && _routingPath.length >= 2) {
-          displayPos = RoutingService.snapToNearestSegment(newPosition, _routingPath, maxDistanceMeters: 12.0);
-        }
-        _currentPosition = displayPos;
-        // Ring buffer write — only record trail if moved > 0.5m to avoid cluttered duplicate points
-        if (_pdrTrailLength == 0 || _routingService.distance(_pdrTrail[(_pdrTrailIndex - 1) % 500], displayPos) > 0.5) {
-          _pdrTrail[_pdrTrailIndex % 500] = displayPos;
-          _pdrTrailIndex++;
-          if (_pdrTrailLength < 500) _pdrTrailLength++;
-        }
-        if (_isNavigating) {
-          _updateActiveRoutePath(newPosition);
-        }
+      if (_isNavigating && _routingPath.length >= 2) {
+        displayPos = RoutingService.snapToNearestSegment(newPosition, _routingPath, maxDistanceMeters: 15.0);
+      }
+      _currentPosition = displayPos;
+
+      // Ring buffer write — only record trail if moved > 0.3m
+      if (_pdrTrailLength == 0 || _routingService.distance(_pdrTrail[(_pdrTrailIndex - 1) % 500], displayPos) > 0.3) {
+        _pdrTrail[_pdrTrailIndex % 500] = displayPos;
+        _pdrTrailIndex++;
+        if (_pdrTrailLength < 500) _pdrTrailLength++;
+      }
+      if (_isNavigating) {
+        _updateActiveRoutePath(newPosition);
       }
 
       // Update position via ValueNotifier — only rebuilds user marker widget, not entire tree
       _positionNotifier.value = _currentPosition;
 
       if (_isAutoRecentering) {
-        if (isOutsideCampus) {
-          _mapController.move(_campusCenter, 16.8);
-        } else {
-          // Camera deadband: Only trigger camera move if center moved > 0.4m to prevent jitter/glitching
-          final double moveDist = _routingService.distance(_mapController.camera.center, displayPos);
-          if (moveDist > 0.4) {
-            _mapController.move(displayPos, _mapController.camera.zoom);
-          }
+        final double moveDist = _routingService.distance(_mapController.camera.center, displayPos);
+        if (moveDist > 0.2) {
+          _mapController.move(displayPos, _mapController.camera.zoom);
         }
       }
     };
@@ -809,7 +799,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
             );
           }
           
-          if (!_pdrService.isActive && position.accuracy <= 30.0) {
+          if (!_pdrService.isActive) {
             _pdrService.startPDR(newPos);
           }
           
