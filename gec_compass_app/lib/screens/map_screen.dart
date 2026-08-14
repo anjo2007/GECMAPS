@@ -27,12 +27,8 @@ import '../widgets/top_message_overlay.dart';
 import '../services/app_update_service.dart';
 import '../widgets/update_available_dialog.dart';
 import '../services/grid_addressing_service.dart';
-import '../models/gate.dart';
-import '../services/gate_service.dart';
-import '../services/location_service.dart';
-import '../config/app_gates.dart';
-import '../services/gate_route_planner.dart';
-import '../services/gate_adapters.dart';
+import '../services/vps_sensor_fusion.dart';
+import '../services/vps_relocalization_service.dart';
 
 class TelemetryData {
   final double heading;
@@ -66,12 +62,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   final DataService _dataService = DataService();
   final PDRService _pdrService = PDRService();
   final RoutingService _routingService = RoutingService();
-  final GateService _gateService = GateService();
-  final LocationService _locationService = LocationService();
-
-
-  Timer? _animationTimer;
-  LatLng? _previousPosition;
 
   double _currentZoom = 16.8;
   int _lastRouteClosestIndex = -1;
@@ -140,9 +130,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   int _lastClosestRouteIndex = 0;
 
   // Dijkstra route path coordinates and turn-by-turn instructions
-  List<LatLng> _routingPath = [];
+  final ValueNotifier<List<LatLng>> _routingPathNotifier = ValueNotifier<List<LatLng>>([]);
+  List<LatLng> get _routingPath => _routingPathNotifier.value;
+  set _routingPath(List<LatLng> val) => _routingPathNotifier.value = val;
   List<LatLng> _startAccessPath = [];
-  List<LatLng> _roadRoutingPath = [];
   List<LatLng> _endAccessPath = [];
   List<String> _routeInstructions = [];
   List<int> _routeInstructionIndices = [];
@@ -161,7 +152,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   bool _hasAnnouncedAdvanceWarning = false;
 
   // Category filter state
-  final List<String> _categories = ['All', 'Departments', 'Workshops', 'Hostels', 'Cafes/ATMs', 'Rooms/Labs'];
+  final List<String> _categories = ['All', 'Departments', 'Workshops', 'Hostels', 'Cafes/ATMs', 'Rooms/Labs', 'Washrooms'];
   String _selectedCategory = 'All';
 
   // _currentPosition is the authoritative position; _positionNotifier mirrors it for UI
@@ -307,8 +298,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         }
         if (_isNavigating) {
           _updateActiveRoutePath(newPosition);
-          _updateRemaining(newPosition);
-          _updateUserMarker(displayPos);
         }
       }
 
@@ -371,9 +360,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _animationTimer?.cancel();
-    _locationService.setMode(LocationMode.idle);
-    _locationService.dispose();
     _gpsSubscription?.cancel();
     _serviceStatusSub?.cancel();
     _cloudSyncTimer?.cancel();
@@ -383,7 +369,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     _onboardingPageController.dispose();
     _positionNotifier.dispose();
     _telemetryNotifier.dispose();
-    _stepCountNotifier.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -412,10 +397,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           },
         ).timeout(const Duration(seconds: 2), onTimeout: () => <Building>[]),
         _checkOnboarding().timeout(const Duration(milliseconds: 300), onTimeout: () {}),
-        _gateService.loadGates().catchError((e) {
-          debugPrint('Error loading custom gates: $e');
-          return <Gate>[];
-        }),
       ]);
 
       final buildings = (results[0] as List<Building>?) ?? <Building>[];
@@ -542,43 +523,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     } catch (e) {
       debugPrint("Async GPS location update skipped: $e");
     }
-  }
-
-  // Fix 1: Real-time remaining distance & ETA calculation (stub — fields ready for future HUD)
-  void _updateRemaining(LatLng currentPosition) {
-    if (_routingPath.length < 2) return;
-    // Remaining distance computation preserved here for future HUD integration.
-  }
-
-  // Fix 5: Smooth Marker Movement & Camera
-  void _updateUserMarker(LatLng newPosition) {
-    if (_previousPosition == null) {
-      _setMarkerPosition(newPosition);
-      _previousPosition = newPosition;
-      return;
-    }
-    _animationTimer?.cancel();
-    final start = _previousPosition!;
-    final end = newPosition;
-    const duration = Duration(milliseconds: 500);
-    final startTime = DateTime.now();
-    _animationTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
-      final elapsed = DateTime.now().difference(startTime);
-      final t = (elapsed.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-      final lat = start.latitude + (end.latitude - start.latitude) * t;
-      final lng = start.longitude + (end.longitude - start.longitude) * t;
-      _setMarkerPosition(LatLng(lat, lng));
-      if (t >= 1.0) timer.cancel();
-    });
-    _previousPosition = end;
-  }
-
-  void _setMarkerPosition(LatLng pos) {
-    if (!mounted) return;
-    setState(() {
-      _currentPosition = pos;
-      _positionNotifier.value = pos;
-    });
   }
 
   @override
@@ -957,7 +901,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       _selectedBuilding = building;
       if (_isNavigating) {
         _isNavigating = false;
-        _locationService.setMode(LocationMode.idle);
         _staircaseCompleted = false;
         _stepsAtStairsZoneEnter = null;
         _startStaircaseCompleted = false;
@@ -1066,9 +1009,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   void _updateActiveRoutePath(LatLng newPos) {
     if (_originalRoutingPath.isEmpty) return;
 
-    // Symmetric search window to support backtracking and track recovery
-    int searchStart = (_lastClosestRouteIndex - 15).clamp(0, _originalRoutingPath.length - 1);
-    int searchEnd = (_lastClosestRouteIndex + 15).clamp(0, _originalRoutingPath.length);
+    // Search the entire route length to prevent false "off-route" triggers when moving fast
+    int searchStart = 0;
+    int searchEnd = _originalRoutingPath.length;
     int closestIndex = _lastClosestRouteIndex;
     double minDistance = double.infinity;
 
@@ -1136,7 +1079,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       }
     }
 
-    // Only rebuild visible path when the closest route index has actually advanced
+    // Dynamic path shrinking: update visible path when closest index advances or head moves
     if (closestIndex != _lastRouteClosestIndex) {
       _lastRouteClosestIndex = closestIndex;
       List<LatLng> newPath = [newPos];
@@ -1149,11 +1092,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       if (newPath.length < 2) {
         newPath = [newPos, _originalRoutingPath.last];
       }
-      _routingPath = newPath;
+      _routingPathNotifier.value = newPath;
     } else {
-      // Update only the head position to keep the line connected
-      if (_routingPath.isNotEmpty) {
-        _routingPath[0] = newPos;
+      if (_routingPathNotifier.value.isNotEmpty) {
+        final updated = List<LatLng>.from(_routingPathNotifier.value);
+        updated[0] = newPos;
+        _routingPathNotifier.value = updated;
       }
     }
   }
@@ -1184,33 +1128,11 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
     try {
       final endPos = LatLng(_selectedBuilding!.lat, _selectedBuilding!.lng);
-      RouteResult routeRes = await _routingService.getDetailedRoute(currentPos, endPos);
-
-      double bestDistance = 0;
-      for (int i = 0; i < routeRes.fullPath.length - 1; i++) {
-        bestDistance += _distanceMeters(routeRes.fullPath[i], routeRes.fullPath[i + 1]);
-      }
-
-      final planner = GateRoutePlanner(
-        externalRouter: AppExternalRouter(_routingService),
-        internalRouter: AppInternalRouter(_routingService),
+      final routeRes = await _routingService.getDetailedRoute(
+        currentPos,
+        endPos,
+        customBuildings: _buildings,
       );
-
-      for (final gate in customGates) {
-        if (!gate.isOpenNow) continue;
-        final candidate = await planner.computeRouteViaGate(currentPos, endPos, gate);
-        if (candidate != null && candidate.distanceMeters < bestDistance) {
-          bestDistance = candidate.distanceMeters;
-          routeRes = RouteResult(
-            fullPath: candidate.points,
-            startAccessPath: [],
-            roadPath: candidate.points,
-            endAccessPath: [],
-            instructions: _routingService.generateOfflineInstructions(candidate.points),
-          );
-        }
-      }
-
       final path = routeRes.fullPath;
       final instData = _routingService.getRouteInstructionsWithIndices(path);
       final instructions = instData.map((e) => e['text'] as String).toList();
@@ -1221,10 +1143,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       setState(() {
         _routingPath = path;
         _startAccessPath = routeRes.startAccessPath;
-        _roadRoutingPath = routeRes.roadPath;
         _endAccessPath = routeRes.endAccessPath;
         _originalRoutingPath = List<LatLng>.from(path);
         _lastClosestRouteIndex = 0;
+        _lastRouteClosestIndex = -1;
         _routeInstructions = instructions;
         _routeInstructionIndices = indices;
         _currentInstructionIndex = 0;
@@ -1301,33 +1223,11 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
     try {
       // Get OSRM path asynchronously
-      RouteResult routeRes = await _routingService.getDetailedRoute(startPos, endPos);
-
-      double bestDistance = 0;
-      for (int i = 0; i < routeRes.fullPath.length - 1; i++) {
-        bestDistance += _distanceMeters(routeRes.fullPath[i], routeRes.fullPath[i + 1]);
-      }
-
-      final planner = GateRoutePlanner(
-        externalRouter: AppExternalRouter(_routingService),
-        internalRouter: AppInternalRouter(_routingService),
+      final routeRes = await _routingService.getDetailedRoute(
+        startPos,
+        endPos,
+        customBuildings: _buildings,
       );
-
-      for (final gate in customGates) {
-        if (!gate.isOpenNow) continue;
-        final candidate = await planner.computeRouteViaGate(startPos, endPos, gate);
-        if (candidate != null && candidate.distanceMeters < bestDistance) {
-          bestDistance = candidate.distanceMeters;
-          routeRes = RouteResult(
-            fullPath: candidate.points,
-            startAccessPath: [],
-            roadPath: candidate.points,
-            endAccessPath: [],
-            instructions: _routingService.generateOfflineInstructions(candidate.points),
-          );
-        }
-      }
-
       final path = routeRes.fullPath;
       final instData = _routingService.getRouteInstructionsWithIndices(path);
       final instructions = instData.map((e) => e['text'] as String).toList();
@@ -1351,10 +1251,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         _speedHistoryLength = 0;
         _routingPath = path;
         _startAccessPath = routeRes.startAccessPath;
-        _roadRoutingPath = routeRes.roadPath;
         _endAccessPath = routeRes.endAccessPath;
         _originalRoutingPath = List<LatLng>.from(path);
         _lastClosestRouteIndex = 0;
+        _lastRouteClosestIndex = -1;
         _routeInstructions = instructions;
         _routeInstructionIndices = indices;
         _currentInstructionIndex = 0;
@@ -1571,21 +1471,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: _cardBgColor.withValues(alpha: 0.85),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border.all(color: _borderColor.withValues(alpha: 0.5)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _cardBgColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(color: _borderColor.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
                 width: 40,
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 24),
@@ -1605,13 +1501,26 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                 ),
               ListTile(
                 leading: const Icon(Icons.share_location, color: Color(0xFF8B5CF6)),
-                title: Text('Share Current Location', style: TextStyle(color: _textColor)),
+                title: Text('Share Campus Grid Location', style: TextStyle(color: _textColor)),
+                subtitle: _currentPosition != null
+                    ? Text(
+                        GridAddressingService.getCampusGridAddress(_currentPosition!),
+                        style: TextStyle(color: const Color(0xFF8B5CF6).withValues(alpha: 0.8), fontSize: 11.5),
+                      )
+                    : null,
                 onTap: () {
                   Navigator.pop(context);
                   if (_currentPosition != null) {
                     final grid = GridAddressingService.getCampusGridAddress(_currentPosition!);
+                    final precisionGrid = GridAddressingService.getPrecisionGridAddress(_currentPosition!);
+                    final lat = _currentPosition!.latitude.toStringAsFixed(6);
+                    final lng = _currentPosition!.longitude.toStringAsFixed(6);
                     final shareUrl = Uri.base.replace(queryParameters: {'grid': grid}).toString();
-                    SharePlus.instance.share(ShareParams(text: "I'm here on campus! $shareUrl"));
+                    final shareMsg = "📍 My Live Campus Location (GEC Compass):\n"
+                        "• Grid Code: $grid ($precisionGrid)\n"
+                        "• Open in GEC Compass: $shareUrl\n"
+                        "• Google Maps: https://maps.google.com/?q=$lat,$lng";
+                    SharePlus.instance.share(ShareParams(text: shareMsg));
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Location not available to share")));
                   }
@@ -1627,8 +1536,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
               ),
             ],
           ),
-        ),
-        ),
         );
       },
     );
@@ -1957,6 +1864,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       }
 
       if (placeType != null && placeType.isNotEmpty) {
+        if (_selectedCategory == 'Washrooms' && (placeType == 'Washrooms' || placeType == 'Wash room' || placeType == 'washroom' || placeType == 'toilets')) {
+          return true;
+        }
         return placeType == _selectedCategory;
       }
 
@@ -1971,6 +1881,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           return ['restaurant', 'cafe', 'food_court', 'atm', 'bank'].contains(amenity);
         case 'Rooms/Labs':
           return isRoom;
+        case 'Washrooms':
+        case 'Wash room':
+          final nameLower = b.name.toLowerCase();
+          final tagsStr = (b.tags['search_tags'] ?? '').toString().toLowerCase();
+          return amenity == 'toilets' ||
+                 nameLower.contains('washroom') ||
+                 nameLower.contains('wash room') ||
+                 nameLower.contains('toilet') ||
+                 nameLower.contains('restroom') ||
+                 tagsStr.contains('washroom') ||
+                 tagsStr.contains('toilet');
         default:
           return true;
       }
@@ -2336,6 +2257,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
                     if (building.tags['is_event'] == 'true') {
                       badgeLabel = 'Live Event';
+                    } else if (placeType == 'Washrooms' || placeType == 'Wash room' || building.tags['amenity'] == 'toilets' || building.name.toLowerCase().contains('washroom') || building.name.toLowerCase().contains('toilet')) {
+                      badgeLabel = 'Washroom';
                     } else if (placeType == 'Departments' || building.tags['building'] == 'college') {
                       badgeLabel = 'Department';
                     } else if (isRoom || placeType == 'Rooms/Labs') {
@@ -2377,6 +2300,42 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                 ),
               ],
             ),
+            // Gate Operating Hours & Status Badge
+            if (building.tags['opening_time'] != null || building.tags['closing_time'] != null || building.tags['barrier'] == 'gate') ...[
+              const SizedBox(height: 8),
+              Builder(
+                builder: (context) {
+                  final openStr = building.tags['opening_time']?.toString();
+                  final closeStr = building.tags['closing_time']?.toString();
+                  final isOpen = RoutingService.isGateOpenNow(openStr, closeStr);
+                  final label = RoutingService.getGateStatusLabel(openStr, closeStr);
+                  final color = isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          label,
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: color),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
             if (building.tags['venue'] != null) ...[
               const SizedBox(height: 8),
               Row(
@@ -2780,48 +2739,52 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         ],
                       ),
                       
-                      // Polyline layer for road-snapped route with access connectors
+                      // Polyline layer for road-snapped route with dynamic path shrinking
                       if (_isNavigating) ...[
-                        // Single batched PolylineLayer for all route segments
-                        PolylineLayer(
-                          polylines: [
-                            // Access Walkway to Road (connector)
-                            if (_startAccessPath.length >= 2)
-                              Polyline(
-                                points: _startAccessPath,
-                                color: const Color(0xFF60A5FA),
-                                strokeWidth: 4.0,
-                                borderStrokeWidth: 1.5,
-                                borderColor: Colors.white,
-                              ),
-                            // Main Road Route — casing (dark blue underline)
-                            if ((_roadRoutingPath.length >= 2 ? _roadRoutingPath : _routingPath).length >= 2) ...[
-                              Polyline(
-                                points: _roadRoutingPath.length >= 2 ? _roadRoutingPath : _routingPath,
-                                color: const Color(0xFF1E40AF),
-                                strokeWidth: 9.0,
-                                strokeCap: StrokeCap.round,
-                                strokeJoin: StrokeJoin.round,
-                              ),
-                              // Main Road Route — fill (bright blue)
-                              Polyline(
-                                points: _roadRoutingPath.length >= 2 ? _roadRoutingPath : _routingPath,
-                                color: const Color(0xFF3B82F6),
-                                strokeWidth: 6.0,
-                                strokeCap: StrokeCap.round,
-                                strokeJoin: StrokeJoin.round,
-                              ),
-                            ],
-                            // Access Walkway from Road to Destination Door (connector)
-                            if (_endAccessPath.length >= 2)
-                              Polyline(
-                                points: _endAccessPath,
-                                color: const Color(0xFF60A5FA),
-                                strokeWidth: 4.0,
-                                borderStrokeWidth: 1.5,
-                                borderColor: Colors.white,
-                              ),
-                          ],
+                        ValueListenableBuilder<List<LatLng>>(
+                          valueListenable: _routingPathNotifier,
+                          builder: (context, activePath, _) {
+                            return PolylineLayer(
+                              polylines: [
+                                // Access Walkway to Road (connector)
+                                if (_startAccessPath.length >= 2)
+                                  Polyline(
+                                    points: _startAccessPath,
+                                    color: const Color(0xFF60A5FA),
+                                    strokeWidth: 4.0,
+                                    borderStrokeWidth: 1.5,
+                                    borderColor: Colors.white,
+                                  ),
+                                // Main Road Route — casing (dark blue outline)
+                                if (activePath.length >= 2) ...[
+                                  Polyline(
+                                    points: activePath,
+                                    color: const Color(0xFF1E40AF),
+                                    strokeWidth: 9.0,
+                                    strokeCap: StrokeCap.round,
+                                    strokeJoin: StrokeJoin.round,
+                                  ),
+                                  // Main Road Route — fill (bright blue)
+                                  Polyline(
+                                    points: activePath,
+                                    color: const Color(0xFF3B82F6),
+                                    strokeWidth: 6.0,
+                                    strokeCap: StrokeCap.round,
+                                    strokeJoin: StrokeJoin.round,
+                                  ),
+                                ],
+                                // Access Walkway from Road to Destination Door (connector)
+                                if (_endAccessPath.length >= 2)
+                                  Polyline(
+                                    points: _endAccessPath,
+                                    color: const Color(0xFF60A5FA),
+                                    strokeWidth: 4.0,
+                                    borderStrokeWidth: 1.5,
+                                    borderColor: Colors.white,
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                       
@@ -3127,7 +3090,36 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                             if (textEditingValue.text.isEmpty) {
                               return const Iterable<Building>.empty();
                             }
-                            final query = textEditingValue.text.toLowerCase().trim();
+                            final rawText = textEditingValue.text.trim();
+                            final query = rawText.toLowerCase();
+
+                            // 1. Instant GEC Campus Grid Code Resolution
+                            if (query.startsWith('gec-') || query.startsWith('gec')) {
+                              final gridPos = GridAddressingService.getLatLngFromGridAddress(rawText);
+                              if (gridPos != null) {
+                                final gridBuilding = Building(
+                                  id: 'grid_${rawText.toUpperCase()}',
+                                  name: '📍 Grid Location (${rawText.toUpperCase()})',
+                                  lat: gridPos.latitude,
+                                  lng: gridPos.longitude,
+                                  tags: {
+                                    'place_type': 'Campus Grid Code',
+                                    'custom': 'true',
+                                    'grid_code': rawText.toUpperCase(),
+                                  },
+                                );
+                                final rest = _buildings.where((Building option) {
+                                  final nameMatches = option.name.toLowerCase().contains(query);
+                                  final tagsStr = option.tags['search_tags']?.toString() ??
+                                                  option.tags['tags']?.toString() ??
+                                                  option.tags['keywords']?.toString() ??
+                                                  option.tags['alias']?.toString() ?? '';
+                                  return nameMatches || tagsStr.toLowerCase().contains(query);
+                                });
+                                return [gridBuilding, ...rest];
+                              }
+                            }
+
                             return _buildings.where((Building option) {
                               final nameMatches = option.name.toLowerCase().contains(query);
                               final tagsStr = option.tags['search_tags']?.toString() ??
@@ -4405,7 +4397,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                     onPressed: isVpsButtonEnabled
                         ? () {
                             HapticFeedback.mediumImpact();
-                            Navigator.push<LatLng>(
+                            Navigator.push<dynamic>(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => VPSCameraScreen(
@@ -4417,12 +4409,58 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                   vpsText: _selectedBuilding!.tags['vps_text']?.toString(),
                                 ),
                               ),
-                            ).then((finalPos) {
-                              if (finalPos != null && mounted) {
+                            ).then((result) {
+                              if (result != null && mounted) {
+                                LatLng finalPos;
+                                int? finalFloor;
+                                VPSGPSComparisonReport? report;
+
+                                if (result is VPSRelocalizationResult) {
+                                  finalPos = result.position;
+                                  finalFloor = result.floor;
+                                  report = result.comparisonReport;
+                                } else if (result is VPSSensorFusionResult) {
+                                  finalPos = result.position;
+                                  finalFloor = result.floor;
+                                } else if (result is LatLng) {
+                                  finalPos = result;
+                                } else {
+                                  return;
+                                }
+
                                 setState(() {
                                   _currentPosition = finalPos;
-                                  _pdrService.forceSetPosition(finalPos);
+                                  if (finalFloor != null) _userCurrentFloor = finalFloor;
+                                  _positionNotifier.value = finalPos;
                                 });
+
+                                _pdrService.forceSetPosition(finalPos);
+
+                                if (report != null) {
+                                  _pdrService.calibrateGpsBias(
+                                    report.latitudeBiasCorrection,
+                                    report.longitudeBiasCorrection,
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(Icons.verified, color: Colors.white, size: 20),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              "🎯 VPS Calibrated: ${report.locationName}\nAccuracy: ±${report.fusedAccuracyMeters.toStringAsFixed(1)}m (GPS drift: ${report.displacementMeters.toStringAsFixed(1)}m compensated)",
+                                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: const Color(0xFF10B981),
+                                      duration: const Duration(seconds: 4),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
                               }
                             });
                           }
@@ -4670,6 +4708,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
     if (barrier == 'gate' || placeType == 'Entrance Gate') return Icons.sensor_door;
     if (b.tags['is_event'] == 'true') return Icons.star;
+    if (placeType == 'Washrooms' || placeType == 'Wash room' || amenity == 'toilets' || b.name.toLowerCase().contains('washroom') || b.name.toLowerCase().contains('toilet')) {
+      return Icons.wc_rounded;
+    }
     if (amenity == 'restaurant' || amenity == 'cafe' || amenity == 'food_court') {
       return Icons.restaurant;
     }
@@ -4694,6 +4735,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
     if (barrier == 'gate' || placeType == 'Entrance Gate') return const Color(0xFF10B981);
     if (b.tags['is_event'] == 'true') return Colors.redAccent;
+    if (placeType == 'Washrooms' || placeType == 'Wash room' || amenity == 'toilets' || b.name.toLowerCase().contains('washroom') || b.name.toLowerCase().contains('toilet')) {
+      return const Color(0xFF06B6D4);
+    }
     if (amenity == 'restaurant' || amenity == 'cafe' || amenity == 'food_court') {
       return Colors.orangeAccent;
     }
@@ -5233,6 +5277,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     final floorController = TextEditingController();
     final roomController = TextEditingController();
     final vpsTextController = TextEditingController();
+    final openTimeController = TextEditingController(text: '06:00 AM');
+    final closeTimeController = TextEditingController(text: '10:00 PM');
     
     String selectedPlaceType = 'Departments';
     bool isClassroom = false;
@@ -5318,6 +5364,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         DropdownMenuItem(value: 'Hostels', child: Text("🏢 Hostel (Student / Staff)")),
                         DropdownMenuItem(value: 'Cafes/ATMs', child: Text("☕ Cafe / ATM / Canteen")),
                         DropdownMenuItem(value: 'Rooms/Labs', child: Text("🔬 Room / Classroom / Lab")),
+                        DropdownMenuItem(value: 'Washrooms', child: Text("🚻 Washroom / Restroom / Toilet")),
+                        DropdownMenuItem(value: 'Entrance Gate', child: Text("🚪 Entrance Gate / Campus Boundary")),
                         DropdownMenuItem(value: 'Other', child: Text("📌 Other / Campus Landmark")),
                       ],
                       onChanged: (val) {
@@ -5361,6 +5409,103 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Gate Operating Schedule & Timing
+                    if (selectedPlaceType == 'Entrance Gate' || selectedPlaceType == 'Cafes/ATMs') ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _scaffoldBgColor.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _borderColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.access_time_filled_rounded, color: Color(0xFF3B82F6), size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Gate / Place Operating Hours",
+                                  style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: openTimeController,
+                                    style: TextStyle(color: _textColor, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      labelText: "Opening Time",
+                                      hintText: "06:00 AM",
+                                      prefixIcon: const Icon(Icons.wb_sunny_outlined, size: 16, color: Color(0xFFF59E0B)),
+                                      filled: true,
+                                      fillColor: _cardBgColor,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    ),
+                                    onChanged: (_) => setModalState(() {}),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextField(
+                                    controller: closeTimeController,
+                                    style: TextStyle(color: _textColor, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      labelText: "Closing Time",
+                                      hintText: "10:00 PM",
+                                      prefixIcon: const Icon(Icons.nightlight_outlined, size: 16, color: Color(0xFF8B5CF6)),
+                                      filled: true,
+                                      fillColor: _cardBgColor,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    ),
+                                    onChanged: (_) => setModalState(() {}),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                ActionChip(
+                                  label: const Text("24/7 Open", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "24/7";
+                                      closeTimeController.text = "24/7";
+                                    });
+                                  },
+                                ),
+                                ActionChip(
+                                  label: const Text("06:00 AM - 10:30 PM", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "06:00 AM";
+                                      closeTimeController.text = "10:30 PM";
+                                    });
+                                  },
+                                ),
+                                ActionChip(
+                                  label: const Text("06:00 AM - 09:00 PM", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "06:00 AM";
+                                      closeTimeController.text = "09:00 PM";
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Parent Building Search Selector (if room)
                     if (isClassroom) ...[
@@ -6128,6 +6273,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                     if (searchTagsController.text.trim().isNotEmpty) 'search_tags': searchTagsController.text.trim(),
                                     'place_type': selectedPlaceType,
                                     'type': selectedPlaceType,
+                                    if (selectedPlaceType == 'Washrooms') 'amenity': 'toilets',
+                                    if (selectedPlaceType == 'Entrance Gate') 'barrier': 'gate',
+                                    if (openTimeController.text.trim().isNotEmpty) 'opening_time': openTimeController.text.trim(),
+                                    if (closeTimeController.text.trim().isNotEmpty) 'closing_time': closeTimeController.text.trim(),
+                                    if (openTimeController.text.trim().isNotEmpty && closeTimeController.text.trim().isNotEmpty)
+                                      'opening_hours': "${openTimeController.text.trim()} - ${closeTimeController.text.trim()}", 
                                     if (isClassroom || selectedPlaceType == 'Rooms/Labs') 'room': 'yes',
                                     if ((isClassroom || selectedPlaceType == 'Rooms/Labs') && selectedParent != null) 'parent_id': selectedParent!.id,
                                     if (floorController.text.isNotEmpty) 'floor': floorController.text.trim(),
@@ -6225,6 +6376,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     final floorController = TextEditingController(text: building.tags['floor']?.toString() ?? '');
     final roomController = TextEditingController(text: building.tags['ref']?.toString() ?? '');
     final vpsTextController = TextEditingController(text: building.tags['vps_text']?.toString() ?? '');
+    final openTimeController = TextEditingController(text: building.tags['opening_time']?.toString() ?? '06:00 AM');
+    final closeTimeController = TextEditingController(text: building.tags['closing_time']?.toString() ?? '10:00 PM');
+    bool isEntranceGate = building.tags['barrier'] == 'gate' || building.tags['place_type'] == 'Entrance Gate';
+    bool isWashroom = building.tags['place_type'] == 'Washrooms' || building.tags['place_type'] == 'Wash room' || building.tags['amenity'] == 'toilets' || building.name.toLowerCase().contains('washroom');
     
     bool isClassroom = building.tags['room'] == 'yes';
     Building? selectedParent;
@@ -6303,27 +6458,60 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                     const SizedBox(height: 20),
                     
                     // Choice of type
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Text("Category:", style: TextStyle(color: _textColor, fontSize: 14)),
-                        const SizedBox(width: 16),
                         ChoiceChip(
                           label: const Text("Building/Lab"),
-                          selected: !isClassroom,
-                          onSelected: (val) => setModalState(() { isClassroom = false; }),
+                          selected: !isClassroom && !isEntranceGate && !isWashroom,
+                          onSelected: (val) => setModalState(() {
+                            isClassroom = false;
+                            isEntranceGate = false;
+                            isWashroom = false;
+                          }),
                           selectedColor: const Color(0xFF3B82F6),
                           backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: !isClassroom ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
+                          labelStyle: TextStyle(color: (!isClassroom && !isEntranceGate && !isWashroom) ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
-                        const SizedBox(width: 8),
                         ChoiceChip(
                           label: const Text("Room/Classroom"),
                           selected: isClassroom,
-                          onSelected: (val) => setModalState(() { isClassroom = true; }),
+                          onSelected: (val) => setModalState(() {
+                            isClassroom = true;
+                            isEntranceGate = false;
+                            isWashroom = false;
+                          }),
                           selectedColor: const Color(0xFF3B82F6),
                           backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
                           labelStyle: TextStyle(color: isClassroom ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        ChoiceChip(
+                          label: const Text("🚻 Washroom"),
+                          selected: isWashroom,
+                          onSelected: (val) => setModalState(() {
+                            isWashroom = true;
+                            isClassroom = false;
+                            isEntranceGate = false;
+                          }),
+                          selectedColor: const Color(0xFF06B6D4),
+                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
+                          labelStyle: TextStyle(color: isWashroom ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        ChoiceChip(
+                          label: const Text("🚪 Entrance Gate"),
+                          selected: isEntranceGate,
+                          onSelected: (val) => setModalState(() {
+                            isEntranceGate = true;
+                            isClassroom = false;
+                            isWashroom = false;
+                          }),
+                          selectedColor: const Color(0xFF10B981),
+                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
+                          labelStyle: TextStyle(color: isEntranceGate ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                       ],
@@ -6357,6 +6545,101 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         filled: true,
                         fillColor: _scaffoldBgColor.withValues(alpha: 0.5),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Gate Operating Schedule & Timing
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _scaffoldBgColor.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _borderColor),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time_filled_rounded, color: Color(0xFF3B82F6), size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Operating Schedule / Gate Timing",
+                                style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: openTimeController,
+                                  style: TextStyle(color: _textColor, fontSize: 13),
+                                  decoration: InputDecoration(
+                                    labelText: "Opening Time",
+                                    hintText: "06:00 AM",
+                                    prefixIcon: const Icon(Icons.wb_sunny_outlined, size: 16, color: Color(0xFFF59E0B)),
+                                    filled: true,
+                                    fillColor: _cardBgColor,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                  ),
+                                  onChanged: (_) => setModalState(() {}),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: closeTimeController,
+                                  style: TextStyle(color: _textColor, fontSize: 13),
+                                  decoration: InputDecoration(
+                                    labelText: "Closing Time",
+                                    hintText: "10:00 PM",
+                                    prefixIcon: const Icon(Icons.nightlight_outlined, size: 16, color: Color(0xFF8B5CF6)),
+                                    filled: true,
+                                    fillColor: _cardBgColor,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                  ),
+                                  onChanged: (_) => setModalState(() {}),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              ActionChip(
+                                label: const Text("24/7 Open", style: TextStyle(fontSize: 11)),
+                                onPressed: () {
+                                  setModalState(() {
+                                    openTimeController.text = "24/7";
+                                    closeTimeController.text = "24/7";
+                                  });
+                                },
+                              ),
+                              ActionChip(
+                                label: const Text("06:00 AM - 10:30 PM", style: TextStyle(fontSize: 11)),
+                                onPressed: () {
+                                  setModalState(() {
+                                    openTimeController.text = "06:00 AM";
+                                    closeTimeController.text = "10:30 PM";
+                                  });
+                                },
+                              ),
+                              ActionChip(
+                                label: const Text("06:00 AM - 09:00 PM", style: TextStyle(fontSize: 11)),
+                                onPressed: () {
+                                  setModalState(() {
+                                    openTimeController.text = "06:00 AM";
+                                    closeTimeController.text = "09:00 PM";
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -7097,6 +7380,16 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                   tags: {
                                     ...building.tags,
                                     'custom': true,
+                                    if (isWashroom) 'place_type': 'Washrooms',
+                                    if (isWashroom) 'amenity': 'toilets',
+                                    if (!isWashroom && building.tags['amenity'] == 'toilets') 'amenity': null,
+                                    if (isEntranceGate) 'barrier': 'gate',
+                                    if (isEntranceGate) 'place_type': 'Entrance Gate',
+                                    if (!isEntranceGate && !isWashroom && building.tags['barrier'] == 'gate') ...{'barrier': null, 'place_type': isClassroom ? 'Rooms/Labs' : 'Departments'},
+                                    if (!isEntranceGate && !isWashroom && !isClassroom && building.tags['place_type'] == 'Entrance Gate') 'place_type': 'Departments',
+                                    'opening_time': openTimeController.text.trim().isNotEmpty ? openTimeController.text.trim() : null,
+                                    'closing_time': closeTimeController.text.trim().isNotEmpty ? closeTimeController.text.trim() : null,
+                                    'opening_hours': (openTimeController.text.trim().isNotEmpty && closeTimeController.text.trim().isNotEmpty) ? "${openTimeController.text.trim()} - ${closeTimeController.text.trim()}" : null,
                                     'search_tags': searchTagsController.text.trim().isNotEmpty ? searchTagsController.text.trim() : null,
                                     if (isClassroom) 'room': 'yes',
                                     if (!isClassroom) ...{'room': null},

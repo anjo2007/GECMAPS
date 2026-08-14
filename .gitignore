@@ -1,5 +1,6 @@
 # IDE & System
 .idea/
+.vscode/
 .DS_Store
 *.log
 
@@ -8,6 +9,9 @@ node_modules/
 .dart_tool/
 .pub/
 .pub-cache/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
 gec_compass_app/.dart_tool/
 gec_compass_app/.pub/
 gec_compass_app/build/

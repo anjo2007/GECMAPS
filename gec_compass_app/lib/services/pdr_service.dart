@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'grid_addressing_service.dart';
 import 'web_sensors_stub.dart' if (dart.library.html) 'web_sensors_web.dart';
 
 class PDRService {
@@ -59,7 +60,15 @@ class PDRService {
   double _lastAcceptedAccuracy = 999.0;
   LatLng? _lastGpsPosition;
 
+  // VPS Ground-Truth GPS Bias Calibration State
+  double _gpsLatBias = 0.0;
+  double _gpsLngBias = 0.0;
+  DateTime? _lastBiasTime;
+
   bool get isActive => _currentPosition != null && (_accelSub != null || kIsWeb);
+  double get currentHeading => _currentHeading;
+  double get stepLengthMeters => _stepLengthMeters;
+  int get stepCount => _stepCount;
 
   /// Circular Exponential Moving Average (EMA) heading filter
   void _updateHeading(double newHeading) {
@@ -70,7 +79,7 @@ class PDRService {
     } else {
       double radSmooth = _smoothHeading * (pi / 180.0);
       double radNew = newHeading * (pi / 180.0);
-      double alpha = 0.15; // Responsive yet smooth filter factor
+      double alpha = 0.25; // Responsive yet smooth filter factor
       double sinAvg = (1 - alpha) * sin(radSmooth) + alpha * sin(radNew);
       double cosAvg = (1 - alpha) * cos(radSmooth) + alpha * cos(radNew);
       double smoothed = atan2(sinAvg, cosAvg) * (180.0 / pi);
@@ -78,6 +87,14 @@ class PDRService {
     }
     _currentHeading = _smoothHeading;
     if (onRawCompassUpdated != null) onRawCompassUpdated!(_currentHeading);
+  }
+
+  /// Calibrates GPS offset using differential ground-truth comparison from VPS
+  void calibrateGpsBias(double latBias, double lngBias) {
+    _gpsLatBias = latBias;
+    _gpsLngBias = lngBias;
+    _lastBiasTime = DateTime.now();
+    debugPrint("PDR GPS bias calibrated: (Δlat: ${latBias.toStringAsFixed(7)}, Δlng: ${lngBias.toStringAsFixed(7)})");
   }
 
   Future<void> startPDR(LatLng startPosition) async {
@@ -283,6 +300,19 @@ class PDRService {
       return;
     }
 
+    // Apply active VPS differential bias correction with smooth time decay (90s window)
+    double effectiveLat = gpsPos.latitude;
+    double effectiveLng = gpsPos.longitude;
+    if (_lastBiasTime != null) {
+      final elapsedSec = DateTime.now().difference(_lastBiasTime!).inSeconds;
+      if (elapsedSec < 90) {
+        final decay = (1.0 - elapsedSec / 90.0).clamp(0.0, 1.0);
+        effectiveLat += _gpsLatBias * decay;
+        effectiveLng += _gpsLngBias * decay;
+      }
+    }
+    final effectiveGpsPos = LatLng(effectiveLat, effectiveLng);
+
     // GPS heading is more accurate when user moves fast; compass is better when stationary
     if (heading > 0.0 && speed > 0.8) {
       if (!_hasCompassData) {
@@ -303,15 +333,15 @@ class PDRService {
     }
 
     if (_currentPosition == null) {
-      _currentPosition = gpsPos;
+      _currentPosition = effectiveGpsPos;
       _consecutiveGpsRejections = 0;
-      if (onPositionUpdated != null) onPositionUpdated!(gpsPos);
+      if (onPositionUpdated != null) onPositionUpdated!(effectiveGpsPos);
       return;
     }
 
     // Distance calculation from current fused position
     final Distance distCalculator = const Distance();
-    double jumpMeters = distCalculator.as(LengthUnit.Meter, _currentPosition!, gpsPos);
+    double jumpMeters = distCalculator.as(LengthUnit.Meter, _currentPosition!, effectiveGpsPos);
 
     // Filter stationary GPS noise — but allow accuracy refinement
     if (jumpMeters < 0.3 && speed < 0.4 && accuracy >= _lastAcceptedAccuracy) {
@@ -324,7 +354,7 @@ class PDRService {
       debugPrint("GPS outlier rejected ($_consecutiveGpsRejections/5): jump ${jumpMeters.toStringAsFixed(1)}m with accuracy ${accuracy.toStringAsFixed(1)}m");
       if (_consecutiveGpsRejections >= 5) {
         debugPrint("Escape hatch triggered after 5 consecutive outlier rejections. Resetting filter to GPS position.");
-        _currentPosition = gpsPos;
+        _currentPosition = effectiveGpsPos;
         _consecutiveGpsRejections = 0;
         if (onPositionUpdated != null) onPositionUpdated!(_currentPosition!);
       }
@@ -340,20 +370,20 @@ class PDRService {
 
     double alpha;
     if (accuracy < 4.0) {
-      alpha = 0.75;
+      alpha = 0.85;
     } else if (accuracy < 10.0) {
-      alpha = 0.45;
+      alpha = 0.60;
     } else if (accuracy < 20.0) {
-      alpha = 0.20;
+      alpha = 0.35;
     } else if (accuracy < 50.0) {
-      alpha = 0.08; // Rely heavily on step dead reckoning
+      alpha = 0.12; // Rely heavily on step dead reckoning
     } else {
-      alpha = 0.03; // Very low weight for poor GPS — keeps marker roughly correct
+      alpha = 0.06; // Very low weight for poor GPS — keeps marker roughly correct
     }
 
     // Blend coordinates smoothly
-    double fusedLat = alpha * gpsPos.latitude + (1 - alpha) * _currentPosition!.latitude;
-    double fusedLng = alpha * gpsPos.longitude + (1 - alpha) * _currentPosition!.longitude;
+    double fusedLat = alpha * effectiveGpsPos.latitude + (1 - alpha) * _currentPosition!.latitude;
+    double fusedLng = alpha * effectiveGpsPos.longitude + (1 - alpha) * _currentPosition!.longitude;
     _currentPosition = LatLng(fusedLat, fusedLng);
 
     if (onPositionUpdated != null) {
@@ -375,7 +405,10 @@ class PDRService {
     double dLat = (dy / _earthRadius) * (180.0 / pi);
     double dLng = (dx / (_earthRadius * cos(_currentPosition!.latitude * pi / 180.0))) * (180.0 / pi);
 
-    final newPos = LatLng(_currentPosition!.latitude + dLat, _currentPosition!.longitude + dLng);
+    final rawNewPos = LatLng(_currentPosition!.latitude + dLat, _currentPosition!.longitude + dLng);
+    
+    // Sub-meter geodesic grid quantization to eliminate sensor jitter
+    final newPos = GridAddressingService.snapToCampusGrid(rawNewPos, resolutionMeters: 0.2);
 
     // PDR drift cap: limit maximum displacement from last GPS fix to 80m
     if (_lastGpsPosition != null) {

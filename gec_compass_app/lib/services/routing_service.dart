@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import '../models/gate.dart';
-import 'path_finder.dart';
+import '../models/building.dart';
 
 class Waypoint {
   final String id;
@@ -51,188 +51,435 @@ class RouteResult {
     required this.endAccessPath,
     required this.instructions,
   });
+
+  double get distanceMeters {
+    double dist = 0;
+    for (int i = 0; i < fullPath.length - 1; i++) {
+      dist += const Distance().as(LengthUnit.Meter, fullPath[i], fullPath[i + 1]);
+    }
+    return dist;
+  }
 }
 
 class RoutingService {
-  // Dense waypoint network for GEC Thrissur campus road & footpath network
-  // Placed with high spatial resolution along all paved roads and pedestrian walkways
-  final List<Waypoint> waypoints = [
-    // === Campus Entrance Gates ===
-    Waypoint(id: 'gate_main', name: 'Main Gate Entrance', position: const LatLng(10.5541214, 76.2264419)),
-    Waypoint(id: 'gate_south', name: 'South Gate Entrance (Canteen)', position: const LatLng(10.5520947, 76.2241280)),
-    Waypoint(id: 'gate_east', name: 'East Gate Entrance (Electrical)', position: const LatLng(10.5531511, 76.2264930)),
+  static final RoutingService _instance = RoutingService._internal();
+  factory RoutingService() => _instance;
 
-    // === Main Gate & Entry Avenue ===
-    Waypoint(id: 'main_gate', name: 'Main Gate Entrance', position: const LatLng(10.554094, 76.226412)),
-    Waypoint(id: 'main_gate_curve1', name: 'Main Gate Curve 1', position: const LatLng(10.554120, 76.226150)),
-    Waypoint(id: 'main_gate_curve2', name: 'Main Gate Curve 2', position: const LatLng(10.554160, 76.225900)),
-    Waypoint(id: 'main_junction', name: 'Main Junction (Amphitheatre)', position: const LatLng(10.554200, 76.225600)),
-    Waypoint(id: 'bus_stop_road', name: 'Campus Bus Stop Path', position: const LatLng(10.554010, 76.226250)),
-
-    // === Main Junction to Main Building (Central Avenue) ===
-    Waypoint(id: 'main_road_w1', name: 'Central Avenue 1', position: const LatLng(10.554280, 76.225300)),
-    Waypoint(id: 'main_road_w2', name: 'Central Avenue 2', position: const LatLng(10.554350, 76.225000)),
-    Waypoint(id: 'main_building_front', name: 'Main Building Front Plaza', position: const LatLng(10.554418, 76.224668)),
-    Waypoint(id: 'admin_block_path', name: 'Admin Office Walkway', position: const LatLng(10.554520, 76.224800)),
-
-    // === Main Building to Auditorium & Library (South Avenue) ===
-    Waypoint(id: 'main_aud_road1', name: 'South Road 1', position: const LatLng(10.554100, 76.224650)),
-    Waypoint(id: 'library_junction', name: 'Central Library Junction', position: const LatLng(10.553850, 76.224610)),
-    Waypoint(id: 'auditorium_junction', name: 'Auditorium Junction (Cafeteria)', position: const LatLng(10.553595, 76.224567)),
-
-    // === Auditorium to Workshops & Canteen ===
-    Waypoint(id: 'aud_workshop_road1', name: 'Aud-Workshop Road 1', position: const LatLng(10.553250, 76.224600)),
-    Waypoint(id: 'workshops_junction', name: 'Workshops Road Junction', position: const LatLng(10.552883, 76.224626)),
-    Waypoint(id: 'canteen_front', name: 'Central Canteen Entrance', position: const LatLng(10.552333, 76.224332)),
-    Waypoint(id: 'coop_store_road', name: 'Cooperative Store Walkway', position: const LatLng(10.552550, 76.224450)),
-
-    // === Workshops East to Electrical & Mechanical ===
-    Waypoint(id: 'workshop_east_road1', name: 'Workshop East Road 1', position: const LatLng(10.552900, 76.225000)),
-    Waypoint(id: 'workshop_east_road2', name: 'Workshop East Road 2', position: const LatLng(10.552950, 76.225450)),
-    Waypoint(id: 'electrical_junction', name: 'Electrical Lab Junction', position: const LatLng(10.553002, 76.225915)),
-    Waypoint(id: 'mech_workshop_path', name: 'Mechanical Workshop Path', position: const LatLng(10.552780, 76.225200)),
-
-    // === Electrical Workshop to Civil Workshop & PG Block ===
-    Waypoint(id: 'elec_civil_road1', name: 'Elec-Civil Road 1', position: const LatLng(10.553350, 76.225890)),
-    Waypoint(id: 'civil_workshop_front', name: 'Civil Workshop Front', position: const LatLng(10.553708, 76.225861)),
-    Waypoint(id: 'pg_block_path', name: 'PG Block & Research Lab Access', position: const LatLng(10.553550, 76.226100)),
-
-    // === Civil Workshop to Main Junction (North-East road) ===
-    Waypoint(id: 'civil_main_road1', name: 'Civil-Main Road 1', position: const LatLng(10.553900, 76.225750)),
-    Waypoint(id: 'civil_dept_entrance', name: 'Civil Dept Building Entrance', position: const LatLng(10.553800, 76.225600)),
-
-    // === Western Campus Road (Auditorium -> Chemical -> CSE -> ECE) ===
-    Waypoint(id: 'west_road1', name: 'Western Campus Road 1', position: const LatLng(10.553500, 76.224200)),
-    Waypoint(id: 'west_road2', name: 'Western Campus Road 2', position: const LatLng(10.553350, 76.223800)),
-    Waypoint(id: 'chemical_junction', name: 'Chemical Eng. Junction', position: const LatLng(10.553100, 76.223400)),
-    Waypoint(id: 'west_road3', name: 'Western Campus Road 3', position: const LatLng(10.552900, 76.223000)),
-    Waypoint(id: 'west_road4', name: 'Western Campus Road 4', position: const LatLng(10.552800, 76.222600)),
-    Waypoint(id: 'cse_ece_junction', name: 'CS & Production Dept Junction', position: const LatLng(10.552740, 76.222020)),
-    Waypoint(id: 'ece_chem_junction', name: 'ECE Dept Entrance Junction', position: const LatLng(10.552710, 76.221619)),
-    Waypoint(id: 'mca_block_road', name: 'MCA Department Walkway', position: const LatLng(10.552650, 76.221200)),
-
-    // === Hostel Road Loop (Main Junction -> Men's Hostels -> Ladies Hostels) ===
-    Waypoint(id: 'hostel_road_start', name: 'Hostel Road Start', position: const LatLng(10.554300, 76.225200)),
-    Waypoint(id: 'hostel_road_mid', name: 'Hostel Road Midpoint', position: const LatLng(10.554400, 76.224500)),
-    Waypoint(id: 'hostel_road_w1', name: 'Hostel Road West 1', position: const LatLng(10.554430, 76.223800)),
-    Waypoint(id: 'hostel_road_w2', name: 'Hostel Road West 2', position: const LatLng(10.554440, 76.223100)),
-    Waypoint(id: 'mens_hostel_junction', name: "Men's Hostel Main Junction", position: const LatLng(10.554442, 76.222121)),
-    Waypoint(id: 'mh_block_a_road', name: "Men's Hostel Block A Access", position: const LatLng(10.554650, 76.222100)),
-    Waypoint(id: 'lh_junction', name: "Ladies Hostel Junction", position: const LatLng(10.554800, 76.221500)),
-
-    // === Hostel to CSE South Connectors ===
-    Waypoint(id: 'hostel_cse_road1', name: 'Hostel-CSE Road 1', position: const LatLng(10.554100, 76.222100)),
-    Waypoint(id: 'hostel_cse_road2', name: 'Hostel-CSE Road 2', position: const LatLng(10.553700, 76.222080)),
-    Waypoint(id: 'hostel_cse_road3', name: 'Hostel-CSE Road 3', position: const LatLng(10.553200, 76.222050)),
-
-    // === Chemical to Workshops Cross-Road ===
-    Waypoint(id: 'chem_workshop_road1', name: 'Chemical-Workshop Road 1', position: const LatLng(10.552950, 76.223700)),
-    Waypoint(id: 'chem_workshop_road2', name: 'Chemical-Workshop Road 2', position: const LatLng(10.552900, 76.224100)),
-
-    // === Upper Campus Road (Northern Perimeter & Sports Ground) ===
-    Waypoint(id: 'upper_road1', name: 'Upper Campus Road 1', position: const LatLng(10.554600, 76.224400)),
-    Waypoint(id: 'upper_road2', name: 'Upper Campus Road 2', position: const LatLng(10.554700, 76.224000)),
-    Waypoint(id: 'upper_road3', name: 'Upper Campus Road 3', position: const LatLng(10.554750, 76.223500)),
-    Waypoint(id: 'sports_ground_road', name: 'Sports Ground Entrance Path', position: const LatLng(10.554900, 76.222800)),
-    Waypoint(id: 'indoor_court_road', name: 'Indoor Court Road', position: const LatLng(10.555050, 76.222200)),
-
-    // === East Inner Ring Roads ===
-    Waypoint(id: 'inner_road1', name: 'East Inner Road 1', position: const LatLng(10.553500, 76.225500)),
-    Waypoint(id: 'inner_road2', name: 'East Inner Road 2', position: const LatLng(10.553800, 76.225400)),
-  ];
-
-  late final Map<String, List<String>> _graph;
-  late final Map<String, Waypoint> _waypointMap;
+  List<Waypoint> _waypoints = [];
+  Map<String, List<String>> _graph = {};
+  Map<String, Waypoint> _waypointMap = {};
+  bool _isGraphInitialized = false;
 
   List<String> _lastParsedInstructions = [];
   List<LatLng> _lastStepManeuverCoords = [];
 
-  static final List<Gate> defaultGates = [
-    Gate(id: 'gate_main', name: 'Main Gate Entrance', latitude: 10.5541214, longitude: 76.2264419, graphNodeId: 'gate_main'),
-    Gate(id: 'gate_south', name: 'South Gate Entrance (Canteen)', latitude: 10.5520947, longitude: 76.2241280, graphNodeId: 'gate_south'),
-    Gate(id: 'gate_east', name: 'East Gate Entrance (Electrical)', latitude: 10.5531511, longitude: 76.2264930, graphNodeId: 'gate_east'),
-  ];
+  List<Waypoint> get waypoints => List.unmodifiable(_waypoints);
+  Map<String, List<String>> get graph => Map.unmodifiable(_graph);
+  List<Waypoint> get roadNodes => List.unmodifiable(_waypoints);
+  Map<String, List<String>> get roadAdjacency => Map.unmodifiable(_graph);
 
-  RoutingService() {
-    _waypointMap = {for (final w in waypoints) w.id: w};
-    _buildSymmetricGraph();
+  RoutingService._internal() {
+    _initializeDefaultGraph();
+    _loadCampusRoadsAsset();
   }
 
-  Graph buildGraph() {
-    final g = Graph();
-    for (final wp in waypoints) {
-      g.addNode(wp.id, wp.position);
-    }
-    _graph.forEach((fromId, neighbors) {
-      final wpFrom = _waypointMap[fromId];
-      if (wpFrom != null) {
-        for (final toId in neighbors) {
-          final wpTo = _waypointMap[toId];
-          if (wpTo != null) {
-            final dist = distance(wpFrom.position, wpTo.position);
-            g.addEdge(fromId, toId, dist);
+  /// Public loader from string (useful for testing, dynamic remote updates, and offline pre-caching)
+  void loadCampusRoadsFromJsonString(String jsonString) {
+    try {
+      final data = json.decode(jsonString);
+      Map<String, dynamic>? graphData;
+      if (data is Map && data.containsKey('graph')) {
+        graphData = data['graph'] as Map<String, dynamic>;
+      } else if (data is Map && data.containsKey('nodes') && data.containsKey('edges')) {
+        graphData = data as Map<String, dynamic>;
+      }
+
+      if (graphData != null) {
+        final rawNodes = graphData['nodes'] as List<dynamic>;
+        final rawEdges = graphData['edges'] as List<dynamic>;
+
+        final List<Waypoint> loadedWaypoints = [];
+        final Map<String, List<String>> loadedGraph = {};
+
+        for (final n in rawNodes) {
+          final id = n['id'].toString();
+          final lat = (n['lat'] as num).toDouble();
+          final lng = (n['lng'] as num).toDouble();
+          final wp = Waypoint(
+            id: id,
+            name: _generateNodeName(id, lat, lng),
+            position: LatLng(lat, lng),
+          );
+          loadedWaypoints.add(wp);
+          loadedGraph[id] = [];
+        }
+
+        for (final e in rawEdges) {
+          if (e is List && e.length >= 2) {
+            final u = e[0].toString();
+            final v = e[1].toString();
+            if (loadedGraph.containsKey(u) && loadedGraph.containsKey(v)) {
+              if (!loadedGraph[u]!.contains(v)) loadedGraph[u]!.add(v);
+              if (!loadedGraph[v]!.contains(u)) loadedGraph[v]!.add(u);
+            }
           }
         }
+
+        _attachNamedGateWaypoints(loadedWaypoints, loadedGraph);
+
+        _waypoints = loadedWaypoints;
+        _graph = loadedGraph;
+        _waypointMap = {for (final w in _waypoints) w.id: w};
+        _isGraphInitialized = true;
       }
-    });
-    return g;
+    } catch (e) {
+      debugPrint("Error parsing campus roads string: $e");
+    }
   }
 
-  List<LatLng> findPathWithGates(LatLng start, LatLng end, {List<Gate>? customGates}) {
-    final allGates = [...defaultGates, ...?customGates];
-    final pf = PathFinder(buildGraph(), allGates);
-    return pf.findPath(start, end);
+  /// Public gate selector evaluating distance, target angle, and open/closed gate penalties
+  Building selectOptimalGate(LatLng userPos, LatLng destination, {List<Building>? customGates, DateTime? now}) {
+    final curTime = now ?? DateTime.now();
+    final List<Map<String, dynamic>> candidateGates = [
+      {
+        'id': 'gate_main',
+        'name': 'Main Gate Entrance',
+        'pos': const LatLng(10.5541214, 76.2264419),
+        'open': '06:00 AM',
+        'close': '10:30 PM',
+      },
+      {
+        'id': 'gate_south',
+        'name': 'South Gate Entrance (Canteen)',
+        'pos': const LatLng(10.5520947, 76.2241280),
+        'open': '06:00 AM',
+        'close': '09:30 PM',
+      },
+      {
+        'id': 'gate_east',
+        'name': 'East Gate Entrance (Electrical)',
+        'pos': const LatLng(10.5531511, 76.2264930),
+        'open': '06:00 AM',
+        'close': '09:00 PM',
+      },
+    ];
+
+    if (customGates != null) {
+      for (final b in customGates) {
+        if (b.isDeleted) continue;
+        final isGate = b.tags['barrier'] == 'gate' || b.tags['place_type'] == 'Entrance Gate';
+        if (isGate) {
+          candidateGates.add({
+            'id': b.id,
+            'name': b.name,
+            'pos': LatLng(b.lat, b.lng),
+            'open': b.tags['opening_time']?.toString() ?? '06:00 AM',
+            'close': b.tags['closing_time']?.toString() ?? '10:00 PM',
+          });
+        }
+      }
+    }
+
+    Map<String, dynamic> bestGate = candidateGates.first;
+    double minTotalCost = double.infinity;
+
+    for (final gate in candidateGates) {
+      final LatLng gatePos = gate['pos'] as LatLng;
+      final String? openStr = gate['open'] as String?;
+      final String? closeStr = gate['close'] as String?;
+      final bool isOpen = isGateOpenNow(openStr, closeStr, now: curTime);
+
+      final double closedPenalty = isOpen ? 0.0 : 5000.0;
+      final double distExternalToGate = distance(userPos, gatePos);
+      final double distGateToInternal = distance(gatePos, destination);
+      final double totalCost = distExternalToGate + distGateToInternal + closedPenalty;
+
+      if (totalCost < minTotalCost) {
+        minTotalCost = totalCost;
+        bestGate = gate;
+      }
+    }
+
+    final pos = bestGate['pos'] as LatLng;
+    return Building(
+      id: bestGate['id'] as String,
+      name: bestGate['name'] as String,
+      lat: pos.latitude,
+      lng: pos.longitude,
+      tags: {
+        'barrier': 'gate',
+        'opening_time': bestGate['open'],
+        'closing_time': bestGate['close'],
+      },
+    );
   }
 
-  Map<String, List<String>> get graph => Map.unmodifiable(_graph);
+  /// Gate schedule helper: checks if a gate is currently open
+  static bool isGateOpenNow(String? openTime, String? closeTime, {DateTime? now}) {
+    if (openTime == null || openTime.trim().isEmpty ||
+        closeTime == null || closeTime.trim().isEmpty) {
+      return true; // 24/7 or unconstrained
+    }
 
-  void _buildSymmetricGraph() {
+    final current = now ?? DateTime.now();
+    final currentMinutes = current.hour * 60 + current.minute;
+
+    final openMinutes = _parseTimeToMinutes(openTime);
+    final closeMinutes = _parseTimeToMinutes(closeTime);
+
+    if (openMinutes == null || closeMinutes == null) return true;
+
+    if (openMinutes <= closeMinutes) {
+      return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+    } else {
+      // Crosses midnight (e.g. 18:00 to 06:00)
+      return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+    }
+  }
+
+  /// Gate schedule status label helper (e.g. "Open • Closes 10:00 PM")
+  static String getGateStatusLabel(String? openTime, String? closeTime, {DateTime? now}) {
+    if (openTime == null || openTime.trim().isEmpty ||
+        closeTime == null || closeTime.trim().isEmpty) {
+      return "Open 24 Hours";
+    }
+
+    final isOpen = isGateOpenNow(openTime, closeTime, now: now);
+    if (isOpen) {
+      return "Open • Closes ${_formatTimeDisplay(closeTime)}";
+    } else {
+      return "Closed • Opens ${_formatTimeDisplay(openTime)}";
+    }
+  }
+
+  static int? _parseTimeToMinutes(String timeStr) {
+    final clean = timeStr.trim().toLowerCase();
+    if (clean == '24/7' || clean == 'always open' || clean == 'open') return null;
+
+    final isPm = clean.contains('pm');
+    final isAm = clean.contains('am');
+    final numericOnly = clean.replaceAll(RegExp(r'[^0-9:]'), '');
+    final parts = numericOnly.split(':');
+
+    if (parts.isEmpty) return null;
+    int hour = int.tryParse(parts[0]) ?? 0;
+    int minute = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+
+    if (isPm && hour < 12) hour += 12;
+    if (isAm && hour == 12) hour = 0;
+
+    return hour * 60 + minute;
+  }
+
+  static String _formatTimeDisplay(String timeStr) {
+    final mins = _parseTimeToMinutes(timeStr);
+    if (mins == null) return timeStr;
+
+    final hour = mins ~/ 60;
+    final minute = mins % 60;
+    final isPm = hour >= 12;
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    final minuteStr = minute < 10 ? '0$minute' : '$minute';
+    final period = isPm ? 'PM' : 'AM';
+
+    return '$displayHour:$minuteStr $period';
+  }
+
+  /// Asynchronously loads and parses assets/campus_roads.json to upgrade the graph
+  Future<void> _loadCampusRoadsAsset() async {
+    try {
+      final jsonString = await rootBundle.loadString('assets/campus_roads.json');
+      final data = json.decode(jsonString);
+
+      if (data is Map && data.containsKey('nodes') && data.containsKey('edges')) {
+        final rawNodes = data['nodes'] as List<dynamic>;
+        final rawEdges = data['edges'] as List<dynamic>;
+
+        final List<Waypoint> loadedWaypoints = [];
+        final Map<String, List<String>> loadedGraph = {};
+
+        for (final n in rawNodes) {
+          final id = n['id'].toString();
+          final lat = (n['lat'] as num).toDouble();
+          final lng = (n['lng'] as num).toDouble();
+          final wp = Waypoint(
+            id: id,
+            name: _generateNodeName(id, lat, lng),
+            position: LatLng(lat, lng),
+          );
+          loadedWaypoints.add(wp);
+          loadedGraph[id] = [];
+        }
+
+        for (final e in rawEdges) {
+          if (e is List && e.length >= 2) {
+            final u = e[0].toString();
+            final v = e[1].toString();
+            if (loadedGraph.containsKey(u) && loadedGraph.containsKey(v)) {
+              if (!loadedGraph[u]!.contains(v)) loadedGraph[u]!.add(v);
+              if (!loadedGraph[v]!.contains(u)) loadedGraph[v]!.add(u);
+            }
+          }
+        }
+
+        // Add explicit named gate connections to closest road nodes
+        _attachNamedGateWaypoints(loadedWaypoints, loadedGraph);
+
+        _waypoints = loadedWaypoints;
+        _graph = loadedGraph;
+        _waypointMap = {for (final w in _waypoints) w.id: w};
+        _isGraphInitialized = true;
+        debugPrint("Loaded campus_roads.json with ${_waypoints.length} nodes and ${_graph.length} graph keys.");
+      }
+    } catch (e) {
+      debugPrint("Campus roads asset load note/fallback: $e");
+    }
+  }
+
+  String _generateNodeName(String id, double lat, double lng) {
+    if (distance(LatLng(lat, lng), const LatLng(10.5541214, 76.2264419)) < 15) {
+      return "Main Gate Entrance";
+    }
+    if (distance(LatLng(lat, lng), const LatLng(10.5520947, 76.2241280)) < 15) {
+      return "South Gate Entrance (Canteen)";
+    }
+    if (distance(LatLng(lat, lng), const LatLng(10.5531511, 76.2264930)) < 15) {
+      return "East Gate Entrance (Electrical)";
+    }
+    if (distance(LatLng(lat, lng), const LatLng(10.554418, 76.224668)) < 25) {
+      return "Main Building Central Plaza";
+    }
+    if (distance(LatLng(lat, lng), const LatLng(10.553595, 76.224567)) < 25) {
+      return "Auditorium / Library Junction";
+    }
+    if (distance(LatLng(lat, lng), const LatLng(10.552740, 76.222020)) < 25) {
+      return "CSE / ECE Academic Way";
+    }
+    if (distance(LatLng(lat, lng), const LatLng(10.554442, 76.222121)) < 25) {
+      return "Hostels & Sports Road";
+    }
+    return "Campus Walkway ($id)";
+  }
+
+  void _attachNamedGateWaypoints(List<Waypoint> wps, Map<String, List<String>> grp) {
+    final gateDefs = [
+      {'id': 'gate_main', 'name': 'Main Gate Entrance', 'pos': const LatLng(10.5541214, 76.2264419)},
+      {'id': 'gate_south', 'name': 'South Gate Entrance (Canteen)', 'pos': const LatLng(10.5520947, 76.2241280)},
+      {'id': 'gate_east', 'name': 'East Gate Entrance (Electrical)', 'pos': const LatLng(10.5531511, 76.2264930)},
+    ];
+
+    for (final g in gateDefs) {
+      final gId = g['id'] as String;
+      final gPos = g['pos'] as LatLng;
+      final gName = g['name'] as String;
+
+      // Find 2 closest existing nodes in wps
+      final sortedNodes = List<Waypoint>.from(wps)
+        ..sort((a, b) => distance(gPos, a.position).compareTo(distance(gPos, b.position)));
+
+      wps.removeWhere((w) => w.id == gId);
+      wps.add(Waypoint(id: gId, name: gName, position: gPos));
+      grp[gId] = [];
+
+      for (int i = 0; i < min(2, sortedNodes.length); i++) {
+        final target = sortedNodes[i];
+        if (!grp[gId]!.contains(target.id)) grp[gId]!.add(target.id);
+        grp.putIfAbsent(target.id, () => []);
+        if (!grp[target.id]!.contains(gId)) grp[target.id]!.add(gId);
+      }
+    }
+  }
+
+  void _initializeDefaultGraph() {
+    if (_isGraphInitialized) return;
+    _waypoints = [
+      Waypoint(id: 'gate_main', name: 'Main Gate Entrance', position: const LatLng(10.5541214, 76.2264419)),
+      Waypoint(id: 'gate_south', name: 'South Gate Entrance (Canteen)', position: const LatLng(10.5520947, 76.2241280)),
+      Waypoint(id: 'gate_east', name: 'East Gate Entrance (Electrical)', position: const LatLng(10.5531511, 76.2264930)),
+      Waypoint(id: 'main_gate', name: 'Main Gate Entrance', position: const LatLng(10.554094, 76.226412)),
+      Waypoint(id: 'main_gate_curve1', name: 'Main Gate Curve 1', position: const LatLng(10.554120, 76.226150)),
+      Waypoint(id: 'main_gate_curve2', name: 'Main Gate Curve 2', position: const LatLng(10.554160, 76.225900)),
+      Waypoint(id: 'main_junction', name: 'Main Junction (Amphitheatre)', position: const LatLng(10.554200, 76.225600)),
+      Waypoint(id: 'bus_stop_road', name: 'Campus Bus Stop Path', position: const LatLng(10.554010, 76.226250)),
+      Waypoint(id: 'main_road_w1', name: 'Central Avenue 1', position: const LatLng(10.554280, 76.225300)),
+      Waypoint(id: 'main_road_w2', name: 'Central Avenue 2', position: const LatLng(10.554350, 76.225000)),
+      Waypoint(id: 'main_building_front', name: 'Main Building Front Plaza', position: const LatLng(10.554418, 76.224668)),
+      Waypoint(id: 'admin_block_path', name: 'Admin Office Walkway', position: const LatLng(10.554520, 76.224800)),
+      Waypoint(id: 'main_aud_road1', name: 'South Road 1', position: const LatLng(10.554100, 76.224650)),
+      Waypoint(id: 'library_junction', name: 'Central Library Junction', position: const LatLng(10.553850, 76.224610)),
+      Waypoint(id: 'auditorium_junction', name: 'Auditorium Junction (Cafeteria)', position: const LatLng(10.553595, 76.224567)),
+      Waypoint(id: 'aud_workshop_road1', name: 'Aud-Workshop Road 1', position: const LatLng(10.553250, 76.224600)),
+      Waypoint(id: 'workshops_junction', name: 'Workshops Road Junction', position: const LatLng(10.552883, 76.224626)),
+      Waypoint(id: 'canteen_front', name: 'Central Canteen Entrance', position: const LatLng(10.552333, 76.224332)),
+      Waypoint(id: 'coop_store_road', name: 'Cooperative Store Walkway', position: const LatLng(10.552550, 76.224450)),
+      Waypoint(id: 'workshop_east_road1', name: 'Workshop East Road 1', position: const LatLng(10.552900, 76.225000)),
+      Waypoint(id: 'workshop_east_road2', name: 'Workshop East Road 2', position: const LatLng(10.552950, 76.225450)),
+      Waypoint(id: 'electrical_junction', name: 'Electrical Lab Junction', position: const LatLng(10.553002, 76.225915)),
+      Waypoint(id: 'mech_workshop_path', name: 'Mechanical Workshop Path', position: const LatLng(10.552780, 76.225200)),
+      Waypoint(id: 'elec_civil_road1', name: 'Elec-Civil Road 1', position: const LatLng(10.553350, 76.225890)),
+      Waypoint(id: 'civil_workshop_front', name: 'Civil Workshop Front', position: const LatLng(10.553708, 76.225861)),
+      Waypoint(id: 'pg_block_path', name: 'PG Block & Research Lab Access', position: const LatLng(10.553550, 76.226100)),
+      Waypoint(id: 'civil_main_road1', name: 'Civil-Main Road 1', position: const LatLng(10.553900, 76.225750)),
+      Waypoint(id: 'civil_dept_entrance', name: 'Civil Dept Building Entrance', position: const LatLng(10.553800, 76.225600)),
+      Waypoint(id: 'west_road1', name: 'Western Campus Road 1', position: const LatLng(10.553500, 76.224200)),
+      Waypoint(id: 'west_road2', name: 'Western Campus Road 2', position: const LatLng(10.553350, 76.223800)),
+      Waypoint(id: 'chemical_junction', name: 'Chemical Eng. Junction', position: const LatLng(10.553100, 76.223400)),
+      Waypoint(id: 'west_road3', name: 'Western Campus Road 3', position: const LatLng(10.552900, 76.223000)),
+      Waypoint(id: 'west_road4', name: 'Western Campus Road 4', position: const LatLng(10.552800, 76.222600)),
+      Waypoint(id: 'cse_ece_junction', name: 'CS & Production Dept Junction', position: const LatLng(10.552740, 76.222020)),
+      Waypoint(id: 'ece_chem_junction', name: 'ECE Dept Entrance Junction', position: const LatLng(10.552710, 76.221619)),
+      Waypoint(id: 'mca_block_road', name: 'MCA Department Walkway', position: const LatLng(10.552650, 76.221200)),
+      Waypoint(id: 'hostel_road_start', name: 'Hostel Road Start', position: const LatLng(10.554300, 76.225200)),
+      Waypoint(id: 'hostel_road_mid', name: 'Hostel Road Midpoint', position: const LatLng(10.554400, 76.224500)),
+      Waypoint(id: 'hostel_road_w1', name: 'Hostel Road West 1', position: const LatLng(10.554430, 76.223800)),
+      Waypoint(id: 'hostel_road_w2', name: 'Hostel Road West 2', position: const LatLng(10.554440, 76.223100)),
+      Waypoint(id: 'mens_hostel_junction', name: "Men's Hostel Main Junction", position: const LatLng(10.554442, 76.222121)),
+      Waypoint(id: 'mh_block_a_road', name: "Men's Hostel Block A Access", position: const LatLng(10.554650, 76.222100)),
+      Waypoint(id: 'lh_junction', name: "Ladies Hostel Junction", position: const LatLng(10.554800, 76.221500)),
+      Waypoint(id: 'hostel_cse_road1', name: 'Hostel-CSE Road 1', position: const LatLng(10.554100, 76.222100)),
+      Waypoint(id: 'hostel_cse_road2', name: 'Hostel-CSE Road 2', position: const LatLng(10.553700, 76.222080)),
+      Waypoint(id: 'hostel_cse_road3', name: 'Hostel-CSE Road 3', position: const LatLng(10.553200, 76.222050)),
+      Waypoint(id: 'chem_workshop_road1', name: 'Chemical-Workshop Road 1', position: const LatLng(10.552950, 76.223700)),
+      Waypoint(id: 'chem_workshop_road2', name: 'Chemical-Workshop Road 2', position: const LatLng(10.552900, 76.224100)),
+      Waypoint(id: 'upper_road1', name: 'Upper Campus Road 1', position: const LatLng(10.554600, 76.224400)),
+      Waypoint(id: 'upper_road2', name: 'Upper Campus Road 2', position: const LatLng(10.554700, 76.224000)),
+      Waypoint(id: 'upper_road3', name: 'Upper Campus Road 3', position: const LatLng(10.554750, 76.223500)),
+      Waypoint(id: 'sports_ground_road', name: 'Sports Ground Entrance Path', position: const LatLng(10.554900, 76.222800)),
+      Waypoint(id: 'indoor_court_road', name: 'Indoor Court Road', position: const LatLng(10.555050, 76.222200)),
+      Waypoint(id: 'inner_road1', name: 'East Inner Road 1', position: const LatLng(10.553500, 76.225500)),
+      Waypoint(id: 'inner_road2', name: 'East Inner Road 2', position: const LatLng(10.553800, 76.225400)),
+    ];
+
+    _waypointMap = {for (final w in _waypoints) w.id: w};
     final rawGraph = <String, List<String>>{
-      // Campus Entrance Gates & Outer Perimeter Links
       'gate_main': ['main_gate', 'main_gate_curve1', 'bus_stop_road', 'gate_east'],
       'gate_east': ['electrical_junction', 'pg_block_path', 'elec_civil_road1', 'gate_main', 'gate_south'],
       'gate_south': ['canteen_front', 'coop_store_road', 'workshops_junction', 'gate_east'],
-
-      // Main Gate entry & bus stop
       'main_gate': ['gate_main', 'main_gate_curve1', 'bus_stop_road'],
       'bus_stop_road': ['main_gate', 'main_gate_curve1'],
       'main_gate_curve1': ['main_gate', 'main_gate_curve2', 'bus_stop_road'],
       'main_gate_curve2': ['main_gate_curve1', 'main_junction'],
-
-      // Main Junction hub
       'main_junction': ['main_gate_curve2', 'main_road_w1', 'civil_main_road1', 'hostel_road_start'],
-
-      // Central Avenue (Main Building)
       'main_road_w1': ['main_junction', 'main_road_w2'],
       'main_road_w2': ['main_road_w1', 'main_building_front', 'admin_block_path'],
       'admin_block_path': ['main_road_w2', 'main_building_front'],
       'main_building_front': ['main_road_w2', 'main_aud_road1', 'upper_road1', 'hostel_road_mid', 'admin_block_path'],
-
-      // South Avenue (Library & Auditorium)
       'main_aud_road1': ['main_building_front', 'library_junction'],
       'library_junction': ['main_aud_road1', 'auditorium_junction'],
       'auditorium_junction': ['library_junction', 'aud_workshop_road1', 'west_road1'],
-
-      // Auditorium to Workshops & Canteen
       'aud_workshop_road1': ['auditorium_junction', 'workshops_junction', 'coop_store_road'],
       'coop_store_road': ['aud_workshop_road1', 'workshops_junction'],
       'workshops_junction': ['aud_workshop_road1', 'canteen_front', 'workshop_east_road1', 'chem_workshop_road2', 'coop_store_road'],
       'canteen_front': ['workshops_junction'],
-
-      // Workshop East loop
       'workshop_east_road1': ['workshops_junction', 'workshop_east_road2', 'mech_workshop_path'],
       'mech_workshop_path': ['workshop_east_road1', 'workshop_east_road2'],
       'workshop_east_road2': ['workshop_east_road1', 'electrical_junction', 'mech_workshop_path'],
-
-      // Electrical & Civil East Ring
       'electrical_junction': ['workshop_east_road2', 'elec_civil_road1', 'inner_road1'],
       'elec_civil_road1': ['electrical_junction', 'civil_workshop_front', 'pg_block_path'],
       'pg_block_path': ['elec_civil_road1', 'civil_workshop_front'],
       'civil_workshop_front': ['elec_civil_road1', 'civil_main_road1', 'pg_block_path'],
       'civil_main_road1': ['civil_workshop_front', 'main_junction', 'inner_road2', 'civil_dept_entrance'],
       'civil_dept_entrance': ['civil_main_road1', 'main_junction'],
-
-      // Western Campus (CSE / ECE / Chemical / MCA)
       'west_road1': ['auditorium_junction', 'west_road2'],
       'west_road2': ['west_road1', 'chemical_junction'],
       'chemical_junction': ['west_road2', 'west_road3', 'chem_workshop_road1'],
@@ -241,8 +488,6 @@ class RoutingService {
       'cse_ece_junction': ['west_road4', 'ece_chem_junction', 'hostel_cse_road3'],
       'ece_chem_junction': ['cse_ece_junction', 'mca_block_road'],
       'mca_block_road': ['ece_chem_junction'],
-
-      // Hostel Road Loop
       'hostel_road_start': ['main_junction', 'hostel_road_mid'],
       'hostel_road_mid': ['hostel_road_start', 'hostel_road_w1', 'main_building_front'],
       'hostel_road_w1': ['hostel_road_mid', 'hostel_road_w2', 'upper_road3'],
@@ -250,24 +495,16 @@ class RoutingService {
       'mens_hostel_junction': ['hostel_road_w2', 'hostel_cse_road1', 'mh_block_a_road', 'lh_junction'],
       'mh_block_a_road': ['mens_hostel_junction', 'lh_junction'],
       'lh_junction': ['mens_hostel_junction', 'mh_block_a_road'],
-
-      // Hostel to CSE South
       'hostel_cse_road1': ['mens_hostel_junction', 'hostel_cse_road2'],
       'hostel_cse_road2': ['hostel_cse_road1', 'hostel_cse_road3'],
       'hostel_cse_road3': ['hostel_cse_road2', 'cse_ece_junction'],
-
-      // Chemical to Workshops Cross-road
       'chem_workshop_road1': ['chemical_junction', 'chem_workshop_road2'],
       'chem_workshop_road2': ['chem_workshop_road1', 'workshops_junction'],
-
-      // Upper Campus & Sports Complex
       'upper_road1': ['main_building_front', 'upper_road2'],
       'upper_road2': ['upper_road1', 'upper_road3'],
       'upper_road3': ['upper_road2', 'hostel_road_w1', 'sports_ground_road'],
       'sports_ground_road': ['upper_road3', 'indoor_court_road'],
       'indoor_court_road': ['sports_ground_road', 'lh_junction'],
-
-      // Inner East Road
       'inner_road1': ['electrical_junction', 'inner_road2'],
       'inner_road2': ['inner_road1', 'civil_main_road1'],
     };
@@ -276,18 +513,14 @@ class RoutingService {
     rawGraph.forEach((node, neighbors) {
       _graph.putIfAbsent(node, () => <String>[]);
       for (final nbr in neighbors) {
-        if (!_graph[node]!.contains(nbr)) {
-          _graph[node]!.add(nbr);
-        }
+        if (!_graph[node]!.contains(nbr)) _graph[node]!.add(nbr);
         _graph.putIfAbsent(nbr, () => <String>[]);
-        if (!_graph[nbr]!.contains(node)) {
-          _graph[nbr]!.add(node);
-        }
+        if (!_graph[nbr]!.contains(node)) _graph[nbr]!.add(node);
       }
     });
   }
 
-  // Calculate Haversine distance in meters between two coordinates
+  // Calculate Haversine distance in meters
   double distance(LatLng a, LatLng b) {
     const double R = 6371000;
     final dLat = (b.latitude - a.latitude) * (pi / 180);
@@ -317,8 +550,8 @@ class RoutingService {
   RoadSnapResult snapToNearestGraphEdge(LatLng point) {
     double minDistance = double.infinity;
     LatLng bestSnapped = point;
-    String bestNodeA = waypoints.first.id;
-    String bestNodeB = waypoints.first.id;
+    String bestNodeA = _waypoints.isNotEmpty ? _waypoints.first.id : 'gate_main';
+    String bestNodeB = bestNodeA;
 
     final double latRad = point.latitude * (pi / 180.0);
     final double mPerLat = 111139.0;
@@ -375,12 +608,14 @@ class RoutingService {
     );
   }
 
-  // Find closest waypoint to a point
   Waypoint findClosestWaypoint(LatLng point) {
-    Waypoint closest = waypoints.first;
+    if (_waypoints.isEmpty) {
+      return Waypoint(id: 'gate_main', name: 'Main Gate Entrance', position: const LatLng(10.5541214, 76.2264419));
+    }
+    Waypoint closest = _waypoints.first;
     double minDistance = distance(point, closest.position);
 
-    for (var wp in waypoints) {
+    for (var wp in _waypoints) {
       final dist = distance(point, wp.position);
       if (dist < minDistance) {
         minDistance = dist;
@@ -390,7 +625,7 @@ class RoutingService {
     return closest;
   }
 
-  // Dijkstra algorithm to find shortest road path between two waypoint IDs
+  /// Dijkstra algorithm to find shortest road path between two waypoint IDs
   List<LatLng> getRouteBetweenWaypoints(String startId, String endId) {
     if (startId == endId) {
       final wp = _waypointMap[startId];
@@ -423,9 +658,8 @@ class RoutingService {
         if (alt < (distances[neighborId] ?? double.infinity)) {
           distances[neighborId] = alt;
           previous[neighborId] = currentId;
-          
+
           final entry = _PQEntry(neighborId, alt);
-          // O(log N) binary insertion instead of O(N) linear scan
           int lo = 0, hi = pq.length;
           while (lo < hi) {
             final mid = (lo + hi) >> 1;
@@ -460,7 +694,7 @@ class RoutingService {
   }
 
   /// Online routing fetcher with primary + secondary server fallback
-  Future<List<LatLng>?> tryOnlineOSRM(LatLng start, LatLng end) async {
+  Future<List<LatLng>?> _tryOnlineOSRM(LatLng start, LatLng end) async {
     final urls = [
       'https://router.project-osrm.org/route/v1/foot/'
           '${start.longitude},${start.latitude};'
@@ -503,97 +737,177 @@ class RoutingService {
           }
         }
       } catch (e) {
-        debugPrint("Online OSRM endpoint ($urlStr) failed/skipped: $e");
+        debugPrint("Online OSRM endpoint ($urlStr) skipped/failed: $e");
       }
     }
     return null;
   }
 
-  /// Get complete route decomposed into access walkways + paved road path
-  Future<RouteResult> getDetailedRoute(LatLng start, LatLng end) async {
+  /// Get single optimal route considering boundary crossing, operating gate schedules & paved walkways
+  Future<RouteResult> getDetailedRoute(
+    LatLng start,
+    LatLng end, {
+    List<Building>? customBuildings,
+    DateTime? currentTime,
+  }) async {
     _lastParsedInstructions.clear();
     _lastStepManeuverCoords.clear();
+
+    final now = currentTime ?? DateTime.now();
 
     final startSnap = snapToNearestGraphEdge(start);
     final endSnap = snapToNearestGraphEdge(end);
 
-    final bool startIsOutside = startSnap.distanceToRoad > 30;
-    final bool endIsOutside = endSnap.distanceToRoad > 30;
+    final bool startIsOutside = startSnap.distanceToRoad > 35;
+    final bool endIsOutside = endSnap.distanceToRoad > 35;
 
-    // 1. Boundary crossing routing (forces passage through optimal gates)
+    // 1. Boundary crossing routing (strictly forces passage through the optimal open gate)
     if (startIsOutside != endIsOutside) {
-      final gateIds = ['gate_main', 'gate_south', 'gate_east'];
-      String bestGateId = 'gate_main';
-      double minTotalCost = double.infinity;
+      final List<Map<String, dynamic>> candidateGates = [
+        {
+          'id': 'gate_main',
+          'name': 'Main Gate Entrance',
+          'pos': const LatLng(10.5541214, 76.2264419),
+          'open': '06:00 AM',
+          'close': '10:30 PM',
+        },
+        {
+          'id': 'gate_south',
+          'name': 'South Gate Entrance (Canteen)',
+          'pos': const LatLng(10.5520947, 76.2241280),
+          'open': '06:00 AM',
+          'close': '09:30 PM',
+        },
+        {
+          'id': 'gate_east',
+          'name': 'East Gate Entrance (Electrical)',
+          'pos': const LatLng(10.5531511, 76.2264930),
+          'open': '06:00 AM',
+          'close': '09:00 PM',
+        },
+      ];
 
-      // Optimal gate selection: pick the gate with shortest TOTAL path cost
-      // (external→gate distance + gate→internal campus graph distance)
+      // Add user-defined gates from dataset if available
+      if (customBuildings != null) {
+        for (final b in customBuildings) {
+          if (b.isDeleted) continue;
+          final isGate = b.tags['barrier'] == 'gate' || b.tags['place_type'] == 'Entrance Gate';
+          if (isGate) {
+            candidateGates.add({
+              'id': b.id,
+              'name': b.name,
+              'pos': LatLng(b.lat, b.lng),
+              'open': b.tags['opening_time']?.toString() ?? '06:00 AM',
+              'close': b.tags['closing_time']?.toString() ?? '10:00 PM',
+            });
+          }
+        }
+      }
+
       final LatLng externalPoint = startIsOutside ? start : end;
       final LatLng internalPoint = startIsOutside ? end : start;
       final internalSnap = snapToNearestGraphEdge(internalPoint);
 
-      for (final gateId in gateIds) {
-        final gateWp = _waypointMap[gateId];
-        if (gateWp != null) {
-          // Cost leg 1: external point to gate (straight-line estimate)
-          final externalDist = distance(externalPoint, gateWp.position);
+      Map<String, dynamic> bestGate = candidateGates.first;
+      double minTotalCost = double.infinity;
 
-          // Cost leg 2: gate to internal destination via campus graph (Dijkstra)
-          double campusDist = double.infinity;
-          for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
-            final path = getRouteBetweenWaypoints(gateId, snapNode);
-            if (path.isNotEmpty) {
-              final d = getRouteDistance(path) + distance(internalPoint, internalSnap.snappedPoint);
-              if (d < campusDist) campusDist = d;
-            }
-          }
-          if (campusDist == double.infinity) campusDist = distance(gateWp.position, internalPoint);
+      for (final gate in candidateGates) {
+        final LatLng gatePos = gate['pos'] as LatLng;
+        final String? openStr = gate['open'] as String?;
+        final String? closeStr = gate['close'] as String?;
+        final bool isOpen = isGateOpenNow(openStr, closeStr, now: now);
 
-          final totalCost = externalDist + campusDist;
-          if (totalCost < minTotalCost) {
-            minTotalCost = totalCost;
-            bestGateId = gateId;
+        // Penalty for closed gates (5000m detour penalty so open gates are strongly preferred)
+        final double closedPenalty = isOpen ? 0.0 : 5000.0;
+
+        // Cost leg 1: external point to gate
+        final externalDist = distance(externalPoint, gatePos);
+
+        // Cost leg 2: gate to internal destination via campus graph (Dijkstra)
+        final gateSnap = snapToNearestGraphEdge(gatePos);
+        double campusDist = double.infinity;
+        for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
+          final path = getRouteBetweenWaypoints(gateSnap.nodeA, snapNode);
+          if (path.isNotEmpty) {
+            final d = getRouteDistance(path) +
+                distance(internalPoint, internalSnap.snappedPoint) +
+                distance(gatePos, gateSnap.snappedPoint);
+            if (d < campusDist) campusDist = d;
           }
+        }
+        if (campusDist == double.infinity) campusDist = distance(gatePos, internalPoint);
+
+        final totalCost = externalDist + campusDist + closedPenalty;
+        if (totalCost < minTotalCost) {
+          minTotalCost = totalCost;
+          bestGate = gate;
         }
       }
 
-      final gatePos = _waypointMap[bestGateId]!.position;
+      final gatePos = bestGate['pos'] as LatLng;
+      final gateName = bestGate['name'] as String;
+      final bool isBestGateOpen = isGateOpenNow(bestGate['open'], bestGate['close'], now: now);
 
       if (startIsOutside && !endIsOutside) {
-        final onlinePath = await tryOnlineOSRM(start, gatePos);
-        if (onlinePath != null && onlinePath.isNotEmpty) {
-          final campusRoute = await getDetailedRoute(gatePos, end);
-          final fullPath = <LatLng>[...onlinePath, ...campusRoute.fullPath.skip(1)];
-          final instructions = generateOfflineInstructions(fullPath);
-          _lastParsedInstructions = instructions;
-          return RouteResult(
-            fullPath: fullPath,
-            startAccessPath: [start, onlinePath.first],
-            roadPath: fullPath,
-            endAccessPath: campusRoute.endAccessPath,
-            instructions: instructions,
+        final onlinePath = await _tryOnlineOSRM(start, gatePos);
+        final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
+            ? onlinePath
+            : <LatLng>[start, gatePos];
+
+        final campusRoute = await _getInternalCampusRoute(gatePos, end);
+        final fullPath = <LatLng>[...externalPath, ...campusRoute.fullPath.skip(1)];
+
+        final instructions = generateOfflineInstructions(fullPath);
+        if (!isBestGateOpen) {
+          instructions.insert(
+            min(1, instructions.length),
+            'Notice: $gateName may be closed at this time (${getGateStatusLabel(bestGate['open'], bestGate['close'], now: now)})',
           );
         }
+        _lastParsedInstructions = instructions;
+
+        return RouteResult(
+          fullPath: fullPath,
+          startAccessPath: [start, externalPath.first],
+          roadPath: fullPath,
+          endAccessPath: campusRoute.endAccessPath,
+          instructions: instructions,
+        );
       } else if (!startIsOutside && endIsOutside) {
-        final campusRoute = await getDetailedRoute(start, gatePos);
-        final onlinePath = await tryOnlineOSRM(gatePos, end);
-        if (onlinePath != null && onlinePath.isNotEmpty) {
-          final fullPath = <LatLng>[...campusRoute.fullPath, ...onlinePath.skip(1)];
-          final instructions = generateOfflineInstructions(fullPath);
-          _lastParsedInstructions = instructions;
-          return RouteResult(
-            fullPath: fullPath,
-            startAccessPath: campusRoute.startAccessPath,
-            roadPath: fullPath,
-            endAccessPath: [onlinePath.last, end],
-            instructions: instructions,
+        final campusRoute = await _getInternalCampusRoute(start, gatePos);
+        final onlinePath = await _tryOnlineOSRM(gatePos, end);
+        final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
+            ? onlinePath
+            : <LatLng>[gatePos, end];
+
+        final fullPath = <LatLng>[...campusRoute.fullPath, ...externalPath.skip(1)];
+
+        final instructions = generateOfflineInstructions(fullPath);
+        if (!isBestGateOpen) {
+          instructions.insert(
+            min(instructions.length - 1, instructions.length),
+            'Notice: $gateName may be closed at this time (${getGateStatusLabel(bestGate['open'], bestGate['close'], now: now)})',
           );
         }
+        _lastParsedInstructions = instructions;
+
+        return RouteResult(
+          fullPath: fullPath,
+          startAccessPath: campusRoute.startAccessPath,
+          roadPath: fullPath,
+          endAccessPath: [externalPath.last, end],
+          instructions: instructions,
+        );
       }
     }
 
-    // 2. Try Standard OSRM (for purely internal or purely external routes)
-    final onlinePath = await tryOnlineOSRM(start, end);
+    // 2. Both points internal to campus (pure offline graph navigation)
+    if (!startIsOutside && !endIsOutside) {
+      return _getInternalCampusRoute(start, end);
+    }
+
+    // 3. Both points external to campus (pure online OSRM)
+    final onlinePath = await _tryOnlineOSRM(start, end);
     if (onlinePath != null && onlinePath.length >= 2) {
       final roadStart = onlinePath.first;
       final roadEnd = onlinePath.last;
@@ -624,7 +938,15 @@ class RoutingService {
       );
     }
 
-    // 3. Fallback to Offline Campus Graph (if OSRM fails or has no paths)
+    // Fallback direct connector
+    return _getInternalCampusRoute(start, end);
+  }
+
+  /// Internal Dijkstra routing between two campus points on the paved road network
+  Future<RouteResult> _getInternalCampusRoute(LatLng start, LatLng end) async {
+    final startSnap = snapToNearestGraphEdge(start);
+    final endSnap = snapToNearestGraphEdge(end);
+
     final candidateStartNodes = [startSnap.nodeA, startSnap.nodeB];
     final candidateEndNodes = [endSnap.nodeA, endSnap.nodeB];
 
@@ -649,8 +971,6 @@ class RoutingService {
     }
 
     if (bestRoadPath.isNotEmpty) {
-      bestRoadPath = _smoothPath(bestRoadPath);
-
       List<LatLng> startAccess = [];
       if (distance(start, bestRoadPath.first) > 1.5) {
         startAccess = [start, bestRoadPath.first];
@@ -688,25 +1008,6 @@ class RoutingService {
     );
   }
 
-  /// Softens sharp corners on the campus graph for a more natural walking trajectory
-  List<LatLng> _smoothPath(List<LatLng> path, {int iterations = 1}) {
-    if (path.length <= 2) return path;
-    List<LatLng> currentPath = List.from(path);
-    for (int i = 0; i < iterations; i++) {
-      List<LatLng> newPath = [currentPath.first];
-      for (int j = 1; j < currentPath.length - 1; j++) {
-        final prev = currentPath[j - 1];
-        final next = currentPath[j + 1];
-        final double smoothedLat = (prev.latitude + next.latitude + currentPath[j].latitude * 2) / 4;
-        final double smoothedLng = (prev.longitude + next.longitude + currentPath[j].longitude * 2) / 4;
-        newPath.add(LatLng(smoothedLat, smoothedLng));
-      }
-      newPath.add(currentPath.last);
-      currentPath = newPath;
-    }
-    return currentPath;
-  }
-
   // Backward compatible getFullRoute
   Future<List<LatLng>> getFullRoute(LatLng start, LatLng end) async {
     final result = await getDetailedRoute(start, end);
@@ -716,9 +1017,9 @@ class RoutingService {
   List<String> generateOfflineInstructions(List<LatLng> path) {
     if (path.length < 2) return ['Arrive at destination'];
 
-    final gateMainPos = const LatLng(10.5541214, 76.2264419);
-    final gateSouthPos = const LatLng(10.5520947, 76.2241280);
-    final gateEastPos = const LatLng(10.5531511, 76.2264930);
+    const gateMainPos = LatLng(10.5541214, 76.2264419);
+    const gateSouthPos = LatLng(10.5520947, 76.2241280);
+    const gateEastPos = LatLng(10.5531511, 76.2264930);
 
     final List<String> instructions = [];
     instructions.add('Start walking along campus route');
@@ -820,7 +1121,6 @@ class RoutingService {
       String road = name.isNotEmpty ? ' on $name' : '';
       String distStr = distance > 0 ? ' (${distance.toStringAsFixed(0)} m)' : '';
       instructions.add("$action$road$distStr");
-      // Capture the maneuver geographic coordinate for index mapping
       final loc = maneuver['location'] as List<dynamic>?;
       if (loc != null && loc.length >= 2) {
         final mLon = loc[0] is int ? (loc[0] as int).toDouble() : loc[0] as double;
@@ -862,7 +1162,6 @@ class RoutingService {
 
     if (_lastParsedInstructions.isNotEmpty) {
       if (_lastStepManeuverCoords.isNotEmpty && _lastStepManeuverCoords.length == _lastParsedInstructions.length) {
-        // Map each instruction to its actual geographic location on the route
         for (int k = 0; k < _lastParsedInstructions.length; k++) {
           final maneuverPos = _lastStepManeuverCoords[k];
           int bestIdx = 0;
@@ -880,7 +1179,6 @@ class RoutingService {
           });
         }
       } else {
-        // Fallback: evenly spread if no maneuver coordinates available
         for (int k = 0; k < _lastParsedInstructions.length; k++) {
           int idx = (k * route.length / _lastParsedInstructions.length).round();
           result.add({
@@ -950,5 +1248,3 @@ class RoutingService {
     return point;
   }
 }
-
-

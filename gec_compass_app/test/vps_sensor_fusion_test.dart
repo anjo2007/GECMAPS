@@ -38,6 +38,27 @@ void main() {
       expect(res.heading, 180.0);
     });
 
+    test('compareAndFuseVPSWithGPS executes differential vector comparison and detects multipath', () {
+      const anchorPos = LatLng(10.55280, 76.22210);
+      const degradedGpsPos = LatLng(10.55320, 76.22240); // ~50m drifted GPS
+
+      final report = fusion.compareAndFuseVPSWithGPS(
+        vpsAnchorPos: anchorPos,
+        floor: 2,
+        vpsConfidence: 0.95,
+        locationName: 'CSE Seminar Hall',
+        currentGpsPos: degradedGpsPos,
+        gpsAccuracy: 12.0,
+      );
+
+      expect(report.vpsAnchorPosition, anchorPos);
+      expect(report.displacementMeters, greaterThan(25.0));
+      expect(report.isGpsMultipathOutlier, true);
+      expect(report.latitudeBiasCorrection, closeTo(anchorPos.latitude - degradedGpsPos.latitude, 0.000001));
+      expect(report.fusedAccuracyMeters, lessThan(1.5));
+      expect(report.floor, 2);
+    });
+
     test('updateGPS fuses GPS coordinates and calculates hybrid mode', () {
       const gpsPos = LatLng(10.55276, 76.22205);
       final res = fusion.updateGPS(

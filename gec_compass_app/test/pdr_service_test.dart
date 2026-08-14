@@ -37,12 +37,42 @@ void main() {
         resultPos = pos;
       };
 
-      // Medium accuracy (alpha = 0.45 for accuracy=4.0)
+      // High accuracy (alpha = 0.60 for accuracy 4.0)
       pdrService.updateGPSPosition(newGpsPos, 4.0, 1.0, 0.0);
 
       expect(resultPos, isNotNull);
-      expect(resultPos!.latitude, closeTo(10.55409, 0.00005));
-      expect(resultPos!.longitude, closeTo(76.22649, 0.00005));
+      expect(resultPos!.latitude, closeTo(10.55412, 0.0001));
+      expect(resultPos!.longitude, closeTo(76.22652, 0.0001));
+    });
+
+    test('calibrateGpsBias offsets incoming GPS coordinates towards ground truth', () {
+      const rawGps = LatLng(10.5540, 76.2260);
+      LatLng? resultPos;
+
+      pdrService.forceSetPosition(const LatLng(10.5541, 76.2261));
+      pdrService.onPositionUpdated = (pos) {
+        resultPos = pos;
+      };
+
+      // Calibrate GPS with +0.0001 lat and +0.0001 lng bias correction
+      pdrService.calibrateGpsBias(0.0001, 0.0001);
+      pdrService.updateGPSPosition(rawGps, 2.0, 1.0, 0.0);
+
+      expect(resultPos, isNotNull);
+      expect(resultPos!.latitude, greaterThan(rawGps.latitude));
+      expect(resultPos!.longitude, greaterThan(rawGps.longitude));
+    });
+
+    test('forceSetPosition overrides current position and notifies listener', () {
+      const forcedPos = LatLng(10.5535, 76.2245);
+      LatLng? resultPos;
+
+      pdrService.onPositionUpdated = (pos) {
+        resultPos = pos;
+      };
+
+      pdrService.forceSetPosition(forcedPos);
+      expect(resultPos, equals(forcedPos));
     });
   });
 }

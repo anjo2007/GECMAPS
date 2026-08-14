@@ -100,8 +100,11 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
   double _headingOffset = 0.0;
   double _rawCompassHeading = 0.0;
 
-  // Fused Result State
+  // Fused Result & VPS-GPS Comparison State
   late VPSSensorFusionResult _fusionResult;
+  VPSRelocalizationResult? _lastRelocResult;
+  LatLng? _lastRawGpsPos;
+  double _lastGpsAccuracy = 15.0;
 
   // Calibration state
   bool _isCalibrated = false;
@@ -199,6 +202,8 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
       ).listen((Position position) {
         if (!mounted) return;
         final latLng = LatLng(position.latitude, position.longitude);
+        _lastRawGpsPos = latLng;
+        _lastGpsAccuracy = position.accuracy;
         setState(() {
           _fusionResult = _sensorFusion.updateGPS(
             gpsPos: latLng,
@@ -311,19 +316,18 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
     for (final barcode in barcodes) {
       final String? rawValue = barcode.rawValue;
       if (rawValue != null) {
-        final relocResult = _relocalizationService.parsePayload(rawValue, rawCompassHeading: _rawCompassHeading);
+        final relocResult = _relocalizationService.parsePayload(
+          rawValue,
+          rawCompassHeading: _rawCompassHeading,
+          currentGpsPos: _lastRawGpsPos,
+          gpsAccuracy: _lastGpsAccuracy,
+        );
         if (relocResult.isSuccess) {
           HapticFeedback.heavyImpact();
+          _lastRelocResult = relocResult;
 
           setState(() {
-            _fusionResult = _sensorFusion.processVisualAnchor(
-              anchorPos: relocResult.position,
-              floor: relocResult.floor,
-              confidence: relocResult.confidenceScore,
-              name: relocResult.locationName,
-              knownHeading: relocResult.heading,
-              rawCompassHeading: _rawCompassHeading,
-            );
+            _fusionResult = _sensorFusion.getFusedResult();
 
             if (relocResult.heading != null) {
               _headingOffset = (relocResult.heading! - _rawCompassHeading + 360) % 360;
@@ -446,26 +450,40 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
 
         if (_lockOnProgress >= 1.0) {
           HapticFeedback.heavyImpact();
+          final report = _sensorFusion.compareAndFuseVPSWithGPS(
+            vpsAnchorPos: widget.startPosition,
+            floor: widget.targetFloor,
+            vpsConfidence: 0.92,
+            locationName: widget.destinationName,
+            currentGpsPos: _lastRawGpsPos,
+            gpsAccuracy: _lastGpsAccuracy,
+            knownHeading: _targetSignboardBearing,
+            rawCompassHeading: _rawCompassHeading,
+          );
+
+          _lastRelocResult = VPSRelocalizationResult(
+            position: report.calibratedPosition,
+            floor: widget.targetFloor,
+            confidenceScore: 0.92,
+            locationName: widget.destinationName,
+            isSuccess: true,
+            message: "Room Signboard Anchored! Position fused accuracy ±${report.fusedAccuracyMeters.toStringAsFixed(1)}m",
+            heading: _targetSignboardBearing,
+            comparisonReport: report,
+          );
+
           setState(() {
             _headingOffset = (_targetSignboardBearing - _rawCompassHeading + 360) % 360;
             _heading = (_rawCompassHeading + _headingOffset + 360) % 360;
             _isCalibrated = true;
             _calibrationStatus = "VPS Auto-Calibrated via Signboard OCR";
-
-            _fusionResult = _sensorFusion.processVisualAnchor(
-              anchorPos: widget.startPosition,
-              floor: widget.targetFloor,
-              confidence: 0.92,
-              name: widget.destinationName,
-              knownHeading: _targetSignboardBearing,
-              rawCompassHeading: _rawCompassHeading,
-            );
+            _fusionResult = _sensorFusion.getFusedResult();
           });
 
           TopMessageOverlay.show(
             context,
             title: "✨ VPS Signboard Calibrated!",
-            message: "Room Signboard Anchored! Position fused accuracy ±0.3m",
+            message: "Room Signboard Anchored! Accuracy ±${report.fusedAccuracyMeters.toStringAsFixed(1)}m",
             type: TopMessageType.success,
           );
         }
@@ -792,7 +810,7 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                     onPressed: () {
-                      Navigator.pop(context, _fusionResult.position);
+                      Navigator.pop(context, _lastRelocResult ?? _fusionResult.position);
                     },
                   ),
                 ),

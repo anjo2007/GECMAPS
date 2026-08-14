@@ -25,6 +25,23 @@ void main() {
       expect(building.vpsBoardPhotoBase64, 'data:image/png;base64,5678');
     });
 
+    test('Building.fromJson parses Washroom place correctly', () {
+      final jsonMap = {
+        'id': 'w1',
+        'name': 'Main Block Ground Floor Restroom',
+        'lat': 10.554500,
+        'lng': 76.224700,
+        'tags': {'place_type': 'Washrooms', 'amenity': 'toilets', 'floor': '0'},
+      };
+
+      final washroom = Building.fromJson(jsonMap);
+
+      expect(washroom.id, 'w1');
+      expect(washroom.tags['place_type'], 'Washrooms');
+      expect(washroom.tags['amenity'], 'toilets');
+      expect(washroom.tags['floor'], '0');
+    });
+
     test('Building.toJson outputs expected json map', () {
       final building = Building(
         id: 'b2',

@@ -10,6 +10,7 @@ class VPSRelocalizationResult {
   final bool isSuccess;
   final String message;
   final double? heading;
+  final VPSGPSComparisonReport? comparisonReport;
 
   VPSRelocalizationResult({
     required this.position,
@@ -19,6 +20,7 @@ class VPSRelocalizationResult {
     required this.isSuccess,
     required this.message,
     this.heading,
+    this.comparisonReport,
   });
 }
 
@@ -38,7 +40,13 @@ class VPSRelocalizationService {
   }
 
   /// Parse raw scanned QR string or OCR text into VPS positioning result
-  VPSRelocalizationResult parsePayload(String rawCode, {double rawCompassHeading = 0.0}) {
+  /// and executes differential VPS vs GPS comparison
+  VPSRelocalizationResult parsePayload(
+    String rawCode, {
+    double rawCompassHeading = 0.0,
+    LatLng? currentGpsPos,
+    double gpsAccuracy = 15.0,
+  }) {
     if (rawCode.isEmpty) {
       return VPSRelocalizationResult(
         position: const LatLng(0, 0),
@@ -62,11 +70,13 @@ class VPSRelocalizationService {
 
         if (_isValidCoordinate(lat, lng)) {
           final pos = LatLng(lat!, lng!);
-          sensorFusion.processVisualAnchor(
-            anchorPos: pos,
+          final report = sensorFusion.compareAndFuseVPSWithGPS(
+            vpsAnchorPos: pos,
             floor: floor,
-            confidence: 0.98,
-            name: name,
+            vpsConfidence: 0.98,
+            locationName: name,
+            currentGpsPos: currentGpsPos,
+            gpsAccuracy: gpsAccuracy,
             knownHeading: heading,
             rawCompassHeading: rawCompassHeading,
           );
@@ -77,8 +87,9 @@ class VPSRelocalizationService {
             confidenceScore: 0.98,
             locationName: name,
             isSuccess: true,
-            message: 'VPS QR Relocalized! Sensor Fused Accuracy ±0.2m',
+            message: 'VPS QR Relocalized! Sensor Fused Accuracy ±${report.fusedAccuracyMeters.toStringAsFixed(1)}m',
             heading: heading,
+            comparisonReport: report,
           );
         }
       } catch (_) {}
@@ -111,11 +122,13 @@ class VPSRelocalizationService {
 
         if (_isValidCoordinate(lat, lng)) {
           final pos = LatLng(lat!, lng!);
-          sensorFusion.processVisualAnchor(
-            anchorPos: pos,
+          final report = sensorFusion.compareAndFuseVPSWithGPS(
+            vpsAnchorPos: pos,
             floor: floor,
-            confidence: 0.96,
-            name: name,
+            vpsConfidence: 0.96,
+            locationName: name,
+            currentGpsPos: currentGpsPos,
+            gpsAccuracy: gpsAccuracy,
             knownHeading: heading,
             rawCompassHeading: rawCompassHeading,
           );
@@ -126,8 +139,9 @@ class VPSRelocalizationService {
             confidenceScore: 0.96,
             locationName: name,
             isSuccess: true,
-            message: 'VPS JSON Relocalized! Sensor Fused Accuracy ±0.2m',
+            message: 'VPS JSON Relocalized! Sensor Fused Accuracy ±${report.fusedAccuracyMeters.toStringAsFixed(1)}m',
             heading: heading,
+            comparisonReport: report,
           );
         }
       } catch (_) {}

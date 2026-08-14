@@ -32,6 +32,39 @@ class VPSSensorFusionResult {
   });
 }
 
+/// Comprehensive report comparing visual ground truth from VPS with raw GPS sensor readings
+class VPSGPSComparisonReport {
+  final LatLng vpsAnchorPosition;
+  final LatLng gpsRawPosition;
+  final double displacementMeters; // Distance between visual anchor & raw GPS
+  final double gpsReportedAccuracy;
+  final double vpsConfidence;
+  final bool isGpsMultipathOutlier; // True if GPS drifted significantly (> 3 * sigma + 10m)
+  final double latitudeBiasCorrection; // Delta to correct subsequent GPS measurements
+  final double longitudeBiasCorrection;
+  final LatLng calibratedPosition;
+  final double fusedAccuracyMeters;
+  final int floor;
+  final String locationName;
+  final String diagnosticMessage;
+
+  VPSGPSComparisonReport({
+    required this.vpsAnchorPosition,
+    required this.gpsRawPosition,
+    required this.displacementMeters,
+    required this.gpsReportedAccuracy,
+    required this.vpsConfidence,
+    required this.isGpsMultipathOutlier,
+    required this.latitudeBiasCorrection,
+    required this.longitudeBiasCorrection,
+    required this.calibratedPosition,
+    required this.fusedAccuracyMeters,
+    required this.floor,
+    required this.locationName,
+    required this.diagnosticMessage,
+  });
+}
+
 /// Advanced Sensor Fusion Engine combining Camera VPS Data (QR, OCR, SLAM features),
 /// Real-time GPS stream, and PDR Step Dead Reckoning.
 class VPSSensorFusionService {
@@ -47,15 +80,12 @@ class VPSSensorFusionService {
   int _currentFloor = 0;
 
   // VPS Camera Visual Anchor State
-  // ignore: unused_field
   LatLng? _lastVpsAnchorPos;
   DateTime? _lastVpsAnchorTime;
   double _vpsAnchorConfidence = 0.0;
 
   // GPS State
-  // ignore: unused_field
   LatLng? _lastGpsPos;
-  // ignore: unused_field
   double _lastGpsAccuracy = 20.0;
   DateTime? _lastGpsTime;
 
@@ -72,6 +102,10 @@ class VPSSensorFusionService {
   double get currentAccuracy => _currentAccuracy;
   double get currentConfidence => _currentConfidence;
   PositioningMode get currentMode => _currentMode;
+  int get currentFloor => _currentFloor;
+  LatLng? get lastVpsAnchorPos => _lastVpsAnchorPos;
+  LatLng? get lastGpsPos => _lastGpsPos;
+  double get lastGpsAccuracy => _lastGpsAccuracy;
 
   /// Reset or initialize fusion state with a starting coordinate
   void initialize(LatLng startPos, {double initialHeading = 0.0, int floor = 0}) {
@@ -129,6 +163,87 @@ class VPSSensorFusionService {
     return getFusedResult();
   }
 
+  /// Special VPS vs GPS Comparison & Differential Calibration Algorithm:
+  /// Performs vector comparison between camera visual ground truth and real-time GPS fix.
+  /// Computes spatial bias, multipath error status, and optimal inverse-variance fused coordinate.
+  VPSGPSComparisonReport compareAndFuseVPSWithGPS({
+    required LatLng vpsAnchorPos,
+    required int floor,
+    required double vpsConfidence,
+    required String locationName,
+    LatLng? currentGpsPos,
+    double gpsAccuracy = 15.0,
+    double? knownHeading,
+    double rawCompassHeading = 0.0,
+  }) {
+    final effectiveGps = currentGpsPos ?? _lastGpsPos ?? _fusedPosition ?? vpsAnchorPos;
+    final double displacement = _distCalc.as(LengthUnit.Meter, vpsAnchorPos, effectiveGps);
+
+    // Calculate GPS spatial bias: (Ground Truth - GPS)
+    final double latBias = vpsAnchorPos.latitude - effectiveGps.latitude;
+    final double lngBias = vpsAnchorPos.longitude - effectiveGps.longitude;
+
+    // Detect GPS multipath / building signal occlusion
+    final bool isMultipath = displacement > (3.0 * gpsAccuracy + 8.0) || displacement > 25.0;
+
+    // Inverse-variance fusion weighting
+    // VPS variance: sigma_vps = (1.0 - confidence) * 0.4 + 0.1 (e.g. 0.15m)
+    // GPS variance: sigma_gps = max(gpsAccuracy, 1.0)
+    final double sigmaVps = ((1.0 - vpsConfidence) * 0.4 + 0.1).clamp(0.1, 2.0);
+    final double sigmaGps = isMultipath ? 500.0 : max(gpsAccuracy, 2.0);
+
+    final double varVps = sigmaVps * sigmaVps;
+    final double varGps = sigmaGps * sigmaGps;
+
+    // Weight for VPS: w_vps = varGps / (varVps + varGps)
+    final double vpsWeight = (varGps / (varVps + varGps)).clamp(0.85, 1.0);
+
+    final double fusedLat = vpsWeight * vpsAnchorPos.latitude + (1.0 - vpsWeight) * effectiveGps.latitude;
+    final double fusedLng = vpsWeight * vpsAnchorPos.longitude + (1.0 - vpsWeight) * effectiveGps.longitude;
+    final LatLng calibratedPos = LatLng(fusedLat, fusedLng);
+
+    final double fusedAccuracy = sqrt((varVps * varGps) / (varVps + varGps)).clamp(0.2, 2.0);
+
+    // Apply calibration into fusion state
+    _fusedPosition = calibratedPos;
+    _currentFloor = floor;
+    _locationName = locationName;
+    _lastVpsAnchorPos = vpsAnchorPos;
+    _lastVpsAnchorTime = DateTime.now();
+    _vpsAnchorConfidence = vpsConfidence;
+    _currentAccuracy = fusedAccuracy;
+    _currentConfidence = max(vpsConfidence, 0.95);
+    _currentMode = PositioningMode.vpsLocked;
+
+    if (knownHeading != null) {
+      _headingOffset = (knownHeading - rawCompassHeading + 360.0) % 360.0;
+      _fusedHeading = knownHeading;
+    }
+
+    String diag;
+    if (isMultipath) {
+      diag = "GPS multipath drift of ${displacement.toStringAsFixed(1)}m corrected. Snapped to optical anchor.";
+    } else {
+      diag = "VPS & GPS cross-validated (offset: ${displacement.toStringAsFixed(1)}m, accuracy: ±${fusedAccuracy.toStringAsFixed(1)}m).";
+    }
+
+    return VPSGPSComparisonReport(
+      vpsAnchorPosition: vpsAnchorPos,
+      gpsRawPosition: effectiveGps,
+      displacementMeters: displacement,
+      gpsReportedAccuracy: gpsAccuracy,
+      vpsConfidence: vpsConfidence,
+      isGpsMultipathOutlier: isMultipath,
+      latitudeBiasCorrection: latBias,
+      longitudeBiasCorrection: lngBias,
+      calibratedPosition: calibratedPos,
+      fusedAccuracyMeters: fusedAccuracy,
+      floor: floor,
+      locationName: locationName,
+      diagnosticMessage: diag,
+    );
+  }
+
   /// Process live GPS position update with accuracy, speed, and heading
   VPSSensorFusionResult updateGPS({
     required LatLng gpsPos,
@@ -179,9 +294,9 @@ class VPSSensorFusionService {
       if (accuracy < 4.0) {
         alpha = 0.85;
       } else if (accuracy < 10.0) {
-        alpha = 0.55;
+        alpha = 0.60;
       } else if (accuracy < 20.0) {
-        alpha = 0.30;
+        alpha = 0.35;
       } else {
         alpha = 0.10; // Rely on PDR
       }

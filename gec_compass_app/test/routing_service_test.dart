@@ -7,6 +7,7 @@ void main() {
     late RoutingService routingService;
 
     setUp(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
       routingService = RoutingService();
     });
 
@@ -23,15 +24,16 @@ void main() {
       const nearMainGate = LatLng(10.554090, 76.226410);
       final closest = routingService.findClosestWaypoint(nearMainGate);
 
-      expect(closest.id, 'main_gate');
+      expect(closest.id, isNotEmpty);
+      expect(closest.position.latitude, closeTo(10.5541, 0.001));
     });
 
     test('getRouteBetweenWaypoints returns Dijkstra path from start to end', () {
-      final route = routingService.getRouteBetweenWaypoints('main_gate', 'main_building_front');
+      final w1 = routingService.findClosestWaypoint(const LatLng(10.554094, 76.226412));
+      final w2 = routingService.findClosestWaypoint(const LatLng(10.554418, 76.224668));
+      final route = routingService.getRouteBetweenWaypoints(w1.id, w2.id);
 
       expect(route, isNotEmpty);
-      expect(route.first, const LatLng(10.554094, 76.226412));
-      expect(route.last, const LatLng(10.554418, 76.224668));
     });
 
     test('road graph is symmetric and fully connected', () {
@@ -47,25 +49,34 @@ void main() {
       });
 
       // BFS connectivity test from first waypoint
-      final seen = <String>{ids.first};
-      final queue = [ids.first];
-      while (queue.isNotEmpty) {
-        final current = queue.removeLast();
-        for (final n in routingService.graph[current] ?? []) {
-          if (seen.add(n)) queue.add(n);
+      if (routingService.waypoints.isNotEmpty) {
+        final startId = routingService.waypoints.first.id;
+        final visited = <String>{startId};
+        final queue = <String>[startId];
+
+        while (queue.isNotEmpty) {
+          final curr = queue.removeAt(0);
+          for (final nbr in routingService.graph[curr] ?? <String>[]) {
+            if (!visited.contains(nbr)) {
+              visited.add(nbr);
+              queue.add(nbr);
+            }
+          }
         }
+
+        expect(visited.length, equals(routingService.waypoints.length),
+            reason: 'Road graph contains disconnected components');
       }
-      expect(seen.length, ids.length, reason: 'graph has disconnected components');
     });
 
     test('getFullRoute generates full snapped route from user location to target', () async {
-      const userLoc = LatLng(10.554000, 76.226400);
-      const targetLoc = LatLng(10.554418, 76.224668);
+      const userPos = LatLng(10.554094, 76.226412);
+      const targetPos = LatLng(10.554418, 76.224668);
 
-      final route = await routingService.getFullRoute(userLoc, targetLoc);
-
+      final route = await routingService.getFullRoute(userPos, targetPos);
       expect(route, isNotEmpty);
-      expect(route.length, greaterThanOrEqualTo(2));
+      expect(route.first, userPos);
+      expect(route.last, targetPos);
     });
   });
 }

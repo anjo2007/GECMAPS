@@ -7,6 +7,7 @@ void main() {
     late RoutingService routingService;
 
     setUp(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
       routingService = RoutingService();
     });
 

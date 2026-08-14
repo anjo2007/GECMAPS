@@ -1,0 +1,138 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:gec_compass_app/services/routing_service.dart';
+import 'package:gec_compass_app/models/building.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('Campus Roads & Graph Connectivity Tests', () {
+    test('campus_roads.json exists and contains complete road network', () async {
+      final file = File('assets/campus_roads.json');
+      expect(file.existsSync(), isTrue);
+      final jsonStr = await file.readAsString();
+      final data = json.decode(jsonStr) as Map<String, dynamic>;
+      
+      expect(data['type'], equals('FeatureCollection'));
+      final features = data['features'] as List<dynamic>;
+      expect(features.length, equals(6));
+
+      final nodes = data['nodes'] as List<dynamic>;
+      final edges = data['edges'] as List<dynamic>;
+
+      expect(nodes.length, equals(229));
+      expect(edges.length, equals(257));
+    });
+
+    test('RoutingService initializes campus road graph properly', () async {
+      final routingService = RoutingService();
+      final file = File('assets/campus_roads.json');
+      final jsonStr = await file.readAsString();
+      routingService.loadCampusRoadsFromJsonString(jsonStr);
+
+      expect(routingService.roadNodes.length, greaterThanOrEqualTo(229));
+      expect(routingService.roadAdjacency.length, greaterThanOrEqualTo(229));
+    });
+
+    test('RoutingService finds single optimal path between campus locations', () async {
+      final routingService = RoutingService();
+      final file = File('assets/campus_roads.json');
+      final jsonStr = await file.readAsString();
+      routingService.loadCampusRoadsFromJsonString(jsonStr);
+
+      // Main Gate to Mechanical Department
+      final start = const LatLng(10.5541214, 76.2264419);
+      final end = const LatLng(10.553250, 76.224850);
+
+      final route = await routingService.getDetailedRoute(start, end);
+      expect(route.fullPath.length, greaterThanOrEqualTo(2));
+      expect(route.roadPath, isNotEmpty);
+      expect(route.distanceMeters, greaterThan(0));
+    });
+  });
+
+  group('Gate Schedule & Operating Hours Tests', () {
+    test('isGateOpenNow correctly evaluates open/closed schedules', () {
+      // 24/7 Gate
+      expect(RoutingService.isGateOpenNow('24/7', '24/7'), isTrue);
+
+      // Day schedule (06:00 AM to 10:30 PM)
+      final morning = DateTime(2026, 8, 14, 10, 0); // 10:00 AM
+      final night = DateTime(2026, 8, 14, 23, 30); // 11:30 PM (after 10:30 PM)
+      final earlyMorning = DateTime(2026, 8, 14, 4, 30); // 4:30 AM (before 6:00 AM)
+
+      expect(RoutingService.isGateOpenNow('06:00 AM', '10:30 PM', now: morning), isTrue);
+      expect(RoutingService.isGateOpenNow('06:00 AM', '10:30 PM', now: night), isFalse);
+      expect(RoutingService.isGateOpenNow('06:00 AM', '10:30 PM', now: earlyMorning), isFalse);
+
+      // Midnight crossover schedule (08:00 PM to 06:00 AM)
+      final lateNight = DateTime(2026, 8, 14, 23, 0); // 11:00 PM
+      final noon = DateTime(2026, 8, 14, 12, 0); // 12:00 PM
+      expect(RoutingService.isGateOpenNow('08:00 PM', '06:00 AM', now: lateNight), isTrue);
+      expect(RoutingService.isGateOpenNow('08:00 PM', '06:00 AM', now: noon), isFalse);
+    });
+
+    test('getGateStatusLabel generates clear badges', () {
+      final morning = DateTime(2026, 8, 14, 10, 0);
+      final night = DateTime(2026, 8, 14, 23, 30);
+
+      final openLabel = RoutingService.getGateStatusLabel('06:00 AM', '10:30 PM', now: morning);
+      expect(openLabel, contains('Open'));
+      expect(openLabel, contains('10:30 PM'));
+
+      final closedLabel = RoutingService.getGateStatusLabel('06:00 AM', '10:30 PM', now: night);
+      expect(closedLabel, contains('Closed'));
+      expect(closedLabel, contains('6:00 AM'));
+    });
+
+    test('Routing evaluates gates considering open/closed status', () async {
+      final routingService = RoutingService();
+      final file = File('assets/campus_roads.json');
+      final jsonStr = await file.readAsString();
+      routingService.loadCampusRoadsFromJsonString(jsonStr);
+
+      final customGates = [
+        Building(
+          id: 'gate_main',
+          name: 'Main Gate',
+          lat: 10.5541214,
+          lng: 76.2264419,
+          tags: {
+            'barrier': 'gate',
+            'opening_time': '06:00 AM',
+            'closing_time': '10:30 PM',
+          },
+        ),
+        Building(
+          id: 'gate_south',
+          name: 'South Gate',
+          lat: 10.5520947,
+          lng: 76.2241280,
+          tags: {
+            'barrier': 'gate',
+            'opening_time': '06:00 AM',
+            'closing_time': '09:30 PM',
+          },
+        ),
+      ];
+
+      // External user point outside South
+      final outsidePos = const LatLng(10.550500, 76.224000);
+      final campusTarget = const LatLng(10.553250, 76.224850);
+
+      // Route at 10:00 PM (South gate closed at 9:30 PM, Main gate still open until 10:30 PM)
+      final at10pm = DateTime(2026, 8, 14, 22, 0);
+      final bestGate = routingService.selectOptimalGate(
+        outsidePos,
+        campusTarget,
+        customGates: customGates,
+        now: at10pm,
+      );
+
+      // Should choose Main Gate because South Gate is closed
+      expect(bestGate.id, equals('gate_main'));
+    });
+  });
+}
