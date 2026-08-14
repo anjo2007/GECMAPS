@@ -107,7 +107,7 @@ void main() {
         ),
         Building(
           id: 'gate_south',
-          name: 'South Gate',
+          name: 'Electrical Gate',
           lat: 10.5520947,
           lng: 76.2241280,
           tags: {
@@ -118,11 +118,11 @@ void main() {
         ),
       ];
 
-      // External user point outside South
+      // External user point outside Electrical Gate
       final outsidePos = const LatLng(10.550500, 76.224000);
       final campusTarget = const LatLng(10.553250, 76.224850);
 
-      // Route at 10:00 PM (South gate closed at 9:30 PM, Main gate still open until 10:30 PM)
+      // Route at 10:00 PM (Electrical gate closed at 9:30 PM, Main gate still open until 10:30 PM)
       final at10pm = DateTime(2026, 8, 14, 22, 0);
       final bestGate = routingService.selectOptimalGate(
         outsidePos,
@@ -131,7 +131,7 @@ void main() {
         now: at10pm,
       );
 
-      // Should choose Main Gate because South Gate is closed
+      // Should choose Main Gate because Electrical Gate is closed
       expect(bestGate.id, equals('gate_main'));
     });
 
@@ -163,6 +163,36 @@ void main() {
       const mainGatePos = LatLng(10.5541214, 76.2264419);
       final passesMainGate = route.fullPath.any((p) => routingService.distance(p, mainGatePos) < 15.0);
       expect(passesMainGate, isTrue);
+    });
+
+    test('navigating directly to a closed gate considers it non-existent and reroutes to open gate', () async {
+      final routingService = RoutingService();
+      final file = File('assets/campus_roads.json');
+      final jsonStr = await file.readAsString();
+      routingService.loadCampusRoadsFromJsonString(jsonStr);
+
+      // Starting from Mechanical Dept, destination is Electrical Gate
+      const internalStart = LatLng(10.554418, 76.224668);
+      const electricalGatePos = LatLng(10.5520947, 76.2241280);
+
+      // At 10:00 PM Electrical Gate is closed (closes 9:30 PM), Main Gate is open
+      final at10pm = DateTime(2026, 8, 14, 22, 0);
+      final route = await routingService.getDetailedRoute(
+        internalStart,
+        electricalGatePos,
+        currentTime: at10pm,
+      );
+
+      expect(route.fullPath, isNotEmpty);
+      expect(route.gateClosureNotice, isNotNull);
+      expect(route.gateClosureNotice, contains('Electrical Gate Entrance is closed'));
+      expect(route.gateClosureNotice, contains('Rerouting destination to Main Gate Entrance'));
+      expect(route.activeGateName, equals('Main Gate Entrance'));
+
+      // The destination must be the open Main Gate, not the closed Electrical Gate
+      const mainGatePos = LatLng(10.5541214, 76.2264419);
+      final endsNearMainGate = routingService.distance(route.fullPath.last, mainGatePos) < 15.0;
+      expect(endsNearMainGate, isTrue);
     });
   });
 

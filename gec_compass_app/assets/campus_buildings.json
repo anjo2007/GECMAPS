@@ -15,12 +15,12 @@
   },
   {
     "id": "gate_south_canteen_entrance",
-    "name": "South Canteen Gate Entrance",
+    "name": "Electrical Gate Entrance",
     "lat": 10.5520947,
     "lng": 76.224128,
     "tags": {
       "barrier": "gate",
-      "name": "South Canteen Gate Entrance",
+      "name": "Electrical Gate Entrance",
       "place_type": "Entrance Gate",
       "opening_time": "06:00 AM",
       "closing_time": "09:30 PM",

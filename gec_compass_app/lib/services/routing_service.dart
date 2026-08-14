@@ -156,14 +156,14 @@ class RoutingService {
       },
       {
         'id': 'gate_south',
-        'name': 'South Gate Entrance (Canteen)',
+        'name': 'Electrical Gate Entrance',
         'pos': const LatLng(10.5520947, 76.2241280),
         'open': '06:00 AM',
         'close': '09:30 PM',
       },
       {
         'id': 'gate_east',
-        'name': 'East Gate Entrance (Electrical)',
+        'name': 'East Gate Entrance',
         'pos': const LatLng(10.5531511, 76.2264930),
         'open': '06:00 AM',
         'close': '09:00 PM',
@@ -186,19 +186,23 @@ class RoutingService {
       }
     }
 
-    Map<String, dynamic> bestGate = candidateGates.first;
+    // Exclude closed gates completely as non-existent during closed hours
+    final openGates = candidateGates.where((g) {
+      final String? openStr = g['open'] as String?;
+      final String? closeStr = g['close'] as String?;
+      return isGateOpenNow(openStr, closeStr, now: curTime);
+    }).toList();
+
+    final validGates = openGates.isNotEmpty ? openGates : [candidateGates.first];
+
+    Map<String, dynamic> bestGate = validGates.first;
     double minTotalCost = double.infinity;
 
-    for (final gate in candidateGates) {
+    for (final gate in validGates) {
       final LatLng gatePos = gate['pos'] as LatLng;
-      final String? openStr = gate['open'] as String?;
-      final String? closeStr = gate['close'] as String?;
-      final bool isOpen = isGateOpenNow(openStr, closeStr, now: curTime);
-
-      final double closedPenalty = isOpen ? 0.0 : 5000.0;
       final double distExternalToGate = distance(userPos, gatePos);
       final double distGateToInternal = distance(gatePos, destination);
-      final double totalCost = distExternalToGate + distGateToInternal + closedPenalty;
+      final double totalCost = distExternalToGate + distGateToInternal;
 
       if (totalCost < minTotalCost) {
         minTotalCost = totalCost;
@@ -347,10 +351,10 @@ class RoutingService {
       return "Main Gate Entrance";
     }
     if (distance(LatLng(lat, lng), const LatLng(10.5520947, 76.2241280)) < 15) {
-      return "South Gate Entrance (Canteen)";
+      return "Electrical Gate Entrance";
     }
     if (distance(LatLng(lat, lng), const LatLng(10.5531511, 76.2264930)) < 15) {
-      return "East Gate Entrance (Electrical)";
+      return "East Gate Entrance";
     }
     if (distance(LatLng(lat, lng), const LatLng(10.554418, 76.224668)) < 25) {
       return "Main Building Central Plaza";
@@ -370,8 +374,8 @@ class RoutingService {
   void _attachNamedGateWaypoints(List<Waypoint> wps, Map<String, List<String>> grp) {
     final gateDefs = [
       {'id': 'gate_main', 'name': 'Main Gate Entrance', 'pos': const LatLng(10.5541214, 76.2264419)},
-      {'id': 'gate_south', 'name': 'South Gate Entrance (Canteen)', 'pos': const LatLng(10.5520947, 76.2241280)},
-      {'id': 'gate_east', 'name': 'East Gate Entrance (Electrical)', 'pos': const LatLng(10.5531511, 76.2264930)},
+      {'id': 'gate_south', 'name': 'Electrical Gate Entrance', 'pos': const LatLng(10.5520947, 76.2241280)},
+      {'id': 'gate_east', 'name': 'East Gate Entrance', 'pos': const LatLng(10.5531511, 76.2264930)},
     ];
 
     for (final g in gateDefs) {
@@ -400,8 +404,8 @@ class RoutingService {
     if (_isGraphInitialized) return;
     _waypoints = [
       Waypoint(id: 'gate_main', name: 'Main Gate Entrance', position: const LatLng(10.5541214, 76.2264419)),
-      Waypoint(id: 'gate_south', name: 'South Gate Entrance (Canteen)', position: const LatLng(10.5520947, 76.2241280)),
-      Waypoint(id: 'gate_east', name: 'East Gate Entrance (Electrical)', position: const LatLng(10.5531511, 76.2264930)),
+      Waypoint(id: 'gate_south', name: 'Electrical Gate Entrance', position: const LatLng(10.5520947, 76.2241280)),
+      Waypoint(id: 'gate_east', name: 'East Gate Entrance', position: const LatLng(10.5531511, 76.2264930)),
       Waypoint(id: 'main_gate', name: 'Main Gate Entrance', position: const LatLng(10.554094, 76.226412)),
       Waypoint(id: 'main_gate_curve1', name: 'Main Gate Curve 1', position: const LatLng(10.554120, 76.226150)),
       Waypoint(id: 'main_gate_curve2', name: 'Main Gate Curve 2', position: const LatLng(10.554160, 76.225900)),
@@ -704,14 +708,14 @@ class RoutingService {
       },
       {
         'id': 'gate_south',
-        'name': 'South Gate Entrance (Canteen)',
+        'name': 'Electrical Gate Entrance',
         'pos': const LatLng(10.5520947, 76.2241280),
         'open': '06:00 AM',
         'close': '09:30 PM',
       },
       {
         'id': 'gate_east',
-        'name': 'East Gate Entrance (Electrical)',
+        'name': 'East Gate Entrance',
         'pos': const LatLng(10.5531511, 76.2264930),
         'open': '06:00 AM',
         'close': '09:00 PM',
@@ -897,81 +901,186 @@ class RoutingService {
 
     final now = currentTime ?? DateTime.now();
 
+    final List<Map<String, dynamic>> allGates = [
+      {
+        'id': 'gate_main',
+        'name': 'Main Gate Entrance',
+        'pos': const LatLng(10.5541214, 76.2264419),
+        'open': '06:00 AM',
+        'close': '10:30 PM',
+      },
+      {
+        'id': 'gate_south',
+        'name': 'Electrical Gate Entrance',
+        'pos': const LatLng(10.5520947, 76.2241280),
+        'open': '06:00 AM',
+        'close': '09:30 PM',
+      },
+      {
+        'id': 'gate_east',
+        'name': 'East Gate Entrance',
+        'pos': const LatLng(10.5531511, 76.2264930),
+        'open': '06:00 AM',
+        'close': '09:00 PM',
+      },
+    ];
+
+    if (customBuildings != null) {
+      for (final b in customBuildings) {
+        if (b.isDeleted) continue;
+        final isGate = b.tags['barrier'] == 'gate' || b.tags['place_type'] == 'Entrance Gate';
+        if (isGate) {
+          allGates.add({
+            'id': b.id,
+            'name': b.name,
+            'pos': LatLng(b.lat, b.lng),
+            'open': b.tags['opening_time']?.toString() ?? '06:00 AM',
+            'close': b.tags['closing_time']?.toString() ?? '10:00 PM',
+          });
+        }
+      }
+    }
+
+    // Filter only currently OPEN gates. During closed hours, closed gates do not exist.
+    final List<Map<String, dynamic>> openGates = allGates.where((g) {
+      return isGateOpenNow(g['open'] as String?, g['close'] as String?, now: now);
+    }).toList();
+
+    final List<Map<String, dynamic>> validGates = openGates.isNotEmpty ? openGates : [allGates.first];
+    final closedNodeIds = getClosedGateNodeIds(now: now, customGates: customBuildings);
+
+    // 1. Check if destination itself is targeting a CLOSED GATE
+    Map<String, dynamic>? closedDestinationGate;
+    for (final g in allGates) {
+      final bool isOpen = isGateOpenNow(g['open'] as String?, g['close'] as String?, now: now);
+      if (!isOpen && distance(end, g['pos'] as LatLng) < 25.0) {
+        closedDestinationGate = g;
+        break;
+      }
+    }
+
+    if (closedDestinationGate != null) {
+      // User is navigating to a closed gate. Consider there is no gate here, and route to the nearest OPEN gate!
+      Map<String, dynamic> nearestOpenGate = validGates.first;
+      double minD = double.infinity;
+      for (final g in validGates) {
+        final d = distance(start, g['pos'] as LatLng);
+        if (d < minD) {
+          minD = d;
+          nearestOpenGate = g;
+        }
+      }
+
+      final openGatePos = nearestOpenGate['pos'] as LatLng;
+      final openGateName = nearestOpenGate['name'] as String;
+      final closedName = closedDestinationGate['name'] as String;
+      final gateNotice = "$closedName is closed at this time. Rerouting destination to $openGateName which is open.";
+
+      final campusRoute = await _getInternalCampusRoute(
+        start,
+        openGatePos,
+        currentTime: now,
+        customBuildings: customBuildings,
+      );
+
+      final rawFullPath = campusRoute.fullPath;
+      final instructions = generateOfflineInstructions(rawFullPath);
+      instructions.insert(0, gateNotice);
+      _lastParsedInstructions = instructions;
+
+      final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
+      final smoothedRoadPath = smoothPolyline(campusRoute.roadPath, iterations: 2);
+
+      return RouteResult(
+        fullPath: smoothedFullPath,
+        startAccessPath: campusRoute.startAccessPath,
+        roadPath: smoothedRoadPath,
+        endAccessPath: campusRoute.endAccessPath,
+        instructions: instructions,
+        gateClosureNotice: gateNotice,
+        bypassedClosedGateName: closedName,
+        activeGateName: openGateName,
+      );
+    }
+
+    // 2. Check if start is located at or near a CLOSED GATE
+    Map<String, dynamic>? closedStartGate;
+    for (final g in allGates) {
+      final bool isOpen = isGateOpenNow(g['open'] as String?, g['close'] as String?, now: now);
+      if (!isOpen && distance(start, g['pos'] as LatLng) < 25.0) {
+        closedStartGate = g;
+        break;
+      }
+    }
+
+    if (closedStartGate != null) {
+      // User is starting at a closed gate. Reroute via the nearest open gate!
+      Map<String, dynamic> nearestOpenGate = validGates.first;
+      double minD = double.infinity;
+      for (final g in validGates) {
+        final d = distance(start, g['pos'] as LatLng);
+        if (d < minD) {
+          minD = d;
+          nearestOpenGate = g;
+        }
+      }
+
+      final openGatePos = nearestOpenGate['pos'] as LatLng;
+      final openGateName = nearestOpenGate['name'] as String;
+      final closedName = closedStartGate['name'] as String;
+      final gateNotice = "$closedName is closed at this time. Rerouted via $openGateName which is open.";
+
+      final onlinePath = await _tryOnlineOSRM(start, openGatePos);
+      final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
+          ? onlinePath
+          : <LatLng>[start, openGatePos];
+
+      final campusRoute = await _getInternalCampusRoute(
+        openGatePos,
+        end,
+        currentTime: now,
+        customBuildings: customBuildings,
+      );
+
+      final rawFullPath = <LatLng>[...externalPath, ...campusRoute.fullPath.skip(1)];
+      final instructions = generateOfflineInstructions(rawFullPath);
+      instructions.insert(0, gateNotice);
+      _lastParsedInstructions = instructions;
+
+      final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
+      final smoothedRoadPath = smoothPolyline(rawFullPath, iterations: 2);
+
+      return RouteResult(
+        fullPath: smoothedFullPath,
+        startAccessPath: [start, externalPath.first],
+        roadPath: smoothedRoadPath,
+        endAccessPath: campusRoute.endAccessPath,
+        instructions: instructions,
+        gateClosureNotice: gateNotice,
+        bypassedClosedGateName: closedName,
+        activeGateName: openGateName,
+      );
+    }
+
     final startSnap = snapToNearestGraphEdge(start);
     final endSnap = snapToNearestGraphEdge(end);
 
     final bool startIsOutside = isPointOutsideCampus(start) || startSnap.distanceToRoad > 25.0;
     final bool endIsOutside = isPointOutsideCampus(end) || endSnap.distanceToRoad > 25.0;
-    final bool startNearClosedGate = isNearClosedGate(start, now: now, customGates: customBuildings);
-    final bool endNearClosedGate = isNearClosedGate(end, now: now, customGates: customBuildings);
 
-    final bool isBoundaryRouting = (startIsOutside != endIsOutside) || startNearClosedGate || endNearClosedGate;
-
-    // 1. Boundary crossing or Gate-specific routing (strictly routes through the optimal open gate)
-    if (isBoundaryRouting) {
-      final List<Map<String, dynamic>> candidateGates = [
-        {
-          'id': 'gate_main',
-          'name': 'Main Gate Entrance',
-          'pos': const LatLng(10.5541214, 76.2264419),
-          'open': '06:00 AM',
-          'close': '10:30 PM',
-        },
-        {
-          'id': 'gate_south',
-          'name': 'South Gate Entrance (Canteen)',
-          'pos': const LatLng(10.5520947, 76.2241280),
-          'open': '06:00 AM',
-          'close': '09:30 PM',
-        },
-        {
-          'id': 'gate_east',
-          'name': 'East Gate Entrance (Electrical)',
-          'pos': const LatLng(10.5531511, 76.2264930),
-          'open': '06:00 AM',
-          'close': '09:00 PM',
-        },
-      ];
-
-      // Add user-defined gates from dataset if available
-      if (customBuildings != null) {
-        for (final b in customBuildings) {
-          if (b.isDeleted) continue;
-          final isGate = b.tags['barrier'] == 'gate' || b.tags['place_type'] == 'Entrance Gate';
-          if (isGate) {
-            candidateGates.add({
-              'id': b.id,
-              'name': b.name,
-              'pos': LatLng(b.lat, b.lng),
-              'open': b.tags['opening_time']?.toString() ?? '06:00 AM',
-              'close': b.tags['closing_time']?.toString() ?? '10:00 PM',
-            });
-          }
-        }
-      }
-
-      final LatLng externalPoint = (startIsOutside || startNearClosedGate) ? start : end;
-      final LatLng internalPoint = (startIsOutside || startNearClosedGate) ? end : start;
+    // 3. Boundary crossing routing (strictly routes through the optimal open gate)
+    if (startIsOutside != endIsOutside) {
+      final LatLng externalPoint = startIsOutside ? start : end;
+      final LatLng internalPoint = startIsOutside ? end : start;
       final internalSnap = snapToNearestGraphEdge(internalPoint);
 
-      Map<String, dynamic> bestGate = candidateGates.first;
+      Map<String, dynamic> bestGate = validGates.first;
       double minTotalCost = double.infinity;
 
-      final closedNodeIds = getClosedGateNodeIds(now: now, customGates: customBuildings);
-
-      for (final gate in candidateGates) {
+      for (final gate in validGates) {
         final LatLng gatePos = gate['pos'] as LatLng;
-        final String? openStr = gate['open'] as String?;
-        final String? closeStr = gate['close'] as String?;
-        final bool isOpen = isGateOpenNow(openStr, closeStr, now: now);
-
-        // Penalty for closed gates (5000m detour penalty so open gates are strongly preferred)
-        final double closedPenalty = isOpen ? 0.0 : 5000.0;
-
-        // Cost leg 1: external point to gate
         final externalDist = distance(externalPoint, gatePos);
 
-        // Cost leg 2: gate to internal destination via campus graph (Dijkstra)
         final gateSnap = snapToNearestGraphEdge(gatePos);
         double campusDist = double.infinity;
         for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
@@ -989,17 +1098,17 @@ class RoutingService {
         }
         if (campusDist == double.infinity) campusDist = distance(gatePos, internalPoint);
 
-        final totalCost = externalDist + campusDist + closedPenalty;
+        final totalCost = externalDist + campusDist;
         if (totalCost < minTotalCost) {
           minTotalCost = totalCost;
           bestGate = gate;
         }
       }
 
-      // Find physically closest gate to external point without schedule penalty
+      // Check if geographically closest gate was closed
       Map<String, dynamic>? geographicallyClosestGate;
       double minGeoDist = double.infinity;
-      for (final gate in candidateGates) {
+      for (final gate in allGates) {
         final d = distance(externalPoint, gate['pos'] as LatLng);
         if (d < minGeoDist) {
           minGeoDist = d;
@@ -1009,9 +1118,8 @@ class RoutingService {
 
       final gatePos = bestGate['pos'] as LatLng;
       final gateName = bestGate['name'] as String;
-      final bool isBestGateOpen = isGateOpenNow(bestGate['open'], bestGate['close'], now: now);
       final bool isClosestGateOpen = geographicallyClosestGate != null
-          ? isGateOpenNow(geographicallyClosestGate['open'], geographicallyClosestGate['close'], now: now)
+          ? isGateOpenNow(geographicallyClosestGate['open'] as String?, geographicallyClosestGate['close'] as String?, now: now)
           : true;
 
       String? gateNotice;
@@ -1021,12 +1129,9 @@ class RoutingService {
       if (geographicallyClosestGate != null && !isClosestGateOpen && bestGate['id'] != geographicallyClosestGate['id']) {
         closedGateName = geographicallyClosestGate['name'] as String;
         gateNotice = "$closedGateName may be closed at this time. Rerouted via $activeGateName which is open.";
-      } else if (!isBestGateOpen) {
-        closedGateName = gateName;
-        gateNotice = "Notice: $gateName may be closed at this time (${getGateStatusLabel(bestGate['open'], bestGate['close'], now: now)}).";
       }
 
-      if ((startIsOutside || startNearClosedGate) && (!endIsOutside && !endNearClosedGate)) {
+      if (startIsOutside && !endIsOutside) {
         final onlinePath = await _tryOnlineOSRM(start, gatePos);
         final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
             ? onlinePath
@@ -1054,7 +1159,7 @@ class RoutingService {
           bypassedClosedGateName: closedGateName,
           activeGateName: activeGateName,
         );
-      } else if ((!startIsOutside && !startNearClosedGate) && (endIsOutside || endNearClosedGate)) {
+      } else if (!startIsOutside && endIsOutside) {
         final campusRoute = await _getInternalCampusRoute(start, gatePos, currentTime: now, customBuildings: customBuildings);
         final onlinePath = await _tryOnlineOSRM(gatePos, end);
         final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
@@ -1278,9 +1383,9 @@ class RoutingService {
         continue;
       } else if (distance(midPoint, gateSouthPos) < 14 && (i - lastManeuverIdx) > 6) {
         steps.add({
-          'text': 'Pass through South Gate Entrance (Canteen Side)',
+          'text': 'Pass through Electrical Gate Entrance',
           'action': 'gate',
-          'road': 'South Gate Entrance',
+          'road': 'Electrical Gate Entrance',
           'index': i,
           'distance': distance(path[lastManeuverIdx], path[i]),
         });
@@ -1289,7 +1394,7 @@ class RoutingService {
         continue;
       } else if (distance(midPoint, gateEastPos) < 14 && (i - lastManeuverIdx) > 6) {
         steps.add({
-          'text': 'Pass through East Gate Entrance (Electrical Side)',
+          'text': 'Pass through East Gate Entrance',
           'action': 'gate',
           'road': 'East Gate Entrance',
           'index': i,
