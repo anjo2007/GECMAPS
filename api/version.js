@@ -8,9 +8,9 @@ export default function handler(req, res) {
   }
 
   return res.status(200).json({
-    version: "1.2.0",
-    buildNumber: 12,
-    releaseNotes: "• Dynamic GEC campus area theme projection\n• Enhanced offline road graph navigation\n• Building text labels on zoom & navigation\n• Location range alerts & recentering",
+    version: "1.3.0",
+    buildNumber: 13,
+    releaseNotes: "• Direct internal campus walkway navigation (no gate detours)\n• Dynamic gate closure schedule & rerouting alerts\n• Enhanced mobile UI sizing and navigation bar\n• Improved real-time GPS & sensor fusion accuracy",
     downloadUrl: "https://gecmaps.vercel.app/app-release.apk",
     minRequiredBuildNumber: 1,
     forceUpdate: false
