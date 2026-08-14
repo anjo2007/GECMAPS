@@ -631,8 +631,137 @@ class RoutingService {
     return closest;
   }
 
+  /// Returns node IDs belonging to gates currently closed based on operating schedule
+  Set<String> getClosedGateNodeIds({DateTime? now, List<Building>? customGates}) {
+    final curTime = now ?? DateTime.now();
+    final Set<String> closedNodes = {};
+
+    final List<Map<String, dynamic>> gates = [
+      {
+        'id': 'gate_main',
+        'pos': const LatLng(10.5541214, 76.2264419),
+        'open': '06:00 AM',
+        'close': '10:30 PM',
+      },
+      {
+        'id': 'gate_south',
+        'pos': const LatLng(10.5520947, 76.2241280),
+        'open': '06:00 AM',
+        'close': '09:30 PM',
+      },
+      {
+        'id': 'gate_east',
+        'pos': const LatLng(10.5531511, 76.2264930),
+        'open': '06:00 AM',
+        'close': '09:00 PM',
+      },
+    ];
+
+    if (customGates != null) {
+      for (final b in customGates) {
+        if (b.isDeleted) continue;
+        final isGate = b.tags['barrier'] == 'gate' || b.tags['place_type'] == 'Entrance Gate';
+        if (isGate) {
+          gates.add({
+            'id': b.id,
+            'pos': LatLng(b.lat, b.lng),
+            'open': b.tags['opening_time']?.toString() ?? '06:00 AM',
+            'close': b.tags['closing_time']?.toString() ?? '10:00 PM',
+          });
+        }
+      }
+    }
+
+    for (final gate in gates) {
+      final isOpen = isGateOpenNow(gate['open'] as String?, gate['close'] as String?, now: curTime);
+      if (!isOpen) {
+        final gateId = gate['id'] as String;
+        closedNodes.add(gateId);
+
+        // Also block road nodes directly on/within 15m of this closed gate
+        final gatePos = gate['pos'] as LatLng;
+        for (final wp in _waypoints) {
+          if (distance(wp.position, gatePos) < 15.0) {
+            closedNodes.add(wp.id);
+          }
+        }
+      }
+    }
+
+    return closedNodes;
+  }
+
+  /// Checks if a location is near a gate that is currently closed
+  bool isNearClosedGate(LatLng pos, {DateTime? now, List<Building>? customGates}) {
+    final curTime = now ?? DateTime.now();
+    final List<Map<String, dynamic>> gates = [
+      {
+        'id': 'gate_main',
+        'name': 'Main Gate Entrance',
+        'pos': const LatLng(10.5541214, 76.2264419),
+        'open': '06:00 AM',
+        'close': '10:30 PM',
+      },
+      {
+        'id': 'gate_south',
+        'name': 'South Gate Entrance (Canteen)',
+        'pos': const LatLng(10.5520947, 76.2241280),
+        'open': '06:00 AM',
+        'close': '09:30 PM',
+      },
+      {
+        'id': 'gate_east',
+        'name': 'East Gate Entrance (Electrical)',
+        'pos': const LatLng(10.5531511, 76.2264930),
+        'open': '06:00 AM',
+        'close': '09:00 PM',
+      },
+    ];
+
+    if (customGates != null) {
+      for (final b in customGates) {
+        if (b.isDeleted) continue;
+        final isGate = b.tags['barrier'] == 'gate' || b.tags['place_type'] == 'Entrance Gate';
+        if (isGate) {
+          gates.add({
+            'id': b.id,
+            'name': b.name,
+            'pos': LatLng(b.lat, b.lng),
+            'open': b.tags['opening_time']?.toString() ?? '06:00 AM',
+            'close': b.tags['closing_time']?.toString() ?? '10:00 PM',
+          });
+        }
+      }
+    }
+
+    for (final g in gates) {
+      final isOpen = isGateOpenNow(g['open'] as String?, g['close'] as String?, now: curTime);
+      if (!isOpen && distance(pos, g['pos'] as LatLng) < 25.0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Campus perimeter bounding box check
+  static bool isPointOutsideCampus(LatLng point) {
+    const double minLat = 10.5516;
+    const double maxLat = 10.5562;
+    const double minLng = 76.2215;
+    const double maxLng = 76.2268;
+
+    return point.latitude < minLat ||
+        point.latitude > maxLat ||
+        point.longitude < minLng ||
+        point.longitude > maxLng;
+  }
+
   /// Dijkstra algorithm to find shortest road path between two waypoint IDs
-  List<LatLng> getRouteBetweenWaypoints(String startId, String endId) {
+  List<LatLng> getRouteBetweenWaypoints(
+    String startId,
+    String endId, {
+    Set<String>? closedNodeIds,
+  }) {
     if (startId == endId) {
       final wp = _waypointMap[startId];
       return wp != null ? [wp.position] : [];
@@ -658,7 +787,14 @@ class RoutingService {
         final neighborWp = _waypointMap[neighborId];
         if (neighborWp == null) continue;
 
-        final weight = distance(currentWp.position, neighborWp.position);
+        double weight = distance(currentWp.position, neighborWp.position);
+        if (closedNodeIds != null &&
+            closedNodeIds.contains(neighborId) &&
+            neighborId != startId &&
+            neighborId != endId) {
+          weight += 5000.0; // Detour penalty for closed gates
+        }
+
         final alt = currentDist + weight;
 
         if (alt < (distances[neighborId] ?? double.infinity)) {
@@ -764,11 +900,15 @@ class RoutingService {
     final startSnap = snapToNearestGraphEdge(start);
     final endSnap = snapToNearestGraphEdge(end);
 
-    final bool startIsOutside = startSnap.distanceToRoad > 35;
-    final bool endIsOutside = endSnap.distanceToRoad > 35;
+    final bool startIsOutside = isPointOutsideCampus(start) || startSnap.distanceToRoad > 25.0;
+    final bool endIsOutside = isPointOutsideCampus(end) || endSnap.distanceToRoad > 25.0;
+    final bool startNearClosedGate = isNearClosedGate(start, now: now, customGates: customBuildings);
+    final bool endNearClosedGate = isNearClosedGate(end, now: now, customGates: customBuildings);
 
-    // 1. Boundary crossing routing (strictly forces passage through the optimal open gate)
-    if (startIsOutside != endIsOutside) {
+    final bool isBoundaryRouting = (startIsOutside != endIsOutside) || startNearClosedGate || endNearClosedGate;
+
+    // 1. Boundary crossing or Gate-specific routing (strictly routes through the optimal open gate)
+    if (isBoundaryRouting) {
       final List<Map<String, dynamic>> candidateGates = [
         {
           'id': 'gate_main',
@@ -810,12 +950,14 @@ class RoutingService {
         }
       }
 
-      final LatLng externalPoint = startIsOutside ? start : end;
-      final LatLng internalPoint = startIsOutside ? end : start;
+      final LatLng externalPoint = (startIsOutside || startNearClosedGate) ? start : end;
+      final LatLng internalPoint = (startIsOutside || startNearClosedGate) ? end : start;
       final internalSnap = snapToNearestGraphEdge(internalPoint);
 
       Map<String, dynamic> bestGate = candidateGates.first;
       double minTotalCost = double.infinity;
+
+      final closedNodeIds = getClosedGateNodeIds(now: now, customGates: customBuildings);
 
       for (final gate in candidateGates) {
         final LatLng gatePos = gate['pos'] as LatLng;
@@ -833,7 +975,11 @@ class RoutingService {
         final gateSnap = snapToNearestGraphEdge(gatePos);
         double campusDist = double.infinity;
         for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
-          final path = getRouteBetweenWaypoints(gateSnap.nodeA, snapNode);
+          final path = getRouteBetweenWaypoints(
+            gateSnap.nodeA,
+            snapNode,
+            closedNodeIds: closedNodeIds,
+          );
           if (path.isNotEmpty) {
             final d = getRouteDistance(path) +
                 distance(internalPoint, internalSnap.snappedPoint) +
@@ -880,13 +1026,13 @@ class RoutingService {
         gateNotice = "Notice: $gateName may be closed at this time (${getGateStatusLabel(bestGate['open'], bestGate['close'], now: now)}).";
       }
 
-      if (startIsOutside && !endIsOutside) {
+      if ((startIsOutside || startNearClosedGate) && (!endIsOutside && !endNearClosedGate)) {
         final onlinePath = await _tryOnlineOSRM(start, gatePos);
         final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
             ? onlinePath
             : <LatLng>[start, gatePos];
 
-        final campusRoute = await _getInternalCampusRoute(gatePos, end);
+        final campusRoute = await _getInternalCampusRoute(gatePos, end, currentTime: now, customBuildings: customBuildings);
         final rawFullPath = <LatLng>[...externalPath, ...campusRoute.fullPath.skip(1)];
 
         final instructions = generateOfflineInstructions(rawFullPath);
@@ -908,8 +1054,8 @@ class RoutingService {
           bypassedClosedGateName: closedGateName,
           activeGateName: activeGateName,
         );
-      } else if (!startIsOutside && endIsOutside) {
-        final campusRoute = await _getInternalCampusRoute(start, gatePos);
+      } else if ((!startIsOutside && !startNearClosedGate) && (endIsOutside || endNearClosedGate)) {
+        final campusRoute = await _getInternalCampusRoute(start, gatePos, currentTime: now, customBuildings: customBuildings);
         final onlinePath = await _tryOnlineOSRM(gatePos, end);
         final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
             ? onlinePath
@@ -941,7 +1087,7 @@ class RoutingService {
 
     // 2. Both points internal to campus (pure offline graph navigation)
     if (!startIsOutside && !endIsOutside) {
-      return _getInternalCampusRoute(start, end);
+      return _getInternalCampusRoute(start, end, currentTime: now, customBuildings: customBuildings);
     }
 
     // 3. Both points external to campus (pure online OSRM)
@@ -980,11 +1126,19 @@ class RoutingService {
     }
 
     // Fallback direct connector
-    return _getInternalCampusRoute(start, end);
+    return _getInternalCampusRoute(start, end, currentTime: now, customBuildings: customBuildings);
   }
 
   /// Internal Dijkstra routing between two campus points on the paved road network
-  Future<RouteResult> _getInternalCampusRoute(LatLng start, LatLng end) async {
+  Future<RouteResult> _getInternalCampusRoute(
+    LatLng start,
+    LatLng end, {
+    DateTime? currentTime,
+    List<Building>? customBuildings,
+  }) async {
+    final now = currentTime ?? DateTime.now();
+    final closedNodes = getClosedGateNodeIds(now: now, customGates: customBuildings);
+
     final startSnap = snapToNearestGraphEdge(start);
     final endSnap = snapToNearestGraphEdge(end);
 
@@ -996,7 +1150,11 @@ class RoutingService {
 
     for (final sNode in candidateStartNodes) {
       for (final eNode in candidateEndNodes) {
-        final subPath = getRouteBetweenWaypoints(sNode, eNode);
+        final subPath = getRouteBetweenWaypoints(
+          sNode,
+          eNode,
+          closedNodeIds: closedNodes,
+        );
         if (subPath.isNotEmpty || sNode == eNode) {
           final List<LatLng> candidate = [startSnap.snappedPoint];
           if (subPath.isNotEmpty) candidate.addAll(subPath);
@@ -1058,36 +1216,101 @@ class RoutingService {
     return result.fullPath;
   }
 
-  List<String> generateOfflineInstructions(List<LatLng> path) {
-    if (path.length < 2) return ['Arrive at destination'];
+  String _getNearestRoadName(LatLng pos) {
+    if (_waypoints.isEmpty) return '';
+    Waypoint? best;
+    double minD = double.infinity;
+    for (final wp in _waypoints) {
+      if (wp.name.startsWith('Campus Walkway (')) continue; // Skip raw node IDs
+      final d = distance(pos, wp.position);
+      if (d < minD && d < 30.0) {
+        minD = d;
+        best = wp;
+      }
+    }
+    return best?.name ?? '';
+  }
+
+  List<Map<String, dynamic>> getDetailedManeuverSteps(List<LatLng> path) {
+    if (path.length < 2) {
+      return [
+        {
+          'text': 'Arrive at destination',
+          'action': 'arrive',
+          'road': 'Destination',
+          'index': 0,
+          'distance': 0.0,
+        }
+      ];
+    }
+
+    final List<Map<String, dynamic>> steps = [];
 
     const gateMainPos = LatLng(10.5541214, 76.2264419);
     const gateSouthPos = LatLng(10.5520947, 76.2241280);
     const gateEastPos = LatLng(10.5531511, 76.2264930);
 
-    final List<String> instructions = [];
-    instructions.add('Start walking along campus route');
+    final initialRoad = _getNearestRoadName(path.first);
+    steps.add({
+      'text': initialRoad.isNotEmpty ? 'Start walking towards $initialRoad' : 'Start walking along campus route',
+      'action': 'depart',
+      'road': initialRoad,
+      'index': 0,
+      'distance': 0.0,
+    });
 
-    for (int i = 0; i < path.length - 2; i++) {
-      final midPoint = path[i + 1];
+    int lastManeuverIdx = 0;
+    int i = 1;
+    while (i < path.length - 1) {
+      final midPoint = path[i];
 
-      // Check proximity to entrance gates
-      if (distance(midPoint, gateMainPos) < 18) {
-        instructions.add('Pass through Main Gate Entrance');
+      // Gate crossing detection
+      if (distance(midPoint, gateMainPos) < 14 && (i - lastManeuverIdx) > 6) {
+        steps.add({
+          'text': 'Pass through Main Gate Entrance',
+          'action': 'gate',
+          'road': 'Main Gate Entrance',
+          'index': i,
+          'distance': distance(path[lastManeuverIdx], path[i]),
+        });
+        lastManeuverIdx = i;
+        i += 4;
         continue;
-      } else if (distance(midPoint, gateSouthPos) < 18) {
-        instructions.add('Pass through South Gate Entrance (Canteen Side)');
+      } else if (distance(midPoint, gateSouthPos) < 14 && (i - lastManeuverIdx) > 6) {
+        steps.add({
+          'text': 'Pass through South Gate Entrance (Canteen Side)',
+          'action': 'gate',
+          'road': 'South Gate Entrance',
+          'index': i,
+          'distance': distance(path[lastManeuverIdx], path[i]),
+        });
+        lastManeuverIdx = i;
+        i += 4;
         continue;
-      } else if (distance(midPoint, gateEastPos) < 18) {
-        instructions.add('Pass through East Gate Entrance (Electrical Side)');
+      } else if (distance(midPoint, gateEastPos) < 14 && (i - lastManeuverIdx) > 6) {
+        steps.add({
+          'text': 'Pass through East Gate Entrance (Electrical Side)',
+          'action': 'gate',
+          'road': 'East Gate Entrance',
+          'index': i,
+          'distance': distance(path[lastManeuverIdx], path[i]),
+        });
+        lastManeuverIdx = i;
+        i += 4;
         continue;
       }
 
-      final b1 = calculateBearing(path[i], path[i + 1]);
-      final b2 = calculateBearing(path[i + 1], path[i + 2]);
-      final dist = distance(path[i + 1], path[i + 2]).round();
+      // Check angular change at vertex with 2-point lookback/lookahead
+      int lookbackIdx = (i - 2).clamp(0, path.length - 1);
+      int lookaheadIdx = (i + 2).clamp(0, path.length - 1);
 
-      if (dist < 3) continue; // skip micro-nodes
+      if (lookaheadIdx <= i || lookbackIdx >= i) {
+        i++;
+        continue;
+      }
+
+      final b1 = calculateBearing(path[lookbackIdx], path[i]);
+      final b2 = calculateBearing(path[i], path[lookaheadIdx]);
 
       double turnAngle = b2 - b1;
       while (turnAngle > 180) {
@@ -1097,24 +1320,67 @@ class RoutingService {
         turnAngle += 360;
       }
 
-      if (turnAngle > 45 && turnAngle <= 135) {
-        instructions.add('In ${dist}m, turn right');
-      } else if (turnAngle > 135) {
-        instructions.add('In ${dist}m, make a sharp right turn');
-      } else if (turnAngle < -45 && turnAngle >= -135) {
-        instructions.add('In ${dist}m, turn left');
-      } else if (turnAngle < -135) {
-        instructions.add('In ${dist}m, make a sharp left turn');
-      } else if (turnAngle.abs() > 22) {
-        final dir = turnAngle > 0 ? 'right' : 'left';
-        instructions.add('In ${dist}m, turn slight $dir');
-      } else {
-        instructions.add('In ${dist}m, continue straight');
+      final double segDistFromLast = distance(path[lastManeuverIdx], path[i]);
+
+      if (turnAngle.abs() >= 25 && segDistFromLast >= 5.0) {
+        final roadName = _getNearestRoadName(path[lookaheadIdx]);
+        final roadSuffix = roadName.isNotEmpty ? ' onto $roadName' : '';
+
+        String action;
+        String text;
+
+        if (turnAngle > 120) {
+          action = 'turn_sharp_right';
+          text = 'Make a sharp right turn$roadSuffix';
+        } else if (turnAngle >= 35) {
+          action = 'turn_right';
+          text = 'Turn right$roadSuffix';
+        } else if (turnAngle >= 18) {
+          action = 'turn_slight_right';
+          text = 'Turn slight right$roadSuffix';
+        } else if (turnAngle < -120) {
+          action = 'turn_sharp_left';
+          text = 'Make a sharp left turn$roadSuffix';
+        } else if (turnAngle <= -35) {
+          action = 'turn_left';
+          text = 'Turn left$roadSuffix';
+        } else {
+          action = 'turn_slight_left';
+          text = 'Turn slight left$roadSuffix';
+        }
+
+        steps.add({
+          'text': text,
+          'action': action,
+          'road': roadName,
+          'index': i,
+          'distance': segDistFromLast,
+          'angle': turnAngle,
+        });
+
+        lastManeuverIdx = i;
+        i += 3;
+        continue;
       }
+
+      i++;
     }
 
-    instructions.add('Arrive at destination');
-    return instructions;
+    steps.add({
+      'text': 'Arrive at destination',
+      'action': 'arrive',
+      'road': 'Destination',
+      'index': path.length - 1,
+      'distance': distance(path[lastManeuverIdx], path.last),
+    });
+
+    return steps;
+  }
+
+  List<String> generateOfflineInstructions(List<LatLng> path) {
+    if (path.length < 2) return ['Arrive at destination'];
+    final steps = getDetailedManeuverSteps(path);
+    return steps.map((s) => s['text'] as String).toList();
   }
 
   List<String> get lastInstructions => List.unmodifiable(_lastParsedInstructions);
@@ -1199,50 +1465,33 @@ class RoutingService {
   List<Map<String, dynamic>> getRouteInstructionsWithIndices(List<LatLng> route) {
     if (route.length < 2) {
       return [
-        {'text': "You have arrived.", 'index': 0}
+        {'text': "You have arrived.", 'index': 0, 'action': 'arrive'}
       ];
     }
-    List<Map<String, dynamic>> result = [];
 
-    if (_lastParsedInstructions.isNotEmpty) {
-      if (_lastStepManeuverCoords.isNotEmpty && _lastStepManeuverCoords.length == _lastParsedInstructions.length) {
-        for (int k = 0; k < _lastParsedInstructions.length; k++) {
-          final maneuverPos = _lastStepManeuverCoords[k];
-          int bestIdx = 0;
-          double bestDist = double.infinity;
-          for (int j = 0; j < route.length; j++) {
-            final d = distance(maneuverPos, route[j]);
-            if (d < bestDist) {
-              bestDist = d;
-              bestIdx = j;
-            }
+    if (_lastParsedInstructions.isNotEmpty && _lastStepManeuverCoords.length == _lastParsedInstructions.length) {
+      List<Map<String, dynamic>> result = [];
+      for (int k = 0; k < _lastParsedInstructions.length; k++) {
+        final maneuverPos = _lastStepManeuverCoords[k];
+        int bestIdx = 0;
+        double bestDist = double.infinity;
+        for (int j = 0; j < route.length; j++) {
+          final d = distance(maneuverPos, route[j]);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = j;
           }
-          result.add({
-            'text': _lastParsedInstructions[k],
-            'index': bestIdx.clamp(0, route.length - 1)
-          });
         }
-      } else {
-        for (int k = 0; k < _lastParsedInstructions.length; k++) {
-          int idx = (k * route.length / _lastParsedInstructions.length).round();
-          result.add({
-            'text': _lastParsedInstructions[k],
-            'index': idx.clamp(0, route.length - 1)
-          });
-        }
+        result.add({
+          'text': _lastParsedInstructions[k],
+          'index': bestIdx.clamp(0, route.length - 1),
+          'action': 'step',
+        });
       }
       return result;
     }
 
-    final offline = generateOfflineInstructions(route);
-    for (int k = 0; k < offline.length; k++) {
-      int idx = (k * route.length / offline.length).round();
-      result.add({
-        'text': offline[k],
-        'index': idx.clamp(0, route.length - 1),
-      });
-    }
-    return result;
+    return getDetailedManeuverSteps(route);
   }
 
   static LatLng snapToNearestSegment(LatLng point, List<LatLng> polyline, {double maxDistanceMeters = 12.0}) {

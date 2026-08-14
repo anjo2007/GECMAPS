@@ -150,7 +150,21 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   bool _hasAnnouncedArrival = false;
   String _lastAnnouncedInstruction = "";
   bool _hasAnnouncedAdvanceWarning = false;
+  bool _hasAnnouncedTurnNow = false;
   String? _activeGateClosureNotice;
+
+  String _extractShortTurnAction(String text) {
+    final t = text.toLowerCase();
+    if (t.contains('sharp right')) return 'Sharp Right';
+    if (t.contains('sharp left')) return 'Sharp Left';
+    if (t.contains('slight right')) return 'Slight Right';
+    if (t.contains('slight left')) return 'Slight Left';
+    if (t.contains('turn right') || t.contains('right')) return 'Turn Right';
+    if (t.contains('turn left') || t.contains('left')) return 'Turn Left';
+    if (t.contains('gate')) return 'Pass Gate';
+    if (t.contains('arrive')) return 'Arrive at Destination';
+    return text;
+  }
 
   // Category filter state
   final List<String> _categories = ['All', 'Departments', 'Workshops', 'Hostels', 'Cafes/ATMs', 'Rooms/Labs', 'Washrooms'];
@@ -1053,18 +1067,39 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         HapticFeedback.lightImpact(); // Haptic transition alert
         _currentInstructionIndex = newInstructionIdx;
         _hasAnnouncedAdvanceWarning = false; // Reset for next segment
-        _announceInstruction(_routeInstructions[_currentInstructionIndex]);
+        _hasAnnouncedTurnNow = false;
+
+        final currentInst = _routeInstructions[_currentInstructionIndex];
+        if (_currentInstructionIndex < _routeInstructions.length - 1) {
+          final distToNext = _distanceToNextTurn(newPos);
+          if (distToNext > 25.0) {
+            _announceInstruction("Continue straight for ${distToNext.round()} meters");
+          } else {
+            _announceInstruction(currentInst);
+          }
+        } else {
+          _announceInstruction(currentInst);
+        }
       }
 
-      // Layered advance warning: announce at ~20m before next turn
-      if (!_hasAnnouncedAdvanceWarning) {
-        final distToNext = _distanceToNextTurn(newPos);
-        if (distToNext > 0 && distToNext <= 20.0 &&
-            _currentInstructionIndex + 1 < _routeInstructions.length) {
-          _hasAnnouncedAdvanceWarning = true;
-          final nextInstruction = _routeInstructions[_currentInstructionIndex + 1];
-          _announceInstruction("In ${distToNext.round()} meters, $nextInstruction");
-        }
+      final distToNext = _distanceToNextTurn(newPos);
+
+      // Layered advance warning: announce at ~20-25m before next turn
+      if (!_hasAnnouncedAdvanceWarning && distToNext > 9.0 && distToNext <= 25.0 &&
+          _currentInstructionIndex + 1 < _routeInstructions.length) {
+        _hasAnnouncedAdvanceWarning = true;
+        final nextInstruction = _routeInstructions[_currentInstructionIndex + 1];
+        _announceInstruction("In ${distToNext.round()} meters, $nextInstruction");
+      }
+
+      // Immediate turn execution announcement at < 7m before turn point
+      if (!_hasAnnouncedTurnNow && distToNext > 0.5 && distToNext <= 7.0 &&
+          _currentInstructionIndex + 1 < _routeInstructions.length) {
+        _hasAnnouncedTurnNow = true;
+        HapticFeedback.mediumImpact();
+        final nextInstruction = _routeInstructions[_currentInstructionIndex + 1];
+        final shortAction = _extractShortTurnAction(nextInstruction);
+        _announceInstruction(shortAction);
       }
     }
 
@@ -1268,6 +1303,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         _isRecalculating = false;
         _hasAnnouncedArrival = false;
         _hasAnnouncedAdvanceWarning = false;
+        _hasAnnouncedTurnNow = false;
         _lastAnnouncedInstruction = "";
       });
 
@@ -1347,6 +1383,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       _currentInstructionIndex = 0;
       _hasAnnouncedArrival = false;
       _hasAnnouncedAdvanceWarning = false;
+      _hasAnnouncedTurnNow = false;
       _lastAnnouncedInstruction = "";
     });
   }
@@ -4044,17 +4081,45 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     
     String primaryInstruction = "Head towards ${_selectedBuilding!.name}";
     String secondaryInstruction = "Follow the highlighted path on the map.";
-    IconData turnIcon = Icons.straight;
+    IconData turnIcon = Icons.straight_rounded;
     Color topBarColor = const Color(0xFF0F9D58); // Green for active nav
 
     if (_routeInstructions.isNotEmpty) {
-      primaryInstruction = _routeInstructions[_currentInstructionIndex];
       if (_currentInstructionIndex < _routeInstructions.length - 1) {
         final double distToNext = _distanceToNextTurn(_currentPosition!);
-        secondaryInstruction = "In ${distToNext.toStringAsFixed(0)} m: ${_routeInstructions[_currentInstructionIndex + 1]}";
+        final nextInst = _routeInstructions[_currentInstructionIndex + 1];
+        if (distToNext <= 8.0) {
+          primaryInstruction = _extractShortTurnAction(nextInst);
+          secondaryInstruction = nextInst;
+        } else {
+          primaryInstruction = "In ${distToNext.round()} m";
+          secondaryInstruction = nextInst;
+        }
       } else {
+        primaryInstruction = _routeInstructions[_currentInstructionIndex];
         secondaryInstruction = "Arriving at ${_selectedBuilding!.name}";
       }
+    }
+
+    final String act = '$primaryInstruction $secondaryInstruction'.toLowerCase();
+    if (act.contains('sharp right')) {
+      turnIcon = Icons.turn_sharp_right_rounded;
+    } else if (act.contains('sharp left')) {
+      turnIcon = Icons.turn_sharp_left_rounded;
+    } else if (act.contains('slight right')) {
+      turnIcon = Icons.turn_slight_right_rounded;
+    } else if (act.contains('slight left')) {
+      turnIcon = Icons.turn_slight_left_rounded;
+    } else if (act.contains('turn right') || act.contains('right')) {
+      turnIcon = Icons.turn_right_rounded;
+    } else if (act.contains('turn left') || act.contains('left')) {
+      turnIcon = Icons.turn_left_rounded;
+    } else if (act.contains('gate')) {
+      turnIcon = Icons.sensor_door_rounded;
+    } else if (act.contains('arrive')) {
+      turnIcon = Icons.place_rounded;
+    } else {
+      turnIcon = Icons.straight_rounded;
     }
 
     int destFloor = 0;

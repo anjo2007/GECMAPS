@@ -156,6 +156,13 @@ void main() {
       expect(route.fullPath, isNotEmpty);
       expect(route.gateClosureNotice, isNotNull);
       expect(route.gateClosureNotice, contains('closed'));
+      expect(route.bypassedClosedGateName, contains('East Gate'));
+      expect(route.activeGateName, contains('Main Gate'));
+
+      // Verify the generated polyline actually routes through Main Gate (10.55412, 76.22644)
+      const mainGatePos = LatLng(10.5541214, 76.2264419);
+      final passesMainGate = route.fullPath.any((p) => routingService.distance(p, mainGatePos) < 15.0);
+      expect(passesMainGate, isTrue);
     });
   });
 

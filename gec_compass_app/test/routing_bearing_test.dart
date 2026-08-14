@@ -41,5 +41,43 @@ void main() {
       expect(instructions.first, contains('Start walking'));
       expect(instructions.last, equals('Arrive at destination'));
     });
+
+    test('getDetailedManeuverSteps identifies right and left turns accurately', () {
+      // 90-degree right turn: Heading North (0 deg) then East (90 deg)
+      final rightTurnPath = [
+        const LatLng(10.550000, 76.220000),
+        const LatLng(10.550100, 76.220000),
+        const LatLng(10.550200, 76.220000),
+        const LatLng(10.550300, 76.220000),
+        const LatLng(10.550400, 76.220000),
+        const LatLng(10.550500, 76.220000),
+        const LatLng(10.550500, 76.220100),
+        const LatLng(10.550500, 76.220200),
+        const LatLng(10.550500, 76.220300),
+        const LatLng(10.550500, 76.220400),
+        const LatLng(10.550500, 76.220500),
+      ];
+
+      final steps = routingService.getDetailedManeuverSteps(rightTurnPath);
+      expect(steps.any((s) => (s['text'] as String).toLowerCase().contains('turn right')), isTrue);
+
+      // 90-degree left turn: Heading North (0 deg) then West (270 deg)
+      final leftTurnPath = [
+        const LatLng(10.550000, 76.220000),
+        const LatLng(10.550100, 76.220000),
+        const LatLng(10.550200, 76.220000),
+        const LatLng(10.550300, 76.220000),
+        const LatLng(10.550400, 76.220000),
+        const LatLng(10.550500, 76.220000),
+        const LatLng(10.550500, 76.219900),
+        const LatLng(10.550500, 76.219800),
+        const LatLng(10.550500, 76.219700),
+        const LatLng(10.550500, 76.219600),
+        const LatLng(10.550500, 76.219500),
+      ];
+
+      final leftSteps = routingService.getDetailedManeuverSteps(leftTurnPath);
+      expect(leftSteps.any((s) => (s['text'] as String).toLowerCase().contains('turn left')), isTrue);
+    });
   });
 }
