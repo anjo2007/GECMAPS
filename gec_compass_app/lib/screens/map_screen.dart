@@ -4045,12 +4045,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected 
               ? const Color(0xFF10B981) 
               : (_appThemeMode == 'light' ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05)),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? Colors.transparent : _borderColor,
           ),
@@ -4058,13 +4058,13 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: isSelected ? Colors.white : _textColor),
-            const SizedBox(width: 6),
+            Icon(icon, size: 14, color: isSelected ? Colors.white : _textColor),
+            const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? Colors.white : _textColor.withValues(alpha: 0.8),
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -4472,17 +4472,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           child: Container(
             decoration: BoxDecoration(
               color: _scaffoldBgColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               border: Border.all(color: _borderColor),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 25, offset: const Offset(0, -6)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 20, offset: const Offset(0, -4)),
               ],
             ),
             padding: EdgeInsets.only(
-              left: 24, 
-              right: 24, 
-              top: 24, 
-              bottom: MediaQuery.of(context).padding.bottom + 24
+              left: 16, 
+              right: 16, 
+              top: 14, 
+              bottom: MediaQuery.of(context).padding.bottom > 0 
+                  ? MediaQuery.of(context).padding.bottom + 8 
+                  : 14,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -4496,12 +4498,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text("$minutes min", style: const TextStyle(color: Color(0xFF10B981), fontSize: 28, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 12),
-                          Text(_formatDistance(pathDistance), style: TextStyle(color: _textColor.withValues(alpha: 0.8), fontSize: 18)),
+                          Text("$minutes min", style: const TextStyle(color: Color(0xFF10B981), fontSize: 24, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          Text(_formatDistance(pathDistance), style: TextStyle(color: _textColor.withValues(alpha: 0.8), fontSize: 15, fontWeight: FontWeight.w500)),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -4521,145 +4523,158 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 (() {
                   final bool isNearDestination = dist < 20.0;
                   final bool isOnCorrectFloor = _userCurrentFloor == destFloor;
                   final bool isVpsButtonEnabled = isNearDestination && isOnCorrectFloor;
-                  return ElevatedButton(
-                    onPressed: isVpsButtonEnabled
-                        ? () {
-                            HapticFeedback.mediumImpact();
-                            Navigator.push<dynamic>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => VPSCameraScreen(
-                                  startPosition: _currentPosition ?? _campusCenter,
-                                  routingPath: _routingPath,
-                                  destinationName: _selectedBuilding!.name,
-                                  targetFloor: destFloor,
-                                  vpsBoardPhotoBase64: _selectedBuilding!.vpsBoardPhotoBase64,
-                                  vpsText: _selectedBuilding!.tags['vps_text']?.toString(),
+                  return SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: ElevatedButton(
+                      onPressed: isVpsButtonEnabled
+                          ? () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.push<dynamic>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VPSCameraScreen(
+                                    startPosition: _currentPosition ?? _campusCenter,
+                                    routingPath: _routingPath,
+                                    destinationName: _selectedBuilding!.name,
+                                    targetFloor: destFloor,
+                                    vpsBoardPhotoBase64: _selectedBuilding!.vpsBoardPhotoBase64,
+                                    vpsText: _selectedBuilding!.tags['vps_text']?.toString(),
+                                  ),
                                 ),
-                              ),
-                            ).then((result) {
-                              if (result != null && mounted) {
-                                LatLng finalPos;
-                                int? finalFloor;
-                                VPSGPSComparisonReport? report;
+                              ).then((result) {
+                                if (result != null && mounted) {
+                                  LatLng finalPos;
+                                  int? finalFloor;
+                                  VPSGPSComparisonReport? report;
 
-                                if (result is VPSRelocalizationResult) {
-                                  finalPos = result.position;
-                                  finalFloor = result.floor;
-                                  report = result.comparisonReport;
-                                } else if (result is VPSSensorFusionResult) {
-                                  finalPos = result.position;
-                                  finalFloor = result.floor;
-                                } else if (result is LatLng) {
-                                  finalPos = result;
-                                } else {
-                                  return;
-                                }
+                                  if (result is VPSRelocalizationResult) {
+                                    finalPos = result.position;
+                                    finalFloor = result.floor;
+                                    report = result.comparisonReport;
+                                  } else if (result is VPSSensorFusionResult) {
+                                    finalPos = result.position;
+                                    finalFloor = result.floor;
+                                  } else if (result is LatLng) {
+                                    finalPos = result;
+                                  } else {
+                                    return;
+                                  }
 
-                                setState(() {
-                                  _currentPosition = finalPos;
-                                  if (finalFloor != null) _userCurrentFloor = finalFloor;
-                                  _positionNotifier.value = finalPos;
-                                });
+                                  setState(() {
+                                    _currentPosition = finalPos;
+                                    if (finalFloor != null) _userCurrentFloor = finalFloor;
+                                    _positionNotifier.value = finalPos;
+                                  });
 
-                                _pdrService.forceSetPosition(finalPos);
+                                  _pdrService.forceSetPosition(finalPos);
 
-                                if (report != null) {
-                                  _pdrService.calibrateGpsBias(
-                                    report.latitudeBiasCorrection,
-                                    report.longitudeBiasCorrection,
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          const Icon(Icons.verified, color: Colors.white, size: 20),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              "🎯 VPS Calibrated: ${report.locationName}\nAccuracy: ±${report.fusedAccuracyMeters.toStringAsFixed(1)}m (GPS drift: ${report.displacementMeters.toStringAsFixed(1)}m compensated)",
-                                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                  if (report != null) {
+                                    _pdrService.calibrateGpsBias(
+                                      report.latitudeBiasCorrection,
+                                      report.longitudeBiasCorrection,
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            const Icon(Icons.verified, color: Colors.white, size: 20),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                "🎯 VPS Calibrated: ${report.locationName}\nAccuracy: ±${report.fusedAccuracyMeters.toStringAsFixed(1)}m (GPS drift: ${report.displacementMeters.toStringAsFixed(1)}m compensated)",
+                                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
+                                        backgroundColor: const Color(0xFF10B981),
+                                        duration: const Duration(seconds: 4),
+                                        behavior: SnackBarBehavior.floating,
                                       ),
-                                      backgroundColor: const Color(0xFF10B981),
-                                      duration: const Duration(seconds: 4),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
+                                    );
+                                  }
                                 }
-                              }
-                            });
-                          }
-                        : () {
-                            HapticFeedback.heavyImpact();
-                            String message = "";
-                            if (!isNearDestination) {
-                              message = "Please walk closer to ${_selectedBuilding!.name} to enable VPS.";
-                            } else if (!isOnCorrectFloor) {
-                              message = "VPS is only active on Floor $destFloor. Please reach Floor $destFloor to enable.";
+                              });
                             }
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(message),
-                                backgroundColor: Colors.orangeAccent,
-                              ),
-                            );
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isVpsButtonEnabled
-                          ? const Color(0xFF3B82F6).withValues(alpha: 0.85)
-                          : Colors.grey.withValues(alpha: 0.5),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    ),
-                    child: Icon(
-                      isVpsButtonEnabled ? Icons.view_in_ar : Icons.lock_outline,
-                      color: isVpsButtonEnabled ? Colors.white : Colors.white54,
-                      size: 28,
+                          : () {
+                              HapticFeedback.heavyImpact();
+                              String message = "";
+                              if (!isNearDestination) {
+                                message = "Please walk closer to ${_selectedBuilding!.name} to enable VPS.";
+                              } else if (!isOnCorrectFloor) {
+                                message = "VPS is only active on Floor $destFloor. Please reach Floor $destFloor to enable.";
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(message),
+                                  backgroundColor: Colors.orangeAccent,
+                                ),
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isVpsButtonEnabled
+                            ? const Color(0xFF3B82F6).withValues(alpha: 0.85)
+                            : Colors.grey.withValues(alpha: 0.5),
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      ),
+                      child: Icon(
+                        isVpsButtonEnabled ? Icons.view_in_ar : Icons.lock_outline,
+                        color: isVpsButtonEnabled ? Colors.white : Colors.white54,
+                        size: 22,
+                      ),
                     ),
                   );
                 })(),
                 const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    setState(() {
-                      _audioNavigationEnabled = !_audioNavigationEnabled;
-                    });
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(_audioNavigationEnabled ? 'Voice Guidance Enabled' : 'Voice Guidance Muted'),
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: (_audioNavigationEnabled ? const Color(0xFF10B981) : Colors.grey).withValues(alpha: 0.85),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  ),
-                  child: Icon(
-                    _audioNavigationEnabled ? Icons.volume_up : Icons.volume_off,
-                    color: Colors.white,
-                    size: 28,
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _audioNavigationEnabled = !_audioNavigationEnabled;
+                      });
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(_audioNavigationEnabled ? 'Voice Guidance Enabled' : 'Voice Guidance Muted'),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: (_audioNavigationEnabled ? const Color(0xFF10B981) : Colors.grey).withValues(alpha: 0.85),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                    ),
+                    child: Icon(
+                      _audioNavigationEnabled ? Icons.volume_up : Icons.volume_off,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _stopNavigation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: _stopNavigation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 22),
                   ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 28),
                 ),
               ],
             ),
