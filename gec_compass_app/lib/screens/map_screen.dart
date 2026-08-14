@@ -416,6 +416,13 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       // 2. Non-blocking asynchronous location check in background
       _initLocationInBackground();
 
+      // Ensure campus road network from assets/campus_roads.json is loaded as default
+      rootBundle.loadString('assets/campus_roads.json').then((jsonString) {
+        _routingService.loadCampusRoadsFromJsonString(jsonString);
+      }).catchError((e) {
+        debugPrint("Campus roads json pre-load note: $e");
+      });
+
       // Floor detection deferred to background — not on critical path
       PlaceDetectionService().init().then((_) {
         PlaceDetectionService().detectCurrentFloor().then((detectedFloor) {

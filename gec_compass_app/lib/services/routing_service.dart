@@ -84,9 +84,11 @@ class RoutingService {
   List<Waypoint> get roadNodes => List.unmodifiable(_waypoints);
   Map<String, List<String>> get roadAdjacency => Map.unmodifiable(_graph);
 
+  Future<void>? _initFuture;
+
   RoutingService._internal() {
     _initializeDefaultGraph();
-    _loadCampusRoadsAsset();
+    _initFuture = _loadCampusRoadsAsset();
   }
 
   /// Public loader from string (useful for testing, dynamic remote updates, and offline pre-caching)
@@ -900,6 +902,7 @@ class RoutingService {
     _lastStepManeuverCoords.clear();
 
     final now = currentTime ?? DateTime.now();
+    if (_initFuture != null) await _initFuture;
 
     final bool startIsOutside = isPointOutsideCampus(start);
     final bool endIsOutside = isPointOutsideCampus(end);
@@ -1127,6 +1130,7 @@ class RoutingService {
     List<Building>? customBuildings,
   }) async {
     final now = currentTime ?? DateTime.now();
+    if (_initFuture != null) await _initFuture;
     final closedNodes = getClosedGateNodeIds(now: now, customGates: customBuildings);
 
     final startSnap = snapToNearestGraphEdge(start);
