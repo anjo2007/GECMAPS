@@ -521,14 +521,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   }
 
   Future<void> _updateCurrentGPSLocationAsync() async {
+    if (_currentPosition != null) return;
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.bestForNavigation,
-          timeLimit: Duration(seconds: 4),
+          timeLimit: Duration(seconds: 2),
         ),
       );
-      if (mounted) {
+      if (mounted && _currentPosition == null) {
         final newPos = LatLng(pos.latitude, pos.longitude);
         _rawDeviceGpsPosition = newPos;
         _currentPosition = newPos;
@@ -760,7 +761,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           locationSettings = AndroidSettings(
             accuracy: LocationAccuracy.bestForNavigation,
             distanceFilter: 0,
-            intervalDuration: const Duration(milliseconds: 500),
+            intervalDuration: const Duration(milliseconds: 100),
             forceLocationManager: false,
           );
         } else if (defaultTargetPlatform == TargetPlatform.iOS) {

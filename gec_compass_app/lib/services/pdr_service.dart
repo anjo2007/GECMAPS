@@ -117,8 +117,8 @@ class PDRService {
       _startNativePDR();
     }
 
-    // 4Hz Sensor Fusion Loop (4 times a second for smoother trajectory rendering)
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 250), (timer) {
+    // 10Hz Sensor Fusion Loop (10 times a second for zero-lag trajectory rendering)
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_currentPosition == null) return;
 
       // Reset speed if GPS is stale (no update for 3s) to prevent infinite drift
@@ -130,7 +130,7 @@ class PDRService {
       // GPS-only dead reckoning projection fallback if no accelerometer data is active
       if (!_hasAccelerometerData && _lastGpsSpeed > 0.5) {
         double headingRad = _currentHeading * (pi / 180.0);
-        double dist = _lastGpsSpeed * 0.25; // 250ms elapsed
+        double dist = _lastGpsSpeed * 0.1; // 100ms elapsed
 
         double dx = dist * sin(headingRad);
         double dy = dist * cos(headingRad);
@@ -362,26 +362,35 @@ class PDRService {
     }
 
     _consecutiveGpsRejections = 0;
-
-    // Weighted sensor fusion
-    // Trust GPS more if accuracy is high (<5m)
-    // Trust PDR step dead reckoning more if GPS accuracy is low (>15m)
     _lastAcceptedAccuracy = accuracy;
+    _lastGpsPosition = effectiveGpsPos;
+    _lastGpsSpeed = speed;
+    _lastGpsUpdateTime = DateTime.now().millisecondsSinceEpoch;
 
+    // Weighted sensor fusion with dynamic responsiveness:
+    // When user is walking or GPS accuracy is good, sync immediately to avoid lag
     double alpha;
-    if (accuracy < 4.0) {
-      alpha = 0.85;
-    } else if (accuracy < 10.0) {
-      alpha = 0.60;
-    } else if (accuracy < 20.0) {
-      alpha = 0.35;
-    } else if (accuracy < 50.0) {
-      alpha = 0.12; // Rely heavily on step dead reckoning
+    if (speed > 0.3) {
+      if (accuracy < 12.0) {
+        alpha = 0.95; // Virtually instantaneous response when moving
+      } else if (accuracy < 25.0) {
+        alpha = 0.85;
+      } else {
+        alpha = 0.60;
+      }
     } else {
-      alpha = 0.06; // Very low weight for poor GPS — keeps marker roughly correct
+      if (accuracy < 5.0) {
+        alpha = 0.90;
+      } else if (accuracy < 15.0) {
+        alpha = 0.75;
+      } else if (accuracy < 30.0) {
+        alpha = 0.45;
+      } else {
+        alpha = 0.20;
+      }
     }
 
-    // Blend coordinates smoothly
+    // Blend coordinates smoothly without lagging
     double fusedLat = alpha * effectiveGpsPos.latitude + (1 - alpha) * _currentPosition!.latitude;
     double fusedLng = alpha * effectiveGpsPos.longitude + (1 - alpha) * _currentPosition!.longitude;
     _currentPosition = LatLng(fusedLat, fusedLng);
