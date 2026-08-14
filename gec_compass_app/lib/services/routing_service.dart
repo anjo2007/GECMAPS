@@ -901,6 +901,57 @@ class RoutingService {
 
     final now = currentTime ?? DateTime.now();
 
+    final bool startIsOutside = isPointOutsideCampus(start);
+    final bool endIsOutside = isPointOutsideCampus(end);
+
+    // 1. Both points internal to campus -> Pure direct point-to-point walkway navigation!
+    // Do NOT look for or route through any gates.
+    if (!startIsOutside && !endIsOutside) {
+      return _getInternalCampusRoute(start, end, currentTime: now, customBuildings: customBuildings);
+    }
+
+    // 2. Both points external to campus -> Pure online road navigation
+    if (startIsOutside && endIsOutside) {
+      final onlinePath = await _tryOnlineOSRM(start, end);
+      if (onlinePath != null && onlinePath.length >= 2) {
+        final roadStart = onlinePath.first;
+        final roadEnd = onlinePath.last;
+
+        List<LatLng> startAccess = [];
+        if (distance(start, roadStart) > 2.0) {
+          startAccess = [start, roadStart];
+        }
+
+        List<LatLng> endAccess = [];
+        if (distance(roadEnd, end) > 2.0) {
+          endAccess = [roadEnd, end];
+        }
+
+        final List<LatLng> rawFullPath = [];
+        if (startAccess.isNotEmpty) rawFullPath.add(start);
+        rawFullPath.addAll(onlinePath);
+        if (endAccess.isNotEmpty && distance(rawFullPath.last, end) > 1.0) rawFullPath.add(end);
+
+        final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
+        final smoothedRoadPath = smoothPolyline(onlinePath, iterations: 2);
+
+        return RouteResult(
+          fullPath: smoothedFullPath,
+          startAccessPath: startAccess,
+          roadPath: smoothedRoadPath,
+          endAccessPath: endAccess,
+          instructions: _lastParsedInstructions.isNotEmpty
+              ? _lastParsedInstructions
+              : generateOfflineInstructions(rawFullPath),
+        );
+      }
+
+      // Fallback direct connector
+      return _getInternalCampusRoute(start, end, currentTime: now, customBuildings: customBuildings);
+    }
+
+    // 3. Boundary crossing routing (startIsOutside != endIsOutside)
+    // One point is outside and the other is inside -> find optimal open gate to enter/exit campus.
     final List<Map<String, dynamic>> allGates = [
       {
         'id': 'gate_main',
@@ -941,7 +992,6 @@ class RoutingService {
       }
     }
 
-    // Filter only currently OPEN gates. During closed hours, closed gates do not exist.
     final List<Map<String, dynamic>> openGates = allGates.where((g) {
       return isGateOpenNow(g['open'] as String?, g['close'] as String?, now: now);
     }).toList();
@@ -949,102 +999,80 @@ class RoutingService {
     final List<Map<String, dynamic>> validGates = openGates.isNotEmpty ? openGates : [allGates.first];
     final closedNodeIds = getClosedGateNodeIds(now: now, customGates: customBuildings);
 
-    // 1. Check if destination itself is targeting a CLOSED GATE
-    Map<String, dynamic>? closedDestinationGate;
-    for (final g in allGates) {
-      final bool isOpen = isGateOpenNow(g['open'] as String?, g['close'] as String?, now: now);
-      if (!isOpen && distance(end, g['pos'] as LatLng) < 25.0) {
-        closedDestinationGate = g;
-        break;
-      }
-    }
+    final LatLng externalPoint = startIsOutside ? start : end;
+    final LatLng internalPoint = startIsOutside ? end : start;
+    final internalSnap = snapToNearestGraphEdge(internalPoint);
 
-    if (closedDestinationGate != null) {
-      // User is navigating to a closed gate. Consider there is no gate here, and route to the nearest OPEN gate!
-      Map<String, dynamic> nearestOpenGate = validGates.first;
-      double minD = double.infinity;
-      for (final g in validGates) {
-        final d = distance(start, g['pos'] as LatLng);
-        if (d < minD) {
-          minD = d;
-          nearestOpenGate = g;
+    Map<String, dynamic> bestGate = validGates.first;
+    double minTotalCost = double.infinity;
+
+    for (final gate in validGates) {
+      final LatLng gatePos = gate['pos'] as LatLng;
+      final externalDist = distance(externalPoint, gatePos);
+
+      final gateSnap = snapToNearestGraphEdge(gatePos);
+      double campusDist = double.infinity;
+      for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
+        final path = getRouteBetweenWaypoints(
+          gateSnap.nodeA,
+          snapNode,
+          closedNodeIds: closedNodeIds,
+        );
+        if (path.isNotEmpty) {
+          final d = getRouteDistance(path) +
+              distance(internalPoint, internalSnap.snappedPoint) +
+              distance(gatePos, gateSnap.snappedPoint);
+          if (d < campusDist) campusDist = d;
         }
       }
+      if (campusDist == double.infinity) campusDist = distance(gatePos, internalPoint);
 
-      final openGatePos = nearestOpenGate['pos'] as LatLng;
-      final openGateName = nearestOpenGate['name'] as String;
-      final closedName = closedDestinationGate['name'] as String;
-      final gateNotice = "$closedName is closed at this time. Rerouting destination to $openGateName which is open.";
-
-      final campusRoute = await _getInternalCampusRoute(
-        start,
-        openGatePos,
-        currentTime: now,
-        customBuildings: customBuildings,
-      );
-
-      final rawFullPath = campusRoute.fullPath;
-      final instructions = generateOfflineInstructions(rawFullPath);
-      instructions.insert(0, gateNotice);
-      _lastParsedInstructions = instructions;
-
-      final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
-      final smoothedRoadPath = smoothPolyline(campusRoute.roadPath, iterations: 2);
-
-      return RouteResult(
-        fullPath: smoothedFullPath,
-        startAccessPath: campusRoute.startAccessPath,
-        roadPath: smoothedRoadPath,
-        endAccessPath: campusRoute.endAccessPath,
-        instructions: instructions,
-        gateClosureNotice: gateNotice,
-        bypassedClosedGateName: closedName,
-        activeGateName: openGateName,
-      );
-    }
-
-    // 2. Check if start is located at or near a CLOSED GATE
-    Map<String, dynamic>? closedStartGate;
-    for (final g in allGates) {
-      final bool isOpen = isGateOpenNow(g['open'] as String?, g['close'] as String?, now: now);
-      if (!isOpen && distance(start, g['pos'] as LatLng) < 25.0) {
-        closedStartGate = g;
-        break;
+      final totalCost = externalDist + campusDist;
+      if (totalCost < minTotalCost) {
+        minTotalCost = totalCost;
+        bestGate = gate;
       }
     }
 
-    if (closedStartGate != null) {
-      // User is starting at a closed gate. Reroute via the nearest open gate!
-      Map<String, dynamic> nearestOpenGate = validGates.first;
-      double minD = double.infinity;
-      for (final g in validGates) {
-        final d = distance(start, g['pos'] as LatLng);
-        if (d < minD) {
-          minD = d;
-          nearestOpenGate = g;
-        }
+    // Check if geographically closest gate was closed
+    Map<String, dynamic>? geographicallyClosestGate;
+    double minGeoDist = double.infinity;
+    for (final gate in allGates) {
+      final d = distance(externalPoint, gate['pos'] as LatLng);
+      if (d < minGeoDist) {
+        minGeoDist = d;
+        geographicallyClosestGate = gate;
       }
+    }
 
-      final openGatePos = nearestOpenGate['pos'] as LatLng;
-      final openGateName = nearestOpenGate['name'] as String;
-      final closedName = closedStartGate['name'] as String;
-      final gateNotice = "$closedName is closed at this time. Rerouted via $openGateName which is open.";
+    final gatePos = bestGate['pos'] as LatLng;
+    final gateName = bestGate['name'] as String;
+    final bool isClosestGateOpen = geographicallyClosestGate != null
+        ? isGateOpenNow(geographicallyClosestGate['open'] as String?, geographicallyClosestGate['close'] as String?, now: now)
+        : true;
 
-      final onlinePath = await _tryOnlineOSRM(start, openGatePos);
+    String? gateNotice;
+    String? closedGateName;
+    String? activeGateName = gateName;
+
+    if (geographicallyClosestGate != null && !isClosestGateOpen && bestGate['id'] != geographicallyClosestGate['id']) {
+      closedGateName = geographicallyClosestGate['name'] as String;
+      gateNotice = "$closedGateName may be closed at this time. Rerouted via $activeGateName which is open.";
+    }
+
+    if (startIsOutside && !endIsOutside) {
+      final onlinePath = await _tryOnlineOSRM(start, gatePos);
       final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
           ? onlinePath
-          : <LatLng>[start, openGatePos];
+          : <LatLng>[start, gatePos];
 
-      final campusRoute = await _getInternalCampusRoute(
-        openGatePos,
-        end,
-        currentTime: now,
-        customBuildings: customBuildings,
-      );
-
+      final campusRoute = await _getInternalCampusRoute(gatePos, end, currentTime: now, customBuildings: customBuildings);
       final rawFullPath = <LatLng>[...externalPath, ...campusRoute.fullPath.skip(1)];
+
       final instructions = generateOfflineInstructions(rawFullPath);
-      instructions.insert(0, gateNotice);
+      if (gateNotice != null) {
+        instructions.insert(0, gateNotice);
+      }
       _lastParsedInstructions = instructions;
 
       final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
@@ -1057,181 +1085,38 @@ class RoutingService {
         endAccessPath: campusRoute.endAccessPath,
         instructions: instructions,
         gateClosureNotice: gateNotice,
-        bypassedClosedGateName: closedName,
-        activeGateName: openGateName,
+        bypassedClosedGateName: closedGateName,
+        activeGateName: activeGateName,
       );
-    }
+    } else {
+      final campusRoute = await _getInternalCampusRoute(start, gatePos, currentTime: now, customBuildings: customBuildings);
+      final onlinePath = await _tryOnlineOSRM(gatePos, end);
+      final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
+          ? onlinePath
+          : <LatLng>[gatePos, end];
 
-    final startSnap = snapToNearestGraphEdge(start);
-    final endSnap = snapToNearestGraphEdge(end);
+      final rawFullPath = <LatLng>[...campusRoute.fullPath, ...externalPath.skip(1)];
 
-    final bool startIsOutside = isPointOutsideCampus(start) || startSnap.distanceToRoad > 25.0;
-    final bool endIsOutside = isPointOutsideCampus(end) || endSnap.distanceToRoad > 25.0;
-
-    // 3. Boundary crossing routing (strictly routes through the optimal open gate)
-    if (startIsOutside != endIsOutside) {
-      final LatLng externalPoint = startIsOutside ? start : end;
-      final LatLng internalPoint = startIsOutside ? end : start;
-      final internalSnap = snapToNearestGraphEdge(internalPoint);
-
-      Map<String, dynamic> bestGate = validGates.first;
-      double minTotalCost = double.infinity;
-
-      for (final gate in validGates) {
-        final LatLng gatePos = gate['pos'] as LatLng;
-        final externalDist = distance(externalPoint, gatePos);
-
-        final gateSnap = snapToNearestGraphEdge(gatePos);
-        double campusDist = double.infinity;
-        for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
-          final path = getRouteBetweenWaypoints(
-            gateSnap.nodeA,
-            snapNode,
-            closedNodeIds: closedNodeIds,
-          );
-          if (path.isNotEmpty) {
-            final d = getRouteDistance(path) +
-                distance(internalPoint, internalSnap.snappedPoint) +
-                distance(gatePos, gateSnap.snappedPoint);
-            if (d < campusDist) campusDist = d;
-          }
-        }
-        if (campusDist == double.infinity) campusDist = distance(gatePos, internalPoint);
-
-        final totalCost = externalDist + campusDist;
-        if (totalCost < minTotalCost) {
-          minTotalCost = totalCost;
-          bestGate = gate;
-        }
+      final instructions = generateOfflineInstructions(rawFullPath);
+      if (gateNotice != null) {
+        instructions.insert(0, gateNotice);
       }
-
-      // Check if geographically closest gate was closed
-      Map<String, dynamic>? geographicallyClosestGate;
-      double minGeoDist = double.infinity;
-      for (final gate in allGates) {
-        final d = distance(externalPoint, gate['pos'] as LatLng);
-        if (d < minGeoDist) {
-          minGeoDist = d;
-          geographicallyClosestGate = gate;
-        }
-      }
-
-      final gatePos = bestGate['pos'] as LatLng;
-      final gateName = bestGate['name'] as String;
-      final bool isClosestGateOpen = geographicallyClosestGate != null
-          ? isGateOpenNow(geographicallyClosestGate['open'] as String?, geographicallyClosestGate['close'] as String?, now: now)
-          : true;
-
-      String? gateNotice;
-      String? closedGateName;
-      String? activeGateName = gateName;
-
-      if (geographicallyClosestGate != null && !isClosestGateOpen && bestGate['id'] != geographicallyClosestGate['id']) {
-        closedGateName = geographicallyClosestGate['name'] as String;
-        gateNotice = "$closedGateName may be closed at this time. Rerouted via $activeGateName which is open.";
-      }
-
-      if (startIsOutside && !endIsOutside) {
-        final onlinePath = await _tryOnlineOSRM(start, gatePos);
-        final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
-            ? onlinePath
-            : <LatLng>[start, gatePos];
-
-        final campusRoute = await _getInternalCampusRoute(gatePos, end, currentTime: now, customBuildings: customBuildings);
-        final rawFullPath = <LatLng>[...externalPath, ...campusRoute.fullPath.skip(1)];
-
-        final instructions = generateOfflineInstructions(rawFullPath);
-        if (gateNotice != null) {
-          instructions.insert(0, gateNotice);
-        }
-        _lastParsedInstructions = instructions;
-
-        final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
-        final smoothedRoadPath = smoothPolyline(rawFullPath, iterations: 2);
-
-        return RouteResult(
-          fullPath: smoothedFullPath,
-          startAccessPath: [start, externalPath.first],
-          roadPath: smoothedRoadPath,
-          endAccessPath: campusRoute.endAccessPath,
-          instructions: instructions,
-          gateClosureNotice: gateNotice,
-          bypassedClosedGateName: closedGateName,
-          activeGateName: activeGateName,
-        );
-      } else if (!startIsOutside && endIsOutside) {
-        final campusRoute = await _getInternalCampusRoute(start, gatePos, currentTime: now, customBuildings: customBuildings);
-        final onlinePath = await _tryOnlineOSRM(gatePos, end);
-        final externalPath = (onlinePath != null && onlinePath.isNotEmpty)
-            ? onlinePath
-            : <LatLng>[gatePos, end];
-
-        final rawFullPath = <LatLng>[...campusRoute.fullPath, ...externalPath.skip(1)];
-
-        final instructions = generateOfflineInstructions(rawFullPath);
-        if (gateNotice != null) {
-          instructions.insert(0, gateNotice);
-        }
-        _lastParsedInstructions = instructions;
-
-        final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
-        final smoothedRoadPath = smoothPolyline(rawFullPath, iterations: 2);
-
-        return RouteResult(
-          fullPath: smoothedFullPath,
-          startAccessPath: campusRoute.startAccessPath,
-          roadPath: smoothedRoadPath,
-          endAccessPath: [externalPath.last, end],
-          instructions: instructions,
-          gateClosureNotice: gateNotice,
-          bypassedClosedGateName: closedGateName,
-          activeGateName: activeGateName,
-        );
-      }
-    }
-
-    // 2. Both points internal to campus (pure offline graph navigation)
-    if (!startIsOutside && !endIsOutside) {
-      return _getInternalCampusRoute(start, end, currentTime: now, customBuildings: customBuildings);
-    }
-
-    // 3. Both points external to campus (pure online OSRM)
-    final onlinePath = await _tryOnlineOSRM(start, end);
-    if (onlinePath != null && onlinePath.length >= 2) {
-      final roadStart = onlinePath.first;
-      final roadEnd = onlinePath.last;
-
-      List<LatLng> startAccess = [];
-      if (distance(start, roadStart) > 2.0) {
-        startAccess = [start, roadStart];
-      }
-
-      List<LatLng> endAccess = [];
-      if (distance(roadEnd, end) > 2.0) {
-        endAccess = [roadEnd, end];
-      }
-
-      final List<LatLng> rawFullPath = [];
-      if (startAccess.isNotEmpty) rawFullPath.add(start);
-      rawFullPath.addAll(onlinePath);
-      if (endAccess.isNotEmpty && distance(rawFullPath.last, end) > 1.0) rawFullPath.add(end);
+      _lastParsedInstructions = instructions;
 
       final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
-      final smoothedRoadPath = smoothPolyline(onlinePath, iterations: 2);
+      final smoothedRoadPath = smoothPolyline(rawFullPath, iterations: 2);
 
       return RouteResult(
         fullPath: smoothedFullPath,
-        startAccessPath: startAccess,
+        startAccessPath: campusRoute.startAccessPath,
         roadPath: smoothedRoadPath,
-        endAccessPath: endAccess,
-        instructions: _lastParsedInstructions.isNotEmpty
-            ? _lastParsedInstructions
-            : generateOfflineInstructions(rawFullPath),
+        endAccessPath: [externalPath.last, end],
+        instructions: instructions,
+        gateClosureNotice: gateNotice,
+        bypassedClosedGateName: closedGateName,
+        activeGateName: activeGateName,
       );
     }
-
-    // Fallback direct connector
-    return _getInternalCampusRoute(start, end, currentTime: now, customBuildings: customBuildings);
   }
 
   /// Internal Dijkstra routing between two campus points on the paved road network

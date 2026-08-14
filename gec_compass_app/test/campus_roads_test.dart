@@ -165,34 +165,31 @@ void main() {
       expect(passesMainGate, isTrue);
     });
 
-    test('navigating directly to a closed gate considers it non-existent and reroutes to open gate', () async {
+    test('navigating between two points inside campus gives direct point-to-point route without gates', () async {
       final routingService = RoutingService();
       final file = File('assets/campus_roads.json');
       final jsonStr = await file.readAsString();
       routingService.loadCampusRoadsFromJsonString(jsonStr);
 
-      // Starting from Mechanical Dept, destination is Electrical Gate
+      // Starting from Mechanical Dept, destination is Central Library
       const internalStart = LatLng(10.554418, 76.224668);
-      const electricalGatePos = LatLng(10.5520947, 76.2241280);
+      const internalDestination = LatLng(10.553595, 76.224567);
 
-      // At 10:00 PM Electrical Gate is closed (closes 9:30 PM), Main Gate is open
-      final at10pm = DateTime(2026, 8, 14, 22, 0);
+      // Even at 11:00 PM when all gates are closed, internal routing works directly
+      final at11pm = DateTime(2026, 8, 14, 23, 0);
       final route = await routingService.getDetailedRoute(
         internalStart,
-        electricalGatePos,
-        currentTime: at10pm,
+        internalDestination,
+        currentTime: at11pm,
       );
 
       expect(route.fullPath, isNotEmpty);
-      expect(route.gateClosureNotice, isNotNull);
-      expect(route.gateClosureNotice, contains('Electrical Gate Entrance is closed'));
-      expect(route.gateClosureNotice, contains('Rerouting destination to Main Gate Entrance'));
-      expect(route.activeGateName, equals('Main Gate Entrance'));
+      expect(route.gateClosureNotice, isNull);
+      expect(route.bypassedClosedGateName, isNull);
 
-      // The destination must be the open Main Gate, not the closed Electrical Gate
-      const mainGatePos = LatLng(10.5541214, 76.2264419);
-      final endsNearMainGate = routingService.distance(route.fullPath.last, mainGatePos) < 15.0;
-      expect(endsNearMainGate, isTrue);
+      // Verify route ends at the internal destination, not any gate
+      final endsNearDest = routingService.distance(route.fullPath.last, internalDestination) < 15.0;
+      expect(endsNearDest, isTrue);
     });
   });
 
