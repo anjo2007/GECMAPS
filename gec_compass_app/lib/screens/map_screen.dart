@@ -410,12 +410,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       // Instant UI unblock (< 50ms)
       setState(() {
         _buildings = buildings;
-        _currentPosition = _campusCenter;
-        _positionNotifier.value = _campusCenter;
         _isLoading = false;
       });
-
-      _pdrService.startPDR(_campusCenter);
 
       // 2. Non-blocking asynchronous location check in background
       _initLocationInBackground();
@@ -475,7 +471,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       } else {
         LocationPermission permission = await Geolocator.checkPermission().timeout(const Duration(seconds: 2), onTimeout: () => LocationPermission.denied);
         if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission().timeout(const Duration(seconds: 3), onTimeout: () => LocationPermission.denied);
+          permission = await Geolocator.requestPermission().timeout(const Duration(seconds: 4), onTimeout: () => LocationPermission.denied);
         }
         if (permission == LocationPermission.deniedForever) {
           if (mounted) setState(() => _locationDeniedForever = true);
@@ -497,13 +493,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         }
       }
     } catch (e) {
-      debugPrint("Last known location check skipped: $e");
+      debugPrint("Last known location check note: $e");
     }
 
     if (userPos != null && mounted) {
+      _rawDeviceGpsPosition = userPos;
       _currentPosition = userPos;
       _positionNotifier.value = userPos;
       _pdrService.startPDR(userPos);
+      if (_isAutoRecentering) {
+        _mapController.move(userPos, _mapController.camera.zoom);
+      }
     }
 
     _startGPSListening();
@@ -511,23 +511,28 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   }
 
   Future<void> _updateCurrentGPSLocationAsync() async {
-    if (_currentPosition != null) return;
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.bestForNavigation,
-          timeLimit: Duration(seconds: 2),
+          timeLimit: Duration(seconds: 5),
         ),
       );
-      if (mounted && _currentPosition == null) {
+      if (mounted) {
         final newPos = LatLng(pos.latitude, pos.longitude);
         _rawDeviceGpsPosition = newPos;
         _currentPosition = newPos;
         _positionNotifier.value = newPos;
-        _pdrService.startPDR(newPos);
+        if (!_pdrService.isActive) {
+          _pdrService.startPDR(newPos);
+        }
+        _pdrService.updateGPSPosition(newPos, pos.accuracy, pos.speed, pos.heading);
+        if (_isAutoRecentering) {
+          _mapController.move(newPos, _mapController.camera.zoom);
+        }
       }
     } catch (e) {
-      debugPrint("Async GPS location update skipped: $e");
+      debugPrint("Async GPS location update note: $e");
     }
   }
 
@@ -775,6 +780,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           if (!mounted) return;
           final newPos = LatLng(position.latitude, position.longitude);
           _rawDeviceGpsPosition = newPos;
+          _currentPosition = newPos;
+          _positionNotifier.value = newPos;
           
           // Update altitude and speed without triggering a full rebuild
           _currentAltitude = position.altitude;
@@ -3604,21 +3611,32 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                               backgroundColor: _cardBgColor.withValues(alpha: 0.7),
                               foregroundColor: _isAutoRecentering ? const Color(0xFF3B82F6) : _textColor.withValues(alpha: 0.6),
                               onPressed: () async {
-                                if (kIsWeb) {
-                                  await _pdrService.startPDR(_currentPosition ?? _campusCenter);
-                                }
                                 setState(() {
                                   _isAutoRecentering = true;
                                 });
-                                final LatLng rawPos = _rawDeviceGpsPosition ?? _currentPosition ?? _campusCenter;
-                                final double distToCampus = _routingService.distance(rawPos, _campusCenter);
-
-                                if (distToCampus > 2500.0 || _rawDeviceGpsPosition == null) {
-                                  _currentPosition = _campusCenter;
-                                  _mapController.move(_campusCenter, 16.8);
-                                  _showOutsideRangeSnackBar();
-                                } else {
-                                  _mapController.move(_currentPosition!, 18.5);
+                                _startGPSListening();
+                                try {
+                                  final pos = await Geolocator.getCurrentPosition(
+                                    locationSettings: const LocationSettings(
+                                      accuracy: LocationAccuracy.bestForNavigation,
+                                      timeLimit: Duration(seconds: 4),
+                                    ),
+                                  );
+                                  if (mounted) {
+                                    final newPos = LatLng(pos.latitude, pos.longitude);
+                                    _rawDeviceGpsPosition = newPos;
+                                    _currentPosition = newPos;
+                                    _positionNotifier.value = newPos;
+                                    if (!_pdrService.isActive) {
+                                      _pdrService.startPDR(newPos);
+                                    }
+                                    _pdrService.updateGPSPosition(newPos, pos.accuracy, pos.speed, pos.heading);
+                                    _mapController.move(newPos, 18.0);
+                                  }
+                                } catch (e) {
+                                  if (_currentPosition != null && mounted) {
+                                    _mapController.move(_currentPosition!, 18.0);
+                                  }
                                 }
                               },
                               child: Icon(_isAutoRecentering ? Icons.my_location : Icons.location_searching),
