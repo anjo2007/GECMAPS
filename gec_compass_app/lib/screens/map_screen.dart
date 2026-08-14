@@ -761,7 +761,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           locationSettings = AndroidSettings(
             accuracy: LocationAccuracy.bestForNavigation,
             distanceFilter: 0,
-            intervalDuration: const Duration(milliseconds: 100),
+            intervalDuration: const Duration(milliseconds: 200),
             forceLocationManager: false,
           );
         } else if (defaultTargetPlatform == TargetPlatform.iOS) {

@@ -117,8 +117,8 @@ class PDRService {
       _startNativePDR();
     }
 
-    // 10Hz Sensor Fusion Loop (10 times a second for zero-lag trajectory rendering)
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    // 5Hz Sensor Fusion Loop (200ms gold-standard interval for optimal hardware & battery efficiency)
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
       if (_currentPosition == null) return;
 
       // Reset speed if GPS is stale (no update for 3s) to prevent infinite drift
@@ -130,7 +130,7 @@ class PDRService {
       // GPS-only dead reckoning projection fallback if no accelerometer data is active
       if (!_hasAccelerometerData && _lastGpsSpeed > 0.5) {
         double headingRad = _currentHeading * (pi / 180.0);
-        double dist = _lastGpsSpeed * 0.1; // 100ms elapsed
+        double dist = _lastGpsSpeed * 0.2; // 200ms elapsed
 
         double dx = dist * sin(headingRad);
         double dy = dist * cos(headingRad);
