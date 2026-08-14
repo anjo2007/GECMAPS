@@ -16,12 +16,13 @@ of Government Engineering College Thrissur.
 
 The application solves the critical challenges of campus navigation:
 1. Complex outdoor pathway networks between departments, hostels, and workshops.
-2. GPS signal degradation and multipath errors inside multi-story academic blocks.
-3. Multi-gate perimeter access with variable operating schedules.
-4. Indoor multi-floor room and laboratory discovery.
+2. Dynamic time-based gate schedule evaluations with spoken rerouting notices.
+3. Fluid, smooth road polyline curve interpolation (Chaikin's Corner-Cutting algorithm).
+4. GPS signal degradation and multipath errors inside multi-story academic blocks.
 5. High-precision sub-meter campus grid addressing and seamless live location sharing.
 6. Sensor-fused Pedestrian Dead Reckoning (PDR) and Visual Positioning (VPS) calibration.
-7. Crowd-contributed live updates for campus events and venue changes.
+7. Dedicated campus washroom/restroom facility discovery and management.
+8. Crowd-contributed live updates for campus events and venue changes.
 
 --------------------------------------------------------------------------------
 2. ARCHITECTURE & CORE SUBSYSTEMS
@@ -31,13 +32,14 @@ The application is structured into seven modular, decoupled subsystems:
 1. Dynamic Road Network & Routing Engine (`routing_service.dart`):
    - High-precision topological graph navigation over verified campus pathways.
    - Real-time Dijkstra shortest path algorithm with road edge snapping.
-   - Operating gate schedule awareness and single optimal path selection.
+   - Dynamic Gate Schedule Intelligence: evaluates open/closed operating hours, applies 5000m detour penalty for closed gates, and outputs verbal and visual alternative route notices.
+   - Fluid Road Curve Smoothing (`smoothPolyline`): multi-pass Chaikin's corner-cutting algorithm creates organic, elegant road curvature while strictly preserving exact start and destination endpoints.
    - Offline boundary fallback routing when OSRM or network is unavailable.
 
 2. Real-Time Dynamic Map Controller (`map_screen.dart`):
    - 60 FPS hardware-accelerated polyline rendering using `ValueNotifier`.
    - Real-time path shrinking behind the user as they advance along the route.
-   - Spoken Turn-by-Turn voice guidance (TTS), haptic alerts, and 20m advance warnings.
+   - Spoken Turn-by-Turn voice guidance (TTS), spoken gate closure notifications, haptic alerts, and 20m advance warnings.
    - Multi-sample debounced off-route detection.
 
 3. Sensor-Fused Pedestrian Dead Reckoning (PDR) (`pdr_service.dart`):
@@ -67,7 +69,7 @@ The application is structured into seven modular, decoupled subsystems:
    - 2.5D visual floor layout mapping and room search.
 
 7. Cloud-Synchronized POI Management (`data_service.dart`):
-   - Real-time MongoDB and REST API synchronization for custom places, labs, and gates.
+   - Real-time MongoDB and REST API synchronization for custom places, labs, washrooms, and gates.
    - In-app photo compression, Cloudinary linking, and gate schedule editing.
 
 --------------------------------------------------------------------------------
@@ -75,7 +77,7 @@ The application is structured into seven modular, decoupled subsystems:
 --------------------------------------------------------------------------------
 
 ================================================================================
-A. ROAD NETWORK & TOPOLOGICAL GRAPH ROUTING
+A. ROAD NETWORK, TOPOLOGICAL GRAPH ROUTING & GATE SCHEDULE INTELLIGENCE
 ================================================================================
 • Data Source: `assets/campus_roads.json`
   - 229 Topological Nodes & 257 Edges forming a single, 100% connected graph.
@@ -83,24 +85,22 @@ A. ROAD NETWORK & TOPOLOGICAL GRAPH ROUTING
     and academic corridor across the entire GEC Thrissur perimeter.
   - Completely editable JSON structure for seamless future campus road extensions.
 
+• Dynamic Gate Closure Detection & Verbal/Visual Announcements:
+  - Real-world schedule checking for all gates (Main Gate 06:00 AM - 10:30 PM, South Gate 06:00 AM - 09:30 PM, East Gate 06:00 AM - 09:00 PM, plus custom added gates).
+  - When the primary closer gate is closed at the current time, the router automatically selects the optimal OPEN alternative gate.
+  - Generates explicit spoken notice via TTS: e.g., "Main Gate may be closed at this time. Rerouted via South Gate which is open."
+  - Displays high-visibility Amber warning badge on top turn-by-turn guidance banner and snackbar alert.
+
+• Fluid Road Curve Smoothing (`smoothPolyline`):
+  - Applies multi-iteration Chaikin's Corner-Cutting algorithm over raw road segments.
+  - Subdivides sharp polygon vertices into tangential bezier-like fillets with 22% tension factor.
+  - Generates organic, smooth road curves while keeping start points and destination pins 100% locked.
+
 • Single Optimal Route Selection:
   - Guarantees returning strictly ONE best path (avoiding clutter or confusing routes).
   - Uses geometric perpendicular projection to snap starting GPS coordinates and
     target destinations to the nearest walkable pathway edge.
   - Calculates the shortest Dijkstra distance through the road graph.
-
-• Operating Gate Schedule Intelligence:
-  - Evaluates all campus perimeter gates (Main Gate, South Canteen Gate, East Electrical Gate,
-    and any custom user-added gates).
-  - Supports 12-hour (06:00 AM - 10:30 PM), 24-hour (24/7), and overnight schedules.
-  - Automatically checks current real-world time. If a gate is closed, a 5000m detour penalty
-    is applied in the cost function, dynamically routing the user through the optimal OPEN gate.
-  - Displays live badges: 🟢 Open • Closes [Time] / 🔴 Closed • Opens [Time] / 🕒 Open 24 Hours.
-
-• Offline Boundary Crossing Fallback:
-  - If a user starts outside the campus and OSRM server is unreachable offline, the system
-    safely connects the external coordinate to the optimal open entrance gate, and continues
-    through the internal campus road graph to the destination door.
 
 ================================================================================
 B. REAL-TIME NAVIGATION & DYNAMIC PATH SHRINKING
@@ -136,9 +136,7 @@ C. SENSOR-FUSED PEDESTRIAN DEAD RECKONING (PDR)
   - Clamped to natural human biomechanical limits (0.48m - 0.92m).
 
 • Circular EMA Compass & Gyroscope Fusion:
-  - Smooths magnetic heading using trigonometric circular averaging:
-    sin_avg = (1 - α) * sin(heading_smooth) + α * sin(heading_raw)
-    cos_avg = (1 - α) * cos(heading_smooth) + α * cos(heading_raw)
+  - Smooths magnetic heading using trigonometric circular averaging.
   - Blends GPS course heading when walking speed > 0.8 m/s to eliminate magnetic interference.
 
 • Active Differential GPS Bias Compensation:
@@ -160,7 +158,7 @@ D. VISUAL POSITIONING SYSTEM (VPS) & DIFFERENTIAL COMPARISON ALGORITHM
 • Special VPS vs GPS Comparison Algorithm:
   - Vector Difference Calculation: Δ = ||x_VPS - x_GPS||.
   - GPS Multipath Drift Detection:
-    * If Δ > (3 * accuracy_GPS + 8m) or Δ > 25m, the algorithm flags severe GPS multipath reflection.
+    * If Δ > (3 * accuracy_GPS + 8m) or Δ > 25m, flags severe GPS multipath reflection.
     * Automatically snaps user location to visual anchor ground truth (±0.2m error bound).
     * Computes spatial bias: b_GPS = x_GPS - x_VPS.
   - Inverse-Variance Fusion Blending:
@@ -194,34 +192,18 @@ E. GEC CAMPUS GRID ADDRESSING SYSTEM & LOCATION SHARING
   - Automatically decodes the grid coordinate back into precise `LatLng` using reverse Haversine approximation.
   - Shows an instant "📍 Grid Location (GEC-E...)" suggestion card at the top of the search list.
 
-• Noise Reduction & Perimeter Snapping:
-  - Validates all coordinates against the official GEC campus bounding envelope.
-  - Uses `snapToCampusGrid` to eliminate sensor noise during indoor dead reckoning.
+================================================================================
+F. PLACE MANAGEMENT, WASHROOM DISCOVERY & CUSTOM POIS
+================================================================================
+• Dedicated Washrooms / Restrooms Category:
+  - Filter chip for instant discovery of toilets and washroom facilities.
+  - Cyan marker highlighting (`Icons.wc_rounded`, `0xFF06B6D4`) and dedicated detail badge.
+  - Place creation and editing support for washrooms across all campus blocks.
 
-================================================================================
-F. INDOOR MULTI-FLOOR NAVIGATION & ELEVATION TRACKING
-================================================================================
-• Multi-Floor Map Viewer:
-  - Dynamic floor selector chips (Floor 0: Ground, Floor 1: First, Floor 2: Second, etc.).
-  - 2.5D visual floor layout rendering with interactive room pins and tags.
-
-• Barometer & Step Elevation Detection:
-  - Monitors vertical altitude displacement and staircase steps to trigger automatic floor transitions.
-  - Interactive "Staircase Zone" prompt when ascending or descending stairs.
-
-================================================================================
-G. PLACE MANAGEMENT, CLOUD SYNC & CUSTOM POIS
-================================================================================
 • In-App Place Creation & Editing:
-  - Add and edit classrooms, labs, offices, washrooms, water points, and perimeter gates.
-  - Configure Place Name, Search Tags / Keywords, Floor Number, Room Code, VPS Text,
-    Opening Time, and Closing Time.
-  - In-app photo capture with auto-compression (max 1024px, 80% JPEG quality) and Cloudinary upload.
-
-• Seamless Cloud Synchronization:
-  - Fast local cache loading (< 50ms) for instant UI unblock on app launch.
-  - Periodic 10-second asynchronous cloud sync with MongoDB REST API.
-  - Updates from any device immediately propagate across all users.
+  - Add and edit classrooms, labs, offices, washrooms, and perimeter gates.
+  - Configure Place Name, Search Tags, Floor Number, Room Code, VPS Text, and Gate Schedules.
+  - In-app photo compression (max 1024px, 80% JPEG quality) and Cloudinary upload.
 
 --------------------------------------------------------------------------------
 4. VERIFICATION & QUALITY ASSURANCE
@@ -230,15 +212,15 @@ G. PLACE MANAGEMENT, CLOUD SYNC & CUSTOM POIS
   - 0 Errors, 0 Warnings, 0 Issues across the entire codebase.
 
 • Automated Test Suite (`flutter test`):
-  - 35 / 35 Tests Passing (100% Success Rate):
-    * `campus_roads_test.dart`: Road network connectivity (229 nodes, 257 edges), single optimal Dijkstra route, gate schedules.
+  - 39 / 39 Tests Passing (100% Success Rate):
+    * `campus_roads_test.dart`: Road network connectivity, optimal Dijkstra route, gate schedules, dynamic gate closure notice, and Chaikin curve smoothing.
     * `grid_addressing_service_test.dart`: Sub-meter precision, campus bounds checking, grid snapping, bidirectional decoding.
     * `pdr_service_test.dart`: Accelerometer fusion, Weinberg stride calculation, GPS bias calibration, position forcing.
     * `vps_sensor_fusion_test.dart`: VPS-GPS differential comparison, multipath outlier detection, hybrid fusion.
     * `vps_service_test.dart`: QR/JSON payload parsing, confidence score computation.
     * `routing_service_test.dart`: Waypoint snapping, Dijkstra shortest paths, graph symmetry.
     * `routing_bearing_test.dart`: Azimuth bearings, turn instruction generation.
-    * `building_model_test.dart`: JSON serialization, tag indexing, cloud payload compatibility.
+    * `building_model_test.dart`: JSON serialization, washroom tagging, cloud payload compatibility.
 
 ================================================================================
                                 END OF DOCUMENTATION

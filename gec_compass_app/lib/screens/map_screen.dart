@@ -150,6 +150,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   bool _hasAnnouncedArrival = false;
   String _lastAnnouncedInstruction = "";
   bool _hasAnnouncedAdvanceWarning = false;
+  String? _activeGateClosureNotice;
 
   // Category filter state
   final List<String> _categories = ['All', 'Departments', 'Workshops', 'Hostels', 'Cafes/ATMs', 'Rooms/Labs', 'Washrooms'];
@@ -1141,6 +1142,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       if (!mounted) return;
 
       setState(() {
+        _activeGateClosureNotice = routeRes.gateClosureNotice;
         _routingPath = path;
         _startAccessPath = routeRes.startAccessPath;
         _endAccessPath = routeRes.endAccessPath;
@@ -1151,6 +1153,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         _routeInstructionIndices = indices;
         _currentInstructionIndex = 0;
       });
+
+      if (routeRes.gateClosureNotice != null && routeRes.gateClosureNotice!.isNotEmpty) {
+        _announceInstruction(routeRes.gateClosureNotice!);
+      }
     } catch (e) {
       debugPrint('Re-routing failed: $e');
     } finally {
@@ -1238,6 +1244,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
 
       _pdrService.startPDR(startPos);
       setState(() {
+        _activeGateClosureNotice = routeRes.gateClosureNotice;
         _isNavigating = true;
         _staircaseCompleted = false;
         _stepsAtStairsZoneEnter = null;
@@ -1264,13 +1271,37 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         _lastAnnouncedInstruction = "";
       });
 
-      _announceInstruction(instructions.isNotEmpty ? instructions.first : "");
+      if (routeRes.gateClosureNotice != null && routeRes.gateClosureNotice!.isNotEmpty) {
+        _announceInstruction(routeRes.gateClosureNotice!);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    routeRes.gateClosureNotice!,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFD97706),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      } else {
+        _announceInstruction(instructions.isNotEmpty ? instructions.first : "");
+      }
 
       final LatLng rawPos = _rawDeviceGpsPosition ?? startPos;
       final double distToCampus = _routingService.distance(rawPos, _campusCenter);
       if (distToCampus > 2500.0) {
         _showOutsideRangeSnackBar();
-      } else {
+      } else if (routeRes.gateClosureNotice == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Navigation started along campus walkways!'),
@@ -1301,6 +1332,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   void _stopNavigation() {
     setState(() {
       _isNavigating = false;
+      _activeGateClosureNotice = null;
       _staircaseCompleted = false;
       _stepsAtStairsZoneEnter = null;
       _startStaircaseCompleted = false;
@@ -4165,6 +4197,32 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                             secondaryInstruction,
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                           ),
+                          if (_activeGateClosureNotice != null && _activeGateClosureNotice!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade900.withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.6)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 14),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      _activeGateClosureNotice!,
+                                      style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           if (showStartStairs) ...[
                             const SizedBox(height: 8),
                             Row(

@@ -53,7 +53,7 @@ void main() {
     });
   });
 
-  group('Gate Schedule & Operating Hours Tests', () {
+  group('Gate Schedule & Dynamic Rerouting Notice Tests', () {
     test('isGateOpenNow correctly evaluates open/closed schedules', () {
       // 24/7 Gate
       expect(RoutingService.isGateOpenNow('24/7', '24/7'), isTrue);
@@ -133,6 +133,59 @@ void main() {
 
       // Should choose Main Gate because South Gate is closed
       expect(bestGate.id, equals('gate_main'));
+    });
+
+    test('getDetailedRoute provides gate closure notice when primary gate is closed', () async {
+      final routingService = RoutingService();
+      final file = File('assets/campus_roads.json');
+      final jsonStr = await file.readAsString();
+      routingService.loadCampusRoadsFromJsonString(jsonStr);
+
+      // Point outside East Gate
+      const outsideEastPos = LatLng(10.553150, 76.228000);
+      const internalDestination = LatLng(10.554418, 76.224668);
+
+      // East gate closes at 09:00 PM. Check route at 09:45 PM (Main gate is still open)
+      final at945pm = DateTime(2026, 8, 14, 21, 45);
+      final route = await routingService.getDetailedRoute(
+        outsideEastPos,
+        internalDestination,
+        currentTime: at945pm,
+      );
+
+      expect(route.fullPath, isNotEmpty);
+      expect(route.gateClosureNotice, isNotNull);
+      expect(route.gateClosureNotice, contains('closed'));
+    });
+  });
+
+  group('Road Curve Smoothing Tests', () {
+    test('smoothPolyline rounds sharp corners into fluid curves', () {
+      // 90-degree corner at (10.5540, 76.2250)
+      final original = [
+        const LatLng(10.554000, 76.224000),
+        const LatLng(10.554000, 76.225000),
+        const LatLng(10.555000, 76.225000),
+      ];
+
+      final smoothed = RoutingService.smoothPolyline(original, iterations: 2);
+
+      // Should have more points creating a smooth transition
+      expect(smoothed.length, greaterThan(original.length));
+      // Endpoints must match original start and destination precisely
+      expect(smoothed.first, equals(original.first));
+      expect(smoothed.last, equals(original.last));
+    });
+
+    test('smoothPolyline handles short or empty paths safely', () {
+      final single = [const LatLng(10.554000, 76.224000)];
+      expect(RoutingService.smoothPolyline(single), equals(single));
+
+      final twoPoints = [
+        const LatLng(10.554000, 76.224000),
+        const LatLng(10.554000, 76.225000),
+      ];
+      expect(RoutingService.smoothPolyline(twoPoints), equals(twoPoints));
     });
   });
 }

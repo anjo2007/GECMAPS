@@ -43,6 +43,9 @@ class RouteResult {
   final List<LatLng> roadPath;
   final List<LatLng> endAccessPath;
   final List<String> instructions;
+  final String? gateClosureNotice;
+  final String? bypassedClosedGateName;
+  final String? activeGateName;
 
   RouteResult({
     required this.fullPath,
@@ -50,6 +53,9 @@ class RouteResult {
     required this.roadPath,
     required this.endAccessPath,
     required this.instructions,
+    this.gateClosureNotice,
+    this.bypassedClosedGateName,
+    this.activeGateName,
   });
 
   double get distanceMeters {
@@ -844,9 +850,35 @@ class RoutingService {
         }
       }
 
+      // Find physically closest gate to external point without schedule penalty
+      Map<String, dynamic>? geographicallyClosestGate;
+      double minGeoDist = double.infinity;
+      for (final gate in candidateGates) {
+        final d = distance(externalPoint, gate['pos'] as LatLng);
+        if (d < minGeoDist) {
+          minGeoDist = d;
+          geographicallyClosestGate = gate;
+        }
+      }
+
       final gatePos = bestGate['pos'] as LatLng;
       final gateName = bestGate['name'] as String;
       final bool isBestGateOpen = isGateOpenNow(bestGate['open'], bestGate['close'], now: now);
+      final bool isClosestGateOpen = geographicallyClosestGate != null
+          ? isGateOpenNow(geographicallyClosestGate['open'], geographicallyClosestGate['close'], now: now)
+          : true;
+
+      String? gateNotice;
+      String? closedGateName;
+      String? activeGateName = gateName;
+
+      if (geographicallyClosestGate != null && !isClosestGateOpen && bestGate['id'] != geographicallyClosestGate['id']) {
+        closedGateName = geographicallyClosestGate['name'] as String;
+        gateNotice = "$closedGateName may be closed at this time. Rerouted via $activeGateName which is open.";
+      } else if (!isBestGateOpen) {
+        closedGateName = gateName;
+        gateNotice = "Notice: $gateName may be closed at this time (${getGateStatusLabel(bestGate['open'], bestGate['close'], now: now)}).";
+      }
 
       if (startIsOutside && !endIsOutside) {
         final onlinePath = await _tryOnlineOSRM(start, gatePos);
@@ -855,23 +887,26 @@ class RoutingService {
             : <LatLng>[start, gatePos];
 
         final campusRoute = await _getInternalCampusRoute(gatePos, end);
-        final fullPath = <LatLng>[...externalPath, ...campusRoute.fullPath.skip(1)];
+        final rawFullPath = <LatLng>[...externalPath, ...campusRoute.fullPath.skip(1)];
 
-        final instructions = generateOfflineInstructions(fullPath);
-        if (!isBestGateOpen) {
-          instructions.insert(
-            min(1, instructions.length),
-            'Notice: $gateName may be closed at this time (${getGateStatusLabel(bestGate['open'], bestGate['close'], now: now)})',
-          );
+        final instructions = generateOfflineInstructions(rawFullPath);
+        if (gateNotice != null) {
+          instructions.insert(0, gateNotice);
         }
         _lastParsedInstructions = instructions;
 
+        final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
+        final smoothedRoadPath = smoothPolyline(rawFullPath, iterations: 2);
+
         return RouteResult(
-          fullPath: fullPath,
+          fullPath: smoothedFullPath,
           startAccessPath: [start, externalPath.first],
-          roadPath: fullPath,
+          roadPath: smoothedRoadPath,
           endAccessPath: campusRoute.endAccessPath,
           instructions: instructions,
+          gateClosureNotice: gateNotice,
+          bypassedClosedGateName: closedGateName,
+          activeGateName: activeGateName,
         );
       } else if (!startIsOutside && endIsOutside) {
         final campusRoute = await _getInternalCampusRoute(start, gatePos);
@@ -880,23 +915,26 @@ class RoutingService {
             ? onlinePath
             : <LatLng>[gatePos, end];
 
-        final fullPath = <LatLng>[...campusRoute.fullPath, ...externalPath.skip(1)];
+        final rawFullPath = <LatLng>[...campusRoute.fullPath, ...externalPath.skip(1)];
 
-        final instructions = generateOfflineInstructions(fullPath);
-        if (!isBestGateOpen) {
-          instructions.insert(
-            min(instructions.length - 1, instructions.length),
-            'Notice: $gateName may be closed at this time (${getGateStatusLabel(bestGate['open'], bestGate['close'], now: now)})',
-          );
+        final instructions = generateOfflineInstructions(rawFullPath);
+        if (gateNotice != null) {
+          instructions.insert(0, gateNotice);
         }
         _lastParsedInstructions = instructions;
 
+        final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
+        final smoothedRoadPath = smoothPolyline(rawFullPath, iterations: 2);
+
         return RouteResult(
-          fullPath: fullPath,
+          fullPath: smoothedFullPath,
           startAccessPath: campusRoute.startAccessPath,
-          roadPath: fullPath,
+          roadPath: smoothedRoadPath,
           endAccessPath: [externalPath.last, end],
           instructions: instructions,
+          gateClosureNotice: gateNotice,
+          bypassedClosedGateName: closedGateName,
+          activeGateName: activeGateName,
         );
       }
     }
@@ -922,19 +960,22 @@ class RoutingService {
         endAccess = [roadEnd, end];
       }
 
-      final List<LatLng> fullPath = [];
-      if (startAccess.isNotEmpty) fullPath.add(start);
-      fullPath.addAll(onlinePath);
-      if (endAccess.isNotEmpty && distance(fullPath.last, end) > 1.0) fullPath.add(end);
+      final List<LatLng> rawFullPath = [];
+      if (startAccess.isNotEmpty) rawFullPath.add(start);
+      rawFullPath.addAll(onlinePath);
+      if (endAccess.isNotEmpty && distance(rawFullPath.last, end) > 1.0) rawFullPath.add(end);
+
+      final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
+      final smoothedRoadPath = smoothPolyline(onlinePath, iterations: 2);
 
       return RouteResult(
-        fullPath: fullPath,
+        fullPath: smoothedFullPath,
         startAccessPath: startAccess,
-        roadPath: onlinePath,
+        roadPath: smoothedRoadPath,
         endAccessPath: endAccess,
         instructions: _lastParsedInstructions.isNotEmpty
             ? _lastParsedInstructions
-            : generateOfflineInstructions(fullPath),
+            : generateOfflineInstructions(rawFullPath),
       );
     }
 
@@ -981,18 +1022,21 @@ class RoutingService {
         endAccess = [bestRoadPath.last, end];
       }
 
-      final List<LatLng> fullPath = [];
-      if (startAccess.isNotEmpty) fullPath.add(start);
-      fullPath.addAll(bestRoadPath);
-      if (endAccess.isNotEmpty && distance(fullPath.last, end) > 0.5) fullPath.add(end);
+      final List<LatLng> rawFullPath = [];
+      if (startAccess.isNotEmpty) rawFullPath.add(start);
+      rawFullPath.addAll(bestRoadPath);
+      if (endAccess.isNotEmpty && distance(rawFullPath.last, end) > 0.5) rawFullPath.add(end);
 
-      final instructions = generateOfflineInstructions(fullPath);
+      final instructions = generateOfflineInstructions(rawFullPath);
       _lastParsedInstructions = instructions;
 
+      final smoothedFullPath = smoothPolyline(rawFullPath, iterations: 2);
+      final smoothedRoadPath = smoothPolyline(bestRoadPath, iterations: 2);
+
       return RouteResult(
-        fullPath: fullPath,
+        fullPath: smoothedFullPath,
         startAccessPath: startAccess,
-        roadPath: bestRoadPath,
+        roadPath: smoothedRoadPath,
         endAccessPath: endAccess,
         instructions: instructions,
       );
@@ -1247,4 +1291,55 @@ class RoutingService {
     }
     return point;
   }
+
+  /// Smooths polyline curves using Chaikin's Corner-Cutting algorithm
+  /// Gives a fluid, natural feel to campus roads while preserving exact endpoints and topology
+  static List<LatLng> smoothPolyline(
+    List<LatLng> points, {
+    int iterations = 2,
+    double tension = 0.22,
+    double minSegmentLengthMeters = 2.0,
+  }) {
+    if (points.length < 3 || iterations <= 0) return List<LatLng>.from(points);
+
+    List<LatLng> current = List<LatLng>.from(points);
+
+    for (int iter = 0; iter < iterations; iter++) {
+      final List<LatLng> smoothed = [current.first];
+
+      for (int i = 0; i < current.length - 1; i++) {
+        final p0 = current[i];
+        final p1 = current[i + 1];
+
+        final double dLat = p1.latitude - p0.latitude;
+        final double dLng = p1.longitude - p0.longitude;
+
+        final double latAvg = (p0.latitude + p1.latitude) * 0.5 * (pi / 180.0);
+        final double dy = dLat * 111139.0;
+        final double dx = dLng * 111139.0 * cos(latAvg);
+        final double segDist = sqrt(dx * dx + dy * dy);
+
+        if (segDist < minSegmentLengthMeters) {
+          if (i > 0) smoothed.add(p0);
+        } else {
+          final q = LatLng(
+            p0.latitude + dLat * tension,
+            p0.longitude + dLng * tension,
+          );
+          final r = LatLng(
+            p0.latitude + dLat * (1.0 - tension),
+            p0.longitude + dLng * (1.0 - tension),
+          );
+          smoothed.add(q);
+          smoothed.add(r);
+        }
+      }
+
+      smoothed.add(current.last);
+      current = smoothed;
+    }
+
+    return current;
+  }
 }
+
