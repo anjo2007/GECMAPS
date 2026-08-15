@@ -264,6 +264,7 @@ function formatPlaceForStorage(place) {
   if (vpsBoardPhotoUrl) {
     tags.vpsBoardPhotoUrl = tags.vpsBoardPhotoUrl || vpsBoardPhotoUrl;
   }
+  const isDeleted = place.deleted === true || place.tags?.deleted === true || place.deleted === 'true' || place.tags?.deleted === 'true';
 
   const cleanPlace = {
     id: String(place.id),
@@ -273,10 +274,10 @@ function formatPlaceForStorage(place) {
     tags
   };
 
-  if (place.deleted || place.tags?.deleted) {
+  if (isDeleted) {
     cleanPlace.deleted = true;
     cleanPlace.tags.deleted = true;
-    if (place.deletedAt) cleanPlace.deletedAt = place.deletedAt;
+    cleanPlace.deletedAt = place.deletedAt || new Date().toISOString();
   }
 
   if (photoUrl) cleanPlace.photoUrl = photoUrl;
@@ -324,7 +325,7 @@ export default async function handler(request, response) {
   // CORS Headers
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-security-code');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-security-code, Authorization, *');
 
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
@@ -436,8 +437,14 @@ export default async function handler(request, response) {
           tags.vpsBoardPhotoUrl = tags.vpsBoardPhotoUrl || vpsUrl;
         }
 
+        const isDeleted = p.deleted === true || p.tags?.deleted === true || p.deleted === 'true' || p.tags?.deleted === 'true';
+        if (isDeleted) {
+          tags.deleted = true;
+        }
+
         return {
           ...p,
+          deleted: isDeleted ? true : undefined,
           photoUrl: photoUrl || null,
           vpsBoardPhotoUrl: vpsUrl || null,
           photoBase64: photoBase64 || null,
@@ -454,7 +461,9 @@ export default async function handler(request, response) {
         return response.status(200).send(JSON.stringify(activePlaces, null, 2));
       }
 
-      response.setHeader('Cache-Control', 'public, max-age=5, s-maxage=5');
+      response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      response.setHeader('Pragma', 'no-cache');
+      response.setHeader('Expires', '0');
       response.setHeader('x-storage-persistence', primaryDriver === 'memory' ? 'none' : 'persistent');
       // Return normalized places including deletion tombstones so all devices synchronize deletions
       return response.status(200).json(normalizedPlaces);

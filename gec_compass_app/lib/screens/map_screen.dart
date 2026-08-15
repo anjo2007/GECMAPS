@@ -397,6 +397,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
             if (mounted) {
               setState(() {
                 _buildings = syncedBuildings;
+                _cachedFilteredBuildings = null;
+                _lastBuildingCount = -1;
               });
             }
           },
@@ -410,6 +412,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       // Instant UI unblock (< 50ms)
       setState(() {
         _buildings = buildings;
+        _cachedFilteredBuildings = null;
+        _lastBuildingCount = -1;
         _isLoading = false;
       });
 

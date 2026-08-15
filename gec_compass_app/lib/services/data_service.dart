@@ -19,9 +19,11 @@ class DataService {
   // Default Vercel API URL — used as fallback if dynamic config fetch fails
   static const String _defaultApiUrl = 'https://gecmaps.vercel.app/api/places';
 
-  // GitHub raw URL for the config.json file in the repository
+  // GitHub raw URL for the config.json file in the repository (main branch)
   static const String _configUrl =
-      'https://raw.githubusercontent.com/anjo2007/GECMAPS/master/config.json';
+      'https://raw.githubusercontent.com/anjo2007/Gec__compass/main/config.json';
+  static const String _fallbackConfigUrl =
+      'https://raw.githubusercontent.com/anjo2007/GECMAPS/main/config.json';
 
   // Cached resolved API URL (in-memory for the session)
   String? _resolvedApiUrl;
@@ -29,9 +31,19 @@ class DataService {
   // Cached base campus buildings parsed from JSON asset
   List<Building>? _cachedBaseBuildings;
 
-  /// Resolves the API URL dynamically from the GitHub-hosted config.json.
-  /// Falls back to the locally cached URL, then to the hardcoded default.
+  /// Resolves the API URL dynamically.
+  /// On Web, uses the current domain origin + '/api/places' to ensure same-origin consistency.
+  /// On Mobile, reads from config.json on GitHub, falling back to local cache or default.
   Future<String> _getApiUrl() async {
+    if (kIsWeb) {
+      final baseUri = Uri.base;
+      if (baseUri.scheme == 'http' || baseUri.scheme == 'https') {
+        final hasPort = baseUri.hasPort && baseUri.port != 80 && baseUri.port != 443;
+        final portStr = hasPort ? ':${baseUri.port}' : '';
+        return '${baseUri.scheme}://${baseUri.host}$portStr/api/places';
+      }
+    }
+
     // Return already-resolved URL if available this session
     if (_resolvedApiUrl != null) return _resolvedApiUrl!;
 
@@ -41,7 +53,6 @@ class DataService {
       final cached = prefs.getString(_apiUrlCacheKey);
       if (cached != null && cached.isNotEmpty) {
         _resolvedApiUrl = cached;
-        // Non-blocking update check from GitHub in background
         _checkGitHubConfigInBackground();
         return cached;
       }
@@ -83,7 +94,19 @@ class DataService {
           debugPrint('Updated API URL in background: $url');
         }
       }
-    }).catchError((_) {});
+    }).catchError((_) {
+      http.get(Uri.parse(_fallbackConfigUrl)).timeout(const Duration(seconds: 4)).then((fallbackRes) async {
+        if (fallbackRes.statusCode == 200) {
+          final config = json.decode(fallbackRes.body);
+          final url = config['vercel_api_url'] as String?;
+          if (url != null && url.isNotEmpty && url != _resolvedApiUrl) {
+            _resolvedApiUrl = url;
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_apiUrlCacheKey, url);
+          }
+        }
+      }).catchError((_) {});
+    });
   }
 
   /// Instant local building loader (asset + SharedPreferences cache)
