@@ -68,42 +68,54 @@ async function uploadToCloudinary(base64Data, folder = 'gec_compass_places') {
 }
 
 // GitHub Gist Driver
+function getAuthHeader(token) {
+  if (!token) return '';
+  const trimmed = token.trim();
+  if (trimmed.startsWith('ghp_') || trimmed.startsWith('github_pat_')) {
+    return `token ${trimmed}`;
+  }
+  return `Bearer ${trimmed}`;
+}
+
 async function getGistPlaces(token, gistId) {
-  const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GEC-Compass-API'
-    }
-  });
-  if (!res.ok) throw new Error(`Gist fetch error: ${res.statusText}`);
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'GEC-Compass-API'
+  };
+  if (token) {
+    headers['Authorization'] = getAuthHeader(token);
+  }
+
+  const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers });
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`Gist fetch error (${res.status}):`, errText);
+    throw new Error(`Gist fetch error (${res.status}): ${res.statusText}`);
+  }
   const gist = await res.json();
+  if (!gist.files || Object.keys(gist.files).length === 0) return [];
   const file = Object.values(gist.files)[0];
 
   // If Gist file exceeds 1MB, GitHub API truncates file.content.
   // Fall back to raw_url to fetch complete untruncated JSON.
   if (file.truncated && file.raw_url) {
-    const rawRes = await fetch(file.raw_url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'User-Agent': 'GEC-Compass-API'
-      }
-    });
+    const rawRes = await fetch(file.raw_url, { headers });
     if (rawRes.ok) {
       const rawText = await rawRes.text();
       return JSON.parse(rawText);
     }
   }
 
-  return JSON.parse(file.content);
+  return JSON.parse(file.content || '[]');
 }
 
 async function saveGistPlaces(token, gistId, places) {
+  const authHeader = getAuthHeader(token);
   let fileName = 'places.json';
   try {
     const res = await fetch(`https://api.github.com/gists/${gistId}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': authHeader,
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'GEC-Compass-API'
       }
@@ -120,7 +132,7 @@ async function saveGistPlaces(token, gistId, places) {
   const res = await fetch(`https://api.github.com/gists/${gistId}`, {
     method: 'PATCH',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': authHeader,
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
       'User-Agent': 'GEC-Compass-API'
@@ -133,20 +145,27 @@ async function saveGistPlaces(token, gistId, places) {
       }
     })
   });
+  if (!res.ok) {
+    console.error(`saveGistPlaces PATCH error (${res.status}):`, await res.text());
+  }
   return res.ok;
 }
 
 // GitHub Repository Driver
 async function getRepoPlaces(token, repo, filePath = 'places.json') {
-  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GEC-Compass-API'
-    }
-  });
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'GEC-Compass-API'
+  };
+  if (token) {
+    headers['Authorization'] = getAuthHeader(token);
+  }
+
+  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, { headers });
   if (!res.ok) {
     if (res.status === 404) return [];
+    const errText = await res.text();
+    console.error(`Repo fetch error (${res.status}):`, errText);
     throw new Error(`Repo fetch error: ${res.statusText}`);
   }
   const fileData = await res.json();
@@ -155,11 +174,12 @@ async function getRepoPlaces(token, repo, filePath = 'places.json') {
 }
 
 async function saveRepoPlaces(token, repo, filePath = 'places.json', places) {
+  const authHeader = getAuthHeader(token);
   let sha;
   try {
     const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': authHeader,
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'GEC-Compass-API'
       }
@@ -175,7 +195,7 @@ async function saveRepoPlaces(token, repo, filePath = 'places.json', places) {
   const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
     method: 'PUT',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': authHeader,
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
       'User-Agent': 'GEC-Compass-API'
@@ -186,6 +206,9 @@ async function saveRepoPlaces(token, repo, filePath = 'places.json', places) {
       sha: sha
     })
   });
+  if (!res.ok) {
+    console.error(`saveRepoPlaces PUT error (${res.status}):`, await res.text());
+  }
   return res.ok;
 }
 
@@ -701,7 +724,8 @@ export default async function handler(request, response) {
         const filtered = placesList.filter(p => {
           if (String(p.id).trim() === String(idToDelete).trim()) return false;
           // Prune tombstones older than 90 days
-          if (p.deleted || p.tags?.deleted) {
+          const isTombstone = p.deleted === true || p.tags?.deleted === true || p.deleted === 'true' || p.tags?.deleted === 'true';
+          if (isTombstone) {
             const deletedTime = p.deletedAt ? new Date(p.deletedAt).getTime() : 0;
             return deletedTime > NinetyDaysAgo;
           }
