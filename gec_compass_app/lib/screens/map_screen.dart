@@ -6532,10 +6532,38 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     final vpsTextController = TextEditingController(text: building.tags['vps_text']?.toString() ?? '');
     final openTimeController = TextEditingController(text: building.tags['opening_time']?.toString() ?? '06:00 AM');
     final closeTimeController = TextEditingController(text: building.tags['closing_time']?.toString() ?? '10:00 PM');
-    bool isEntranceGate = building.tags['barrier'] == 'gate' || building.tags['place_type'] == 'Entrance Gate';
-    bool isWashroom = building.tags['place_type'] == 'Washrooms' || building.tags['place_type'] == 'Wash room' || building.tags['amenity'] == 'toilets' || building.name.toLowerCase().contains('washroom');
+    const validPlaceTypes = [
+      'Departments',
+      'Workshops',
+      'Hostels',
+      'Cafes/ATMs',
+      'Rooms/Labs',
+      'Washrooms',
+      'Entrance Gate',
+      'Other',
+    ];
+
+    String selectedPlaceType = 'Departments';
+    final existingPlaceType = building.tags['place_type']?.toString() ?? building.tags['type']?.toString();
+    if (existingPlaceType != null && validPlaceTypes.contains(existingPlaceType)) {
+      selectedPlaceType = existingPlaceType;
+    } else if (building.tags['barrier'] == 'gate' || (existingPlaceType != null && existingPlaceType.toLowerCase().contains('gate')) || building.name.toLowerCase().contains('gate')) {
+      selectedPlaceType = 'Entrance Gate';
+    } else if (building.tags['amenity'] == 'toilets' || (existingPlaceType != null && (existingPlaceType == 'Wash room' || existingPlaceType.toLowerCase().contains('washroom') || existingPlaceType.toLowerCase().contains('toilet'))) || building.name.toLowerCase().contains('washroom') || building.name.toLowerCase().contains('toilet')) {
+      selectedPlaceType = 'Washrooms';
+    } else if (building.tags['room'] == 'yes' || (existingPlaceType != null && existingPlaceType.toLowerCase().contains('room'))) {
+      selectedPlaceType = 'Rooms/Labs';
+    } else if (building.tags['tourism'] == 'hostel' || building.name.toLowerCase().contains('hostel') || (existingPlaceType != null && existingPlaceType.toLowerCase().contains('hostel'))) {
+      selectedPlaceType = 'Hostels';
+    } else if (['restaurant', 'cafe', 'food_court', 'atm', 'bank'].contains(building.tags['amenity']) || building.name.toLowerCase().contains('cafe') || building.name.toLowerCase().contains('canteen') || building.name.toLowerCase().contains('atm')) {
+      selectedPlaceType = 'Cafes/ATMs';
+    } else if (building.name.toLowerCase().contains('workshop')) {
+      selectedPlaceType = 'Workshops';
+    } else if (existingPlaceType != null && existingPlaceType.isNotEmpty) {
+      selectedPlaceType = 'Other';
+    }
     
-    bool isClassroom = building.tags['room'] == 'yes';
+    bool isClassroom = (selectedPlaceType == 'Rooms/Labs') || (building.tags['room'] == 'yes');
     Building? selectedParent;
     try {
       final parentId = building.tags['parent_id'];
@@ -6611,64 +6639,39 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                     ),
                     const SizedBox(height: 20),
                     
-                    // Choice of type
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text("Building/Lab"),
-                          selected: !isClassroom && !isEntranceGate && !isWashroom,
-                          onSelected: (val) => setModalState(() {
-                            isClassroom = false;
-                            isEntranceGate = false;
-                            isWashroom = false;
-                          }),
-                          selectedColor: const Color(0xFF3B82F6),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: (!isClassroom && !isEntranceGate && !isWashroom) ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        ChoiceChip(
-                          label: const Text("Room/Classroom"),
-                          selected: isClassroom,
-                          onSelected: (val) => setModalState(() {
-                            isClassroom = true;
-                            isEntranceGate = false;
-                            isWashroom = false;
-                          }),
-                          selectedColor: const Color(0xFF3B82F6),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: isClassroom ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        ChoiceChip(
-                          label: const Text("🚻 Washroom"),
-                          selected: isWashroom,
-                          onSelected: (val) => setModalState(() {
-                            isWashroom = true;
-                            isClassroom = false;
-                            isEntranceGate = false;
-                          }),
-                          selectedColor: const Color(0xFF06B6D4),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: isWashroom ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        ChoiceChip(
-                          label: const Text("🚪 Entrance Gate"),
-                          selected: isEntranceGate,
-                          onSelected: (val) => setModalState(() {
-                            isEntranceGate = true;
-                            isClassroom = false;
-                            isWashroom = false;
-                          }),
-                          selectedColor: const Color(0xFF10B981),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: isEntranceGate ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
+                    // Place Type / Category Selection for Sorting & Filtering
+                    Text(
+                      "Place Type (Used for Sorting & Filtering):",
+                      style: TextStyle(color: _textColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedPlaceType,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: _scaffoldBgColor.withValues(alpha: 0.5),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                      dropdownColor: _cardBgColor,
+                      items: const [
+                        DropdownMenuItem(value: 'Departments', child: Text("🏛️ Department / Academic Block")),
+                        DropdownMenuItem(value: 'Workshops', child: Text("🛠️ Workshop / Lab Facility")),
+                        DropdownMenuItem(value: 'Hostels', child: Text("🏢 Hostel (Student / Staff)")),
+                        DropdownMenuItem(value: 'Cafes/ATMs', child: Text("☕ Cafe / ATM / Canteen")),
+                        DropdownMenuItem(value: 'Rooms/Labs', child: Text("🔬 Room / Classroom / Lab")),
+                        DropdownMenuItem(value: 'Washrooms', child: Text("🚻 Washroom / Restroom / Toilet")),
+                        DropdownMenuItem(value: 'Entrance Gate', child: Text("🚪 Entrance Gate / Campus Boundary")),
+                        DropdownMenuItem(value: 'Other', child: Text("📌 Other / Campus Landmark")),
                       ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            selectedPlaceType = val;
+                            isClassroom = (val == 'Rooms/Labs');
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 20),
 
@@ -6704,102 +6707,104 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                     const SizedBox(height: 16),
 
                     // Gate Operating Schedule & Timing
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _scaffoldBgColor.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _borderColor),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time_filled_rounded, color: Color(0xFF3B82F6), size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                "Operating Schedule / Gate Timing",
-                                style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: openTimeController,
-                                  style: TextStyle(color: _textColor, fontSize: 13),
-                                  decoration: InputDecoration(
-                                    labelText: "Opening Time",
-                                    hintText: "06:00 AM",
-                                    prefixIcon: const Icon(Icons.wb_sunny_outlined, size: 16, color: Color(0xFFF59E0B)),
-                                    filled: true,
-                                    fillColor: _cardBgColor,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                  ),
-                                  onChanged: (_) => setModalState(() {}),
+                    if (selectedPlaceType == 'Entrance Gate' || selectedPlaceType == 'Cafes/ATMs' || (building.tags['opening_time'] != null && building.tags['opening_time'].toString().isNotEmpty)) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _scaffoldBgColor.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _borderColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.access_time_filled_rounded, color: Color(0xFF3B82F6), size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Operating Schedule / Gate Timing",
+                                  style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextField(
-                                  controller: closeTimeController,
-                                  style: TextStyle(color: _textColor, fontSize: 13),
-                                  decoration: InputDecoration(
-                                    labelText: "Closing Time",
-                                    hintText: "10:00 PM",
-                                    prefixIcon: const Icon(Icons.nightlight_outlined, size: 16, color: Color(0xFF8B5CF6)),
-                                    filled: true,
-                                    fillColor: _cardBgColor,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: openTimeController,
+                                    style: TextStyle(color: _textColor, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      labelText: "Opening Time",
+                                      hintText: "06:00 AM",
+                                      prefixIcon: const Icon(Icons.wb_sunny_outlined, size: 16, color: Color(0xFFF59E0B)),
+                                      filled: true,
+                                      fillColor: _cardBgColor,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    ),
+                                    onChanged: (_) => setModalState(() {}),
                                   ),
-                                  onChanged: (_) => setModalState(() {}),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              ActionChip(
-                                label: const Text("24/7 Open", style: TextStyle(fontSize: 11)),
-                                onPressed: () {
-                                  setModalState(() {
-                                    openTimeController.text = "24/7";
-                                    closeTimeController.text = "24/7";
-                                  });
-                                },
-                              ),
-                              ActionChip(
-                                label: const Text("06:00 AM - 10:30 PM", style: TextStyle(fontSize: 11)),
-                                onPressed: () {
-                                  setModalState(() {
-                                    openTimeController.text = "06:00 AM";
-                                    closeTimeController.text = "10:30 PM";
-                                  });
-                                },
-                              ),
-                              ActionChip(
-                                label: const Text("06:00 AM - 09:00 PM", style: TextStyle(fontSize: 11)),
-                                onPressed: () {
-                                  setModalState(() {
-                                    openTimeController.text = "06:00 AM";
-                                    closeTimeController.text = "09:00 PM";
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextField(
+                                    controller: closeTimeController,
+                                    style: TextStyle(color: _textColor, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      labelText: "Closing Time",
+                                      hintText: "10:00 PM",
+                                      prefixIcon: const Icon(Icons.nightlight_outlined, size: 16, color: Color(0xFF8B5CF6)),
+                                      filled: true,
+                                      fillColor: _cardBgColor,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    ),
+                                    onChanged: (_) => setModalState(() {}),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                ActionChip(
+                                  label: const Text("24/7 Open", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "24/7";
+                                      closeTimeController.text = "24/7";
+                                    });
+                                  },
+                                ),
+                                ActionChip(
+                                  label: const Text("06:00 AM - 10:30 PM", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "06:00 AM";
+                                      closeTimeController.text = "10:30 PM";
+                                    });
+                                  },
+                                ),
+                                ActionChip(
+                                  label: const Text("06:00 AM - 09:00 PM", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "06:00 AM";
+                                      closeTimeController.text = "09:00 PM";
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Parent Building Search Selector (if room)
-                    if (isClassroom) ...[
+                    if (isClassroom || selectedPlaceType == 'Rooms/Labs') ...[
                       Autocomplete<Building>(
                         initialValue: TextEditingValue(text: selectedParent?.name ?? ''),
                         optionsBuilder: (TextEditingValue textEditingValue) {
@@ -7534,20 +7539,20 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                   tags: {
                                     ...building.tags,
                                     'custom': true,
-                                    if (isWashroom) 'place_type': 'Washrooms',
-                                    if (isWashroom) 'amenity': 'toilets',
-                                    if (!isWashroom && building.tags['amenity'] == 'toilets') 'amenity': null,
-                                    if (isEntranceGate) 'barrier': 'gate',
-                                    if (isEntranceGate) 'place_type': 'Entrance Gate',
-                                    if (!isEntranceGate && !isWashroom && building.tags['barrier'] == 'gate') ...{'barrier': null, 'place_type': isClassroom ? 'Rooms/Labs' : 'Departments'},
-                                    if (!isEntranceGate && !isWashroom && !isClassroom && building.tags['place_type'] == 'Entrance Gate') 'place_type': 'Departments',
+                                    'place_type': selectedPlaceType,
+                                    'type': selectedPlaceType,
+                                    if (selectedPlaceType == 'Washrooms') 'amenity': 'toilets',
+                                    if (selectedPlaceType != 'Washrooms' && building.tags['amenity'] == 'toilets') 'amenity': null,
+                                    if (selectedPlaceType == 'Entrance Gate') 'barrier': 'gate',
+                                    if (selectedPlaceType != 'Entrance Gate' && building.tags['barrier'] == 'gate') 'barrier': null,
+                                    if (selectedPlaceType == 'Rooms/Labs' || isClassroom) 'room': 'yes',
+                                    if (selectedPlaceType != 'Rooms/Labs' && !isClassroom && building.tags['room'] == 'yes') 'room': null,
+                                    if (selectedPlaceType == 'Hostels') 'tourism': 'hostel',
                                     'opening_time': openTimeController.text.trim().isNotEmpty ? openTimeController.text.trim() : null,
                                     'closing_time': closeTimeController.text.trim().isNotEmpty ? closeTimeController.text.trim() : null,
                                     'opening_hours': (openTimeController.text.trim().isNotEmpty && closeTimeController.text.trim().isNotEmpty) ? "${openTimeController.text.trim()} - ${closeTimeController.text.trim()}" : null,
                                     'search_tags': searchTagsController.text.trim().isNotEmpty ? searchTagsController.text.trim() : null,
-                                    if (isClassroom) 'room': 'yes',
-                                    if (!isClassroom) ...{'room': null},
-                                    'parent_id': isClassroom && selectedParent != null ? selectedParent!.id : null,
+                                    'parent_id': (isClassroom || selectedPlaceType == 'Rooms/Labs') && selectedParent != null ? selectedParent!.id : null,
                                     'floor': floorController.text.isNotEmpty ? floorController.text.trim() : null,
                                     'ref': roomController.text.isNotEmpty ? roomController.text.trim() : null,
                                     'vps_enabled': enableVPS ? 'yes' : 'no',

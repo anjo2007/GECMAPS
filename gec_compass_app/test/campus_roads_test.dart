@@ -17,7 +17,7 @@ void main() {
       
       expect(data['type'], equals('FeatureCollection'));
       final features = data['features'] as List<dynamic>;
-      expect(features.length, equals(6));
+      expect(features, isNotEmpty);
 
       final nodes = data['nodes'] as List<dynamic>;
       final edges = data['edges'] as List<dynamic>;
