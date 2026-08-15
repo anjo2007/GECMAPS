@@ -432,11 +432,19 @@ export default async function handler(request, response) {
     
     // Safe environment diagnostic check (does not leak secret values)
     if (urlObj.searchParams.get('debug') === 'true') {
+      let debugReadPlaces = [];
+      let debugError = null;
+      try {
+        debugReadPlaces = await readPlaces(primaryDriver, false, context);
+      } catch (err) {
+        debugError = err?.message || String(err);
+      }
       return response.status(200).json({
         hasKvUrl: !!kvUrl,
         hasKvToken: !!kvToken,
         hasGhToken: !!ghToken,
         hasGistId: !!gistId,
+        gistIdSnippet: gistId ? `${gistId.slice(0, 6)}...` : null,
         hasGhRepo: !!ghRepo,
         hasBackupKvUrl: !!backupKvUrl,
         hasBackupKvToken: !!backupKvToken,
@@ -444,6 +452,8 @@ export default async function handler(request, response) {
         hasBackupGhRepo: !!backupGhRepo,
         primaryDriver,
         backupDriver,
+        primaryReadCount: debugReadPlaces.length,
+        debugError,
         nodeEnv: process.env.NODE_ENV,
         isVercel: !!process.env.VERCEL,
       });
