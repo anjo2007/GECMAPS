@@ -134,32 +134,6 @@ async function getGistPlaces(token, gistId) {
   return [];
 }
 
-// Strips base64 image data from a place to keep Gist size manageable.
-// Preserves Cloudinary/HTTP URLs but removes raw data: URIs and base64 strings.
-function stripBase64FromPlace(place) {
-  if (!place) return place;
-  const cleaned = { ...place };
-  const isBase64 = (val) => typeof val === 'string' && (val.startsWith('data:image') || (val.length > 1000 && !/^https?:\/\//.test(val)));
-
-  // Strip top-level base64 fields
-  if (isBase64(cleaned.photoUrl)) delete cleaned.photoUrl;
-  if (isBase64(cleaned.photoBase64)) delete cleaned.photoBase64;
-  if (isBase64(cleaned.photo)) delete cleaned.photo;
-  if (isBase64(cleaned.vpsBoardPhotoUrl)) delete cleaned.vpsBoardPhotoUrl;
-  if (isBase64(cleaned.vpsBoardPhotoBase64)) delete cleaned.vpsBoardPhotoBase64;
-  if (isBase64(cleaned.vpsBoardPhoto)) delete cleaned.vpsBoardPhoto;
-
-  // Strip base64 from tags
-  if (cleaned.tags && typeof cleaned.tags === 'object') {
-    cleaned.tags = { ...cleaned.tags };
-    if (isBase64(cleaned.tags.image)) delete cleaned.tags.image;
-    if (isBase64(cleaned.tags.photoUrl)) delete cleaned.tags.photoUrl;
-    if (isBase64(cleaned.tags.vpsBoardPhotoUrl)) delete cleaned.tags.vpsBoardPhotoUrl;
-  }
-
-  return cleaned;
-}
-
 async function saveGistPlaces(token, gistId, places) {
   const authHeader = getAuthHeader(token);
   let fileName = 'places.json';

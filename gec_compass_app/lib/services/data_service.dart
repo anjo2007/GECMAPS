@@ -163,7 +163,6 @@ class DataService {
     return localList;
   }
 
-  static const String _lastKnownCloudIdsKey = 'last_known_cloud_ids';
   static const String _gistPlacesFallbackUrl = 'https://gist.githubusercontent.com/anjo2007/553a8435d8cd2459358147935ecdd59b/raw/places.json';
 
   /// Fetches latest custom buildings from cloud API (or Gist fallback) and merges with local data.
@@ -239,63 +238,19 @@ class DataService {
   }
 
   /// Syncs buildings list into local SharedPreferences cache.
-  ///
-  /// When [isFromCloud] is true, compares the incoming cloud IDs against the
-  /// previously-seen cloud IDs. Any ID that vanished from the cloud was deleted
-  /// on another device — a local tombstone is created for it so that this device
-  /// also stops showing the pin. This propagates cross-device deletions without
-  /// needing the server to expose tombstones in its GET response.
-  Future<void> _syncLocalCache(List<Building> buildings, {bool isFromCloud = false}) async {
+  Future<void> _syncLocalCache(List<Building> buildings) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final existingLocal = await _loadCustomBuildingsLocal();
 
-      if (isFromCloud) {
-        // Detect IDs that existed in cloud before but are gone now (deleted remotely)
-        final lastKnownJson = prefs.getString(_lastKnownCloudIdsKey);
-        final Set<String> lastKnownCloudIds = lastKnownJson != null
-            ? Set<String>.from((json.decode(lastKnownJson) as List).cast<String>())
-            : <String>{};
+      final Map<String, Building> merged = {
+        for (var b in existingLocal) b.id.toString().trim(): b,
+        for (var b in buildings) b.id.toString().trim(): b,
+      };
 
-        final currentCloudIds = buildings.map((b) => b.id.toString().trim()).toSet();
-
-        // IDs present in last known cloud snapshot but absent now → remote deletion
-        final remotelyDeletedIds = lastKnownCloudIds.difference(currentCloudIds);
-
-        // Persist the updated snapshot for next sync comparison
-        await prefs.setString(_lastKnownCloudIdsKey, json.encode(currentCloudIds.toList()));
-
-        // Standard merge: local first, cloud overrides
-        final Map<String, Building> merged = {
-          for (var b in existingLocal) b.id.toString().trim(): b,
-          for (var b in buildings) b.id.toString().trim(): b,
-        };
-
-        // Create tombstones for remotely deleted IDs so this device hides them
-        for (final deletedId in remotelyDeletedIds) {
-          merged[deletedId] = Building(
-            id: deletedId,
-            name: 'Deleted Place',
-            lat: 0.0,
-            lng: 0.0,
-            tags: {'deleted': true},
-            isDeleted: true,
-          );
-        }
-
-        final String customJsonString =
-            json.encode(merged.values.map((b) => b.toJson()).toList());
-        await prefs.setString(_customBuildingsKey, customJsonString);
-      } else {
-        // Local-only operation (save/delete): simple merge, no remote-deletion detection
-        final Map<String, Building> merged = {
-          for (var b in existingLocal) b.id.toString().trim(): b,
-          for (var b in buildings) b.id.toString().trim(): b,
-        };
-        final String customJsonString =
-            json.encode(merged.values.map((b) => b.toJson()).toList());
-        await prefs.setString(_customBuildingsKey, customJsonString);
-      }
+      final String customJsonString =
+          json.encode(merged.values.map((b) => b.toJson()).toList());
+      await prefs.setString(_customBuildingsKey, customJsonString);
     } catch (e) {
       debugPrint('Error syncing local cache: $e');
     }
