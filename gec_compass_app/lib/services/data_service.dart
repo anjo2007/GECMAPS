@@ -170,32 +170,47 @@ class DataService {
   Future<List<Building>> fetchCloudBuildings() async {
     try {
       final apiUrl = await _getApiUrl();
-      http.Response? response;
+      List<dynamic> apiList = [];
+      String persistenceHeader = 'persistent';
+
+      // 1. Try Vercel cloud API first
       try {
-        response = await http
+        final response = await http
             .get(Uri.parse(apiUrl))
             .timeout(const Duration(seconds: 4));
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body);
+          if (decoded is List && decoded.isNotEmpty) {
+            apiList = decoded;
+            persistenceHeader = response.headers['x-storage-persistence'] ?? 'persistent';
+          }
+        }
       } catch (e) {
-        debugPrint('Vercel API fetch timeout/error, trying direct Gist fallback: $e');
+        debugPrint('Vercel API fetch timeout/error: $e');
       }
 
-      if (response == null || response.statusCode != 200) {
+      // 2. Fallback to direct raw GitHub Gist if Vercel API is empty or offline
+      if (apiList.isEmpty) {
         try {
-          response = await http
+          final gistResponse = await http
               .get(Uri.parse(_gistPlacesFallbackUrl))
               .timeout(const Duration(seconds: 4));
+          if (gistResponse.statusCode == 200) {
+            final decoded = json.decode(gistResponse.body);
+            if (decoded is List) {
+              apiList = decoded;
+              debugPrint('Loaded ${apiList.length} places directly from GitHub Gist fallback');
+            }
+          }
         } catch (e) {
           debugPrint('Gist fallback fetch error: $e');
         }
       }
-      
-      if (response != null && response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final List<dynamic> apiList = decoded is List ? decoded : [];
+
+      if (apiList.isNotEmpty) {
         List<Building> customBuildings =
             apiList.map((j) => Building.fromJson(j)).toList();
 
-        final persistenceHeader = response.headers['x-storage-persistence'];
         if (persistenceHeader == 'none') {
           final localPlaces = await _loadCustomBuildingsLocal();
           final Map<String, Building> merged = {
