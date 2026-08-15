@@ -2068,38 +2068,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         return true;
       }
 
-      if (placeType != null && placeType.isNotEmpty) {
-        if (_selectedCategory == 'Washrooms' && (placeType == 'Washrooms' || placeType == 'Wash room' || placeType == 'washroom' || placeType == 'toilets')) {
-          return true;
-        }
-        return placeType == _selectedCategory;
-      }
-
-      switch (_selectedCategory) {
-        case 'Departments':
-          return buildingType == 'college' && !isRoom;
-        case 'Workshops':
-          return b.name.toLowerCase().contains('workshop');
-        case 'Hostels':
-          return tourism == 'hostel' || b.name.toLowerCase().contains('hostel');
-        case 'Cafes/ATMs':
-          return ['restaurant', 'cafe', 'food_court', 'atm', 'bank'].contains(amenity);
-        case 'Rooms/Labs':
-          return isRoom;
-        case 'Washrooms':
-        case 'Wash room':
-          final nameLower = b.name.toLowerCase();
-          final tagsStr = (b.tags['search_tags'] ?? '').toString().toLowerCase();
-          return amenity == 'toilets' ||
-                 nameLower.contains('washroom') ||
-                 nameLower.contains('wash room') ||
-                 nameLower.contains('toilet') ||
-                 nameLower.contains('restroom') ||
-                 tagsStr.contains('washroom') ||
-                 tagsStr.contains('toilet');
-        default:
-          return true;
-      }
+      final resolvedCategory = _resolveBuildingCategory(b);
+      return resolvedCategory == _selectedCategory;
     }).toList();
 
     _lastFilterCategory = _selectedCategory;
@@ -4956,52 +4926,228 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     );
   }
 
-  IconData _getMarkerIcon(Building b) {
-    final amenity = b.tags['amenity'] as String?;
-    final buildingType = b.tags['building'] as String?;
-    final tourism = b.tags['tourism'] as String?;
-    final barrier = b.tags['barrier'] as String?;
-    final placeType = b.tags['place_type'] as String?;
+  String _resolveBuildingCategory(Building b) {
+    final explicitType = (b.tags['place_type'] ?? b.tags['type'])?.toString().trim();
+    if (explicitType != null && explicitType.isNotEmpty && explicitType != 'Other') {
+      if (explicitType == 'Wash room' || explicitType == 'washroom') return 'Washrooms';
+      return explicitType;
+    }
 
-    if (barrier == 'gate' || placeType == 'Entrance Gate') return Icons.sensor_door;
-    if (b.tags['is_event'] == 'true') return Icons.star;
-    if (placeType == 'Washrooms' || placeType == 'Wash room' || amenity == 'toilets' || b.name.toLowerCase().contains('washroom') || b.name.toLowerCase().contains('toilet')) {
-      return Icons.wc_rounded;
+    final amenity = b.tags['amenity']?.toString().toLowerCase();
+    final buildingType = b.tags['building']?.toString().toLowerCase();
+    final tourism = b.tags['tourism']?.toString().toLowerCase();
+    final barrier = b.tags['barrier']?.toString().toLowerCase();
+    final leisure = b.tags['leisure']?.toString().toLowerCase();
+    final isRoom = b.tags['room'] == 'yes' || b.tags['room'] == true;
+    final nameLower = b.name.toLowerCase();
+    final tagsStr = (b.tags['search_tags'] ?? '').toString().toLowerCase();
+
+    // 1. Entrance Gates
+    if (barrier == 'gate' || nameLower.contains(' gate') || nameLower.startsWith('gate') || nameLower.contains('entrance')) {
+      return 'Entrance Gate';
     }
-    if (amenity == 'restaurant' || amenity == 'cafe' || amenity == 'food_court') {
-      return Icons.restaurant;
+
+    // 2. Washrooms
+    if (amenity == 'toilets' ||
+        nameLower.contains('washroom') ||
+        nameLower.contains('wash room') ||
+        nameLower.contains('toilet') ||
+        nameLower.contains('restroom') ||
+        tagsStr.contains('washroom') ||
+        tagsStr.contains('toilet')) {
+      return 'Washrooms';
     }
-    if (amenity == 'atm' || amenity == 'bank') return Icons.account_balance;
-    if (amenity == 'place_of_worship') return Icons.temple_hindu;
-    if (amenity == 'pharmacy') return Icons.local_pharmacy;
-    if (amenity == 'police') return Icons.local_police;
-    if (amenity == 'post_office') return Icons.local_post_office;
-    if (amenity == 'fire_station') return Icons.local_fire_department;
-    if (amenity == 'events_venue' || amenity == 'community_centre') return Icons.event;
-    if (tourism == 'hostel') return Icons.hotel;
-    if (buildingType == 'college') return Icons.school;
-    return Icons.location_on;
+
+    // 3. Cafes / Canteen / Food / ATMs
+    if (['restaurant', 'cafe', 'food_court', 'canteen', 'fast_food'].contains(amenity) ||
+        nameLower.contains('canteen') ||
+        nameLower.contains('cafe') ||
+        nameLower.contains('cafeteria') ||
+        nameLower.contains('coffee') ||
+        nameLower.contains('mess') ||
+        nameLower.contains('bakery')) {
+      return 'Cafes/ATMs';
+    }
+    if (['atm', 'bank'].contains(amenity) || nameLower.contains('atm') || nameLower.contains('bank') || nameLower.contains('sbi')) {
+      return 'Cafes/ATMs';
+    }
+
+    // 4. Hostels / Residential
+    if (tourism == 'hostel' ||
+        nameLower.contains('hostel') ||
+        nameLower.contains('mens hostel') ||
+        nameLower.contains('ladies hostel') ||
+        nameLower.contains('lh ') ||
+        nameLower.contains('mh ') ||
+        nameLower.startsWith('lh') ||
+        nameLower.startsWith('mh') ||
+        nameLower.contains('dormitory')) {
+      return 'Hostels';
+    }
+
+    // 5. Workshops
+    if (nameLower.contains('workshop') ||
+        nameLower.contains('foundry') ||
+        nameLower.contains('smithy') ||
+        nameLower.contains('carpentry') ||
+        nameLower.contains('welding') ||
+        nameLower.contains('machine shop') ||
+        nameLower.contains('fitting')) {
+      return 'Workshops';
+    }
+
+    // 6. Rooms / Labs / Classrooms
+    if (isRoom ||
+        nameLower.contains(' lab') ||
+        nameLower.contains('laboratory') ||
+        nameLower.contains('classroom') ||
+        nameLower.contains('drawing hall') ||
+        nameLower.contains('seminar hall') ||
+        nameLower.contains('ccf')) {
+      return 'Rooms/Labs';
+    }
+
+    // 7. Library
+    if (amenity == 'library' || nameLower.contains('library')) {
+      return 'Library';
+    }
+
+    // 8. Auditorium / Hall
+    if (amenity == 'events_venue' ||
+        amenity == 'community_centre' ||
+        nameLower.contains('auditorium') ||
+        nameLower.contains('open air stage') ||
+        nameLower.contains('oas')) {
+      return 'Auditorium';
+    }
+
+    // 9. Sports / Ground
+    if (leisure == 'pitch' ||
+        leisure == 'sports_centre' ||
+        nameLower.contains('ground') ||
+        nameLower.contains('court') ||
+        nameLower.contains('stadium') ||
+        nameLower.contains('gym')) {
+      return 'Sports';
+    }
+
+    // 10. Medical
+    if (amenity == 'pharmacy' ||
+        amenity == 'clinic' ||
+        amenity == 'hospital' ||
+        nameLower.contains('medical') ||
+        nameLower.contains('health') ||
+        nameLower.contains('dispensary')) {
+      return 'Medical';
+    }
+
+    // 11. Place of worship
+    if (amenity == 'place_of_worship' ||
+        nameLower.contains('temple') ||
+        nameLower.contains('mosque') ||
+        nameLower.contains('church') ||
+        nameLower.contains('prayer')) {
+      return 'Worship';
+    }
+
+    // 12. Departments / Academic Blocks
+    if (buildingType == 'college' ||
+        nameLower.contains('dept') ||
+        nameLower.contains('department') ||
+        nameLower.contains('block') ||
+        nameLower.contains('engineering') ||
+        nameLower.contains('architecture') ||
+        nameLower.contains('admin')) {
+      return 'Departments';
+    }
+
+    return 'Other';
+  }
+
+  IconData _getMarkerIcon(Building b) {
+    if (b.tags['is_event'] == 'true') return Icons.stars_rounded;
+
+    final category = _resolveBuildingCategory(b);
+    final nameLower = b.name.toLowerCase();
+    final amenity = b.tags['amenity']?.toString().toLowerCase();
+
+    switch (category) {
+      case 'Entrance Gate':
+        return Icons.sensor_door_rounded;
+      case 'Departments':
+        return Icons.school_rounded;
+      case 'Workshops':
+        return Icons.construction_rounded;
+      case 'Hostels':
+        return Icons.hotel_rounded;
+      case 'Cafes/ATMs':
+        if (['atm', 'bank'].contains(amenity) || nameLower.contains('atm') || nameLower.contains('bank') || nameLower.contains('sbi')) {
+          return Icons.atm_rounded;
+        }
+        return Icons.restaurant_rounded;
+      case 'Rooms/Labs':
+        if (nameLower.contains('computer') || nameLower.contains('ccf') || nameLower.contains('it lab')) {
+          return Icons.computer_rounded;
+        }
+        if (nameLower.contains('lab') || nameLower.contains('laboratory')) {
+          return Icons.science_rounded;
+        }
+        return Icons.meeting_room_rounded;
+      case 'Washrooms':
+        return Icons.wc_rounded;
+      case 'Library':
+        return Icons.local_library_rounded;
+      case 'Auditorium':
+        return Icons.theater_comedy_rounded;
+      case 'Sports':
+        return Icons.sports_soccer_rounded;
+      case 'Medical':
+        return Icons.local_hospital_rounded;
+      case 'Worship':
+        return Icons.temple_hindu_rounded;
+      default:
+        return Icons.location_on_rounded;
+    }
   }
 
   Color _getMarkerColor(Building b) {
-    final amenity = b.tags['amenity'] as String?;
-    final buildingType = b.tags['building'] as String?;
-    final isRoom = b.tags['room'] == 'yes';
-    final barrier = b.tags['barrier'] as String?;
-    final placeType = b.tags['place_type'] as String?;
+    if (b.tags['is_event'] == 'true') return const Color(0xFFEF4444);
 
-    if (barrier == 'gate' || placeType == 'Entrance Gate') return const Color(0xFF10B981);
-    if (b.tags['is_event'] == 'true') return Colors.redAccent;
-    if (placeType == 'Washrooms' || placeType == 'Wash room' || amenity == 'toilets' || b.name.toLowerCase().contains('washroom') || b.name.toLowerCase().contains('toilet')) {
-      return const Color(0xFF06B6D4);
+    final category = _resolveBuildingCategory(b);
+    final nameLower = b.name.toLowerCase();
+    final amenity = b.tags['amenity']?.toString().toLowerCase();
+
+    switch (category) {
+      case 'Entrance Gate':
+        return const Color(0xFF10B981); // Emerald
+      case 'Departments':
+        return const Color(0xFF2563EB); // Royal Blue
+      case 'Workshops':
+        return const Color(0xFFD97706); // Amber / Bronze
+      case 'Hostels':
+        return const Color(0xFF7C3AED); // Deep Violet
+      case 'Cafes/ATMs':
+        if (['atm', 'bank'].contains(amenity) || nameLower.contains('atm') || nameLower.contains('bank') || nameLower.contains('sbi')) {
+          return const Color(0xFFF59E0B); // Gold Amber for ATMs
+        }
+        return const Color(0xFFEA580C); // Warm Orange for Cafes
+      case 'Rooms/Labs':
+        return const Color(0xFF9333EA); // Purple
+      case 'Washrooms':
+        return const Color(0xFF0891B2); // Cyan Teal
+      case 'Library':
+        return const Color(0xFF0284C7); // Sky Blue
+      case 'Auditorium':
+        return const Color(0xFFDB2777); // Rose Pink
+      case 'Sports':
+        return const Color(0xFF059669); // Forest Green
+      case 'Medical':
+        return const Color(0xFFDC2626); // Crimson Red
+      case 'Worship':
+        return const Color(0xFFCA8A04); // Golden Yellow
+      default:
+        return const Color(0xFFE11D48); // Classic Red
     }
-    if (amenity == 'restaurant' || amenity == 'cafe' || amenity == 'food_court') {
-      return Colors.orangeAccent;
-    }
-    if (isRoom) return Colors.purpleAccent;
-    if (buildingType == 'college') return const Color(0xFF3B82F6);
-    if (amenity == 'atm' || amenity == 'bank') return Colors.amberAccent;
-    return Colors.redAccent;
   }
 
   Widget _buildPlaceThumbnailImage(Building building, {double size = 50}) {
@@ -5064,7 +5210,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.place, color: Colors.white, size: 20),
+          Icon(_getMarkerIcon(building), color: Colors.white, size: 20),
           const SizedBox(height: 2),
           Text(
             building.name.length > 5 ? '${building.name.substring(0, 4)}..' : building.name,
