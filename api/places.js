@@ -268,10 +268,16 @@ function formatPlaceForStorage(place) {
   const cleanPlace = {
     id: String(place.id),
     name: String(place.name),
-    lat: Number(place.lat),
-    lng: Number(place.lng),
+    lat: Number(place.lat || 0),
+    lng: Number(place.lng || 0),
     tags
   };
+
+  if (place.deleted || place.tags?.deleted) {
+    cleanPlace.deleted = true;
+    cleanPlace.tags.deleted = true;
+    if (place.deletedAt) cleanPlace.deletedAt = place.deletedAt;
+  }
 
   if (photoUrl) cleanPlace.photoUrl = photoUrl;
   if (vpsBoardPhotoUrl) cleanPlace.vpsBoardPhotoUrl = vpsBoardPhotoUrl;
@@ -440,11 +446,9 @@ export default async function handler(request, response) {
         };
       });
 
-      // Filter out tombstones from standard GET response
-      const activePlaces = normalizedPlaces.filter(p => p && !p.deleted && !p.tags?.deleted);
-
       // Handle export backup for zero-data-loss platform migration
       if (urlObj.searchParams.get('export') === 'true' || urlObj.searchParams.get('backup') === 'true') {
+        const activePlaces = normalizedPlaces.filter(p => p && !p.deleted && !p.tags?.deleted);
         response.setHeader('Content-Type', 'application/json');
         response.setHeader('Content-Disposition', 'attachment; filename="gec_compass_places_backup.json"');
         return response.status(200).send(JSON.stringify(activePlaces, null, 2));
@@ -452,7 +456,8 @@ export default async function handler(request, response) {
 
       response.setHeader('Cache-Control', 'public, max-age=5, s-maxage=5');
       response.setHeader('x-storage-persistence', primaryDriver === 'memory' ? 'none' : 'persistent');
-      return response.status(200).json(activePlaces);
+      // Return normalized places including deletion tombstones so all devices synchronize deletions
+      return response.status(200).json(normalizedPlaces);
     } catch (error) {
       console.error('Read handler error:', error);
       return response.status(500).json({ error: 'Failed to read places data' });
