@@ -371,16 +371,23 @@ export default async function handler(request, response) {
 
   const PLACES_KEY = 'gec_compass_custom_places';
 
+  function extractGistId(input) {
+    if (!input) return '553a8435d8cd2459358147935ecdd59b';
+    const str = String(input).trim();
+    const match = str.match(/[a-f0-9]{32}/i);
+    return match ? match[0] : (str || '553a8435d8cd2459358147935ecdd59b');
+  }
+
   // Read environment variables
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
-  const ghToken = process.env.GITHUB_TOKEN;
-  const gistId = process.env.GIST_ID || '553a8435d8cd2459358147935ecdd59b';
+  const ghToken = process.env.GITHUB_TOKEN ? process.env.GITHUB_TOKEN.trim() : '';
+  const gistId = extractGistId(process.env.GIST_ID);
   const ghRepo = process.env.GITHUB_REPO; // e.g. "anjo2007/GECMAPS"
 
   const backupKvUrl = process.env.BACKUP_KV_REST_API_URL;
   const backupKvToken = process.env.BACKUP_KV_REST_API_TOKEN;
-  const backupGistId = process.env.BACKUP_GIST_ID || (gistId !== '553a8435d8cd2459358147935ecdd59b' ? '553a8435d8cd2459358147935ecdd59b' : null);
+  const backupGistId = process.env.BACKUP_GIST_ID ? extractGistId(process.env.BACKUP_GIST_ID) : (gistId !== '553a8435d8cd2459358147935ecdd59b' ? '553a8435d8cd2459358147935ecdd59b' : null);
   const backupGhRepo = process.env.BACKUP_GITHUB_REPO;
 
   const context = {
