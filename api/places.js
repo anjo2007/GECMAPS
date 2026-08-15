@@ -78,6 +78,26 @@ function getAuthHeader(token) {
 }
 
 async function getGistPlaces(token, gistId) {
+  // Strategy: Try lightweight raw URL FIRST (avoids massive Gist API JSON wrapper),
+  // then fall back to full API if raw URL fails.
+
+  // 1. Direct Raw Gist Fetch (fastest, smallest response — just the JSON content)
+  try {
+    const rawRes = await fetch(`https://gist.githubusercontent.com/anjo2007/${gistId}/raw/places.json`, {
+      headers: { 'User-Agent': 'GEC-Compass-API', 'Cache-Control': 'no-cache' }
+    });
+    if (rawRes.ok) {
+      const rawText = await rawRes.text();
+      const parsed = JSON.parse(rawText);
+      console.log(`getGistPlaces: raw URL returned ${Array.isArray(parsed) ? parsed.length : 0} places`);
+      return parsed;
+    }
+    console.error('getGistPlaces: raw URL returned status', rawRes.status);
+  } catch (rawErr) {
+    console.error('getGistPlaces: raw URL fetch error:', rawErr?.message || rawErr);
+  }
+
+  // 2. Full Gist API (includes metadata wrapper — larger download, but works if raw URL changes)
   try {
     const headers = {
       'Accept': 'application/vnd.github.v3+json',
@@ -92,6 +112,7 @@ async function getGistPlaces(token, gistId) {
       const gist = await res.json();
       if (gist.files && Object.keys(gist.files).length > 0) {
         const file = Object.values(gist.files)[0];
+        // If content is truncated, fetch via raw_url
         if (file.truncated && file.raw_url) {
           const rawRes = await fetch(file.raw_url, { headers });
           if (rawRes.ok) {
@@ -103,25 +124,40 @@ async function getGistPlaces(token, gistId) {
           return JSON.parse(file.content);
         }
       }
+    } else {
+      console.error('getGistPlaces: API returned status', res.status);
     }
   } catch (apiErr) {
-    console.error('Gist API fetch error, trying raw fallback:', apiErr);
-  }
-
-  // Fallback: Direct Raw Gist Fetch
-  try {
-    const rawRes = await fetch(`https://gist.githubusercontent.com/anjo2007/${gistId}/raw/places.json`, {
-      headers: { 'User-Agent': 'GEC-Compass-API' }
-    });
-    if (rawRes.ok) {
-      const rawText = await rawRes.text();
-      return JSON.parse(rawText);
-    }
-  } catch (rawErr) {
-    console.error('Direct raw gist fetch error:', rawErr);
+    console.error('getGistPlaces: API fetch error:', apiErr?.message || apiErr);
   }
 
   return [];
+}
+
+// Strips base64 image data from a place to keep Gist size manageable.
+// Preserves Cloudinary/HTTP URLs but removes raw data: URIs and base64 strings.
+function stripBase64FromPlace(place) {
+  if (!place) return place;
+  const cleaned = { ...place };
+  const isBase64 = (val) => typeof val === 'string' && (val.startsWith('data:image') || (val.length > 1000 && !/^https?:\/\//.test(val)));
+
+  // Strip top-level base64 fields
+  if (isBase64(cleaned.photoUrl)) delete cleaned.photoUrl;
+  if (isBase64(cleaned.photoBase64)) delete cleaned.photoBase64;
+  if (isBase64(cleaned.photo)) delete cleaned.photo;
+  if (isBase64(cleaned.vpsBoardPhotoUrl)) delete cleaned.vpsBoardPhotoUrl;
+  if (isBase64(cleaned.vpsBoardPhotoBase64)) delete cleaned.vpsBoardPhotoBase64;
+  if (isBase64(cleaned.vpsBoardPhoto)) delete cleaned.vpsBoardPhoto;
+
+  // Strip base64 from tags
+  if (cleaned.tags && typeof cleaned.tags === 'object') {
+    cleaned.tags = { ...cleaned.tags };
+    if (isBase64(cleaned.tags.image)) delete cleaned.tags.image;
+    if (isBase64(cleaned.tags.photoUrl)) delete cleaned.tags.photoUrl;
+    if (isBase64(cleaned.tags.vpsBoardPhotoUrl)) delete cleaned.tags.vpsBoardPhotoUrl;
+  }
+
+  return cleaned;
 }
 
 async function saveGistPlaces(token, gistId, places) {
@@ -144,6 +180,12 @@ async function saveGistPlaces(token, gistId, places) {
     console.error('Error finding gist filename, defaulting to places.json:', e);
   }
 
+  // Strip base64 image data before saving to keep Gist size manageable
+  const cleanedPlaces = Array.isArray(places) ? places.map(stripBase64FromPlace) : [];
+
+  const content = JSON.stringify(cleanedPlaces, null, 2);
+  console.log(`saveGistPlaces: writing ${cleanedPlaces.length} places (${(content.length / 1024).toFixed(1)} KB) to ${fileName}`);
+
   const res = await fetch(`https://api.github.com/gists/${gistId}`, {
     method: 'PATCH',
     headers: {
@@ -155,7 +197,7 @@ async function saveGistPlaces(token, gistId, places) {
     body: JSON.stringify({
       files: {
         [fileName]: {
-          content: JSON.stringify(places, null, 2)
+          content: content
         }
       }
     })
