@@ -164,16 +164,32 @@ class DataService {
   }
 
   static const String _lastKnownCloudIdsKey = 'last_known_cloud_ids';
+  static const String _gistPlacesFallbackUrl = 'https://gist.githubusercontent.com/anjo2007/553a8435d8cd2459358147935ecdd59b/raw/places.json';
 
-  /// Fetches latest custom buildings from cloud API and merges with local data.
+  /// Fetches latest custom buildings from cloud API (or Gist fallback) and merges with local data.
   Future<List<Building>> fetchCloudBuildings() async {
     try {
       final apiUrl = await _getApiUrl();
-      final response = await http
-          .get(Uri.parse(apiUrl))
-          .timeout(const Duration(seconds: 4));
+      http.Response? response;
+      try {
+        response = await http
+            .get(Uri.parse(apiUrl))
+            .timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint('Vercel API fetch timeout/error, trying direct Gist fallback: $e');
+      }
+
+      if (response == null || response.statusCode != 200) {
+        try {
+          response = await http
+              .get(Uri.parse(_gistPlacesFallbackUrl))
+              .timeout(const Duration(seconds: 4));
+        } catch (e) {
+          debugPrint('Gist fallback fetch error: $e');
+        }
+      }
       
-      if (response.statusCode == 200) {
+      if (response != null && response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final List<dynamic> apiList = decoded is List ? decoded : [];
         List<Building> customBuildings =
@@ -202,7 +218,7 @@ class DataService {
         return baseBuildings;
       }
     } catch (e) {
-      debugPrint('Cloud API fetch failed: $e');
+      debugPrint('Cloud API and Gist fetch failed: $e');
     }
     return [];
   }

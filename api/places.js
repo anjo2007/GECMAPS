@@ -360,12 +360,12 @@ export default async function handler(request, response) {
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
   const ghToken = process.env.GITHUB_TOKEN;
-  const gistId = process.env.GIST_ID;
+  const gistId = process.env.GIST_ID || '553a8435d8cd2459358147935ecdd59b';
   const ghRepo = process.env.GITHUB_REPO; // e.g. "anjo2007/GECMAPS"
 
   const backupKvUrl = process.env.BACKUP_KV_REST_API_URL;
   const backupKvToken = process.env.BACKUP_KV_REST_API_TOKEN;
-  const backupGistId = process.env.BACKUP_GIST_ID;
+  const backupGistId = process.env.BACKUP_GIST_ID || (gistId !== '553a8435d8cd2459358147935ecdd59b' ? '553a8435d8cd2459358147935ecdd59b' : null);
   const backupGhRepo = process.env.BACKUP_GITHUB_REPO;
 
   const context = {
@@ -389,6 +389,8 @@ export default async function handler(request, response) {
     primaryDriver = 'gist';
   } else if (ghToken && ghRepo) {
     primaryDriver = 'repo';
+  } else if (gistId) {
+    primaryDriver = 'gist';
   } else if (isDev) {
     primaryDriver = 'local';
   }
@@ -732,11 +734,17 @@ export default async function handler(request, response) {
           return true;
         });
 
+        const existingPlace = placesList.find(p => String(p.id).trim() === String(idToDelete).trim());
+
         filtered.push({
+          ...(existingPlace || {}),
           id: String(idToDelete).trim(),
-          name: 'Deleted Place',
+          name: existingPlace ? existingPlace.name : 'Deleted Place',
           deleted: true,
-          tags: { deleted: true },
+          tags: {
+            ...(existingPlace && existingPlace.tags ? existingPlace.tags : {}),
+            deleted: true
+          },
           deletedAt: new Date().toISOString()
         });
 
