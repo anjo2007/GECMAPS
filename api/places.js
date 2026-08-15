@@ -180,11 +180,8 @@ async function saveGistPlaces(token, gistId, places) {
     console.error('Error finding gist filename, defaulting to places.json:', e);
   }
 
-  // Strip base64 image data before saving to keep Gist size manageable
-  const cleanedPlaces = Array.isArray(places) ? places.map(stripBase64FromPlace) : [];
-
-  const content = JSON.stringify(cleanedPlaces, null, 2);
-  console.log(`saveGistPlaces: writing ${cleanedPlaces.length} places (${(content.length / 1024).toFixed(1)} KB) to ${fileName}`);
+  const content = JSON.stringify(places, null, 2);
+  console.log(`saveGistPlaces: writing ${Array.isArray(places) ? places.length : 0} places (${(content.length / 1024).toFixed(1)} KB) to ${fileName}`);
 
   const res = await fetch(`https://api.github.com/gists/${gistId}`, {
     method: 'PATCH',
