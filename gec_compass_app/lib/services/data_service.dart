@@ -313,60 +313,54 @@ class DataService {
   }
 
   Future<void> deleteCustomBuilding(String id, String code) async {
-    // 1. Update local cache deletion first
-    try {
-      final customBuildings = await _loadCustomBuildingsLocal();
-      customBuildings.removeWhere((b) => b.id.toString().trim() == id.toString().trim());
-      customBuildings.add(Building(
-        id: id,
-        name: 'Deleted Place',
-        lat: 0.0,
-        lng: 0.0,
-        tags: {'deleted': true},
-        isDeleted: true,
-      ));
-      await _syncLocalCache(customBuildings);
-      debugPrint('Recorded building deletion locally: $id');
-    } catch (e) {
-      debugPrint('Error removing custom building locally: $e');
+    final cleanCode = code.trim();
+    if (cleanCode.isEmpty) {
+      throw Exception('Security verification code is required to delete a place.');
     }
 
-    // 2. Sync deletion to cloud API
     final apiUrl = await _getApiUrl();
     final uri = Uri.parse(apiUrl).replace(queryParameters: {
       'id': id,
-      if (code.isNotEmpty) 'code': code,
+      'code': cleanCode,
     });
 
-    try {
-      final response = await http
-          .delete(
-            uri,
-            headers: {'x-security-code': code},
-          )
-          .timeout(const Duration(seconds: 15));
+    final response = await http
+        .delete(
+          uri,
+          headers: {'x-security-code': cleanCode},
+        )
+        .timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200) {
-        debugPrint('Deleted custom building from cloud: $id');
-      } else if (response.statusCode == 403) {
-        throw Exception('Unauthorized: Invalid security code');
-      } else {
-        String? cloudErrorMessage;
-        try {
-          final decoded = json.decode(response.body);
-          if (decoded is Map && decoded['error'] != null) {
-            cloudErrorMessage = decoded['error'].toString();
-          }
-        } catch (_) {}
-        if (cloudErrorMessage != null) {
-          throw Exception(cloudErrorMessage);
+    if (response.statusCode == 200) {
+      debugPrint('Deleted custom building from cloud: $id');
+      // Update local cache deletion only after verified server approval
+      try {
+        final customBuildings = await _loadCustomBuildingsLocal();
+        customBuildings.removeWhere((b) => b.id.toString().trim() == id.toString().trim());
+        customBuildings.add(Building(
+          id: id,
+          name: 'Deleted Place',
+          lat: 0.0,
+          lng: 0.0,
+          tags: {'deleted': true},
+          isDeleted: true,
+        ));
+        await _syncLocalCache(customBuildings);
+        debugPrint('Recorded building deletion locally: $id');
+      } catch (e) {
+        debugPrint('Error removing custom building locally: $e');
+      }
+    } else if (response.statusCode == 403) {
+      throw Exception('Unauthorized: Invalid security code');
+    } else {
+      String? cloudErrorMessage;
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          cloudErrorMessage = decoded['error'].toString();
         }
-      }
-    } catch (e) {
-      if (e.toString().contains('Unauthorized')) {
-        rethrow;
-      }
-      debugPrint('Delete request to cloud failed or offline: $e');
+      } catch (_) {}
+      throw Exception(cloudErrorMessage ?? 'Failed to delete pin from server (status ${response.statusCode})');
     }
   }
 

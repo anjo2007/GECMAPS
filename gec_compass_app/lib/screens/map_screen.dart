@@ -7747,14 +7747,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                              children: [
                                                Text('Are you sure you want to delete "${building.name}" permanently?', style: TextStyle(color: _textColor, fontSize: 14)),
                                                const SizedBox(height: 16),
-                                               Text('Security verification code (if configured):', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                                               Text('Security verification code (Required):', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
                                                const SizedBox(height: 6),
                                                TextField(
                                                  controller: controller,
                                                  obscureText: obscureCode,
                                                  style: TextStyle(color: _textColor),
                                                  decoration: InputDecoration(
-                                                   hintText: 'Enter Security Code (Optional)',
+                                                   hintText: 'Enter Security Code',
                                                    hintStyle: TextStyle(color: _textColor.withValues(alpha: 0.5), fontSize: 13),
                                                    enabledBorder: OutlineInputBorder(
                                                      borderSide: BorderSide(color: _borderColor),
@@ -7787,7 +7787,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
                                              ),
                                              TextButton(
-                                               onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                                               onPressed: () {
+                                                 final code = controller.text.trim();
+                                                 if (code.isEmpty) {
+                                                   ScaffoldMessenger.of(context).showSnackBar(
+                                                     const SnackBar(
+                                                       content: Text('Security code is required to delete a place.'),
+                                                       backgroundColor: Colors.redAccent,
+                                                     ),
+                                                   );
+                                                   return;
+                                                 }
+                                                 Navigator.pop(ctx, code);
+                                               },
                                                child: const Text('Confirm Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
                                              ),
                                            ],
@@ -7797,7 +7809,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                    },
                                  );
                                 
-                                if (enteredCode != null) {
+                                if (enteredCode != null && enteredCode.isNotEmpty) {
                                   if (!context.mounted) return;
 
                                   setModalState(() {
