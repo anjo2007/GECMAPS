@@ -78,35 +78,50 @@ function getAuthHeader(token) {
 }
 
 async function getGistPlaces(token, gistId) {
-  const headers = {
-    'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'GEC-Compass-API'
-  };
-  if (token) {
-    headers['Authorization'] = getAuthHeader(token);
+  try {
+    const headers = {
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'GEC-Compass-API'
+    };
+    if (token) {
+      headers['Authorization'] = getAuthHeader(token);
+    }
+
+    const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers });
+    if (res.ok) {
+      const gist = await res.json();
+      if (gist.files && Object.keys(gist.files).length > 0) {
+        const file = Object.values(gist.files)[0];
+        if (file.truncated && file.raw_url) {
+          const rawRes = await fetch(file.raw_url, { headers });
+          if (rawRes.ok) {
+            const rawText = await rawRes.text();
+            return JSON.parse(rawText);
+          }
+        }
+        if (file.content) {
+          return JSON.parse(file.content);
+        }
+      }
+    }
+  } catch (apiErr) {
+    console.error('Gist API fetch error, trying raw fallback:', apiErr);
   }
 
-  const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers });
-  if (!res.ok) {
-    const errText = await res.text();
-    console.error(`Gist fetch error (${res.status}):`, errText);
-    throw new Error(`Gist fetch error (${res.status}): ${res.statusText}`);
-  }
-  const gist = await res.json();
-  if (!gist.files || Object.keys(gist.files).length === 0) return [];
-  const file = Object.values(gist.files)[0];
-
-  // If Gist file exceeds 1MB, GitHub API truncates file.content.
-  // Fall back to raw_url to fetch complete untruncated JSON.
-  if (file.truncated && file.raw_url) {
-    const rawRes = await fetch(file.raw_url, { headers });
+  // Fallback: Direct Raw Gist Fetch
+  try {
+    const rawRes = await fetch(`https://gist.githubusercontent.com/anjo2007/${gistId}/raw/places.json`, {
+      headers: { 'User-Agent': 'GEC-Compass-API' }
+    });
     if (rawRes.ok) {
       const rawText = await rawRes.text();
       return JSON.parse(rawText);
     }
+  } catch (rawErr) {
+    console.error('Direct raw gist fetch error:', rawErr);
   }
 
-  return JSON.parse(file.content || '[]');
+  return [];
 }
 
 async function saveGistPlaces(token, gistId, places) {
