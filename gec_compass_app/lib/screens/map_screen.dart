@@ -175,7 +175,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   LatLng? _rawDeviceGpsPosition;
   LatLng? _sharedGridLocation;
   StreamSubscription<Position>? _gpsSubscription;
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _loadError;
   bool _locationDenied = false;
   bool _locationDeniedForever = false;
