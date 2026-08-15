@@ -51,6 +51,23 @@ void main() {
       expect(route.roadPath, isNotEmpty);
       expect(route.distanceMeters, greaterThan(0));
     });
+
+    test('RoutingService selects optimal Electrical Gate for south entrance to West campus', () async {
+      final routingService = RoutingService();
+      final file = File('assets/campus_roads.json');
+      final jsonStr = await file.readAsString();
+      routingService.loadCampusRoadsFromJsonString(jsonStr);
+
+      // White House Hostel (south) to Post Graduate Block (west campus)
+      const southStart = LatLng(10.550500, 76.224100);
+      const westDestination = LatLng(10.553440, 76.220577);
+
+      final route = await routingService.getDetailedRoute(southStart, westDestination);
+      expect(route.fullPath, isNotEmpty);
+      expect(route.activeGateName, contains('Electrical Gate'));
+      // Direct optimal route should be < 800m (not the 1.8km detour around the outside)
+      expect(route.distanceMeters, lessThan(800.0));
+    });
   });
 
   group('Gate Schedule & Dynamic Rerouting Notice Tests', () {
