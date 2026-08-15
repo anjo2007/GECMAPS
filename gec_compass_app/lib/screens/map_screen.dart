@@ -7747,15 +7747,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                              children: [
                                                Text('Are you sure you want to delete "${building.name}" permanently?', style: TextStyle(color: _textColor, fontSize: 14)),
                                                const SizedBox(height: 16),
-                                               Text('Security verification code:', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                                               Text('Security verification code (if configured):', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
                                                const SizedBox(height: 6),
                                                TextField(
                                                  controller: controller,
                                                  obscureText: obscureCode,
                                                  style: TextStyle(color: _textColor),
                                                  decoration: InputDecoration(
-                                                   hintText: 'Enter Security Code',
-                                                   hintStyle: TextStyle(color: _textColor.withValues(alpha: 0.5)),
+                                                   hintText: 'Enter Security Code (Optional)',
+                                                   hintStyle: TextStyle(color: _textColor.withValues(alpha: 0.5), fontSize: 13),
                                                    enabledBorder: OutlineInputBorder(
                                                      borderSide: BorderSide(color: _borderColor),
                                                      borderRadius: BorderRadius.circular(8),
@@ -7797,7 +7797,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                    },
                                  );
                                 
-                                if (enteredCode != null && enteredCode.isNotEmpty) {
+                                if (enteredCode != null) {
                                   if (!context.mounted) return;
 
                                   setModalState(() {

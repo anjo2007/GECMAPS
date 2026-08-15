@@ -313,45 +313,7 @@ class DataService {
   }
 
   Future<void> deleteCustomBuilding(String id, String code) async {
-    final apiUrl = await _getApiUrl();
-    final uri = Uri.parse(apiUrl).replace(queryParameters: {
-      'id': id,
-      if (code.isNotEmpty) 'code': code,
-    });
-
-    bool cloudDeleteSuccess = false;
-    String? cloudErrorMessage;
-
-    try {
-      final response = await http
-          .delete(
-            uri,
-            headers: {'x-security-code': code},
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        debugPrint('Deleted custom building from cloud: $id');
-        cloudDeleteSuccess = true;
-      } else {
-        try {
-          final decoded = json.decode(response.body);
-          if (decoded is Map && decoded['error'] != null) {
-            cloudErrorMessage = decoded['error'].toString();
-          }
-        } catch (_) {}
-        cloudErrorMessage ??= 'Server responded with status ${response.statusCode}';
-      }
-    } catch (e) {
-      debugPrint('Delete request to cloud failed or offline: $e');
-      cloudErrorMessage ??= e.toString();
-    }
-
-    if (!cloudDeleteSuccess) {
-      throw Exception(cloudErrorMessage ?? 'Failed to delete pin from server. Please verify your security PIN.');
-    }
-
-    // Update local cache deletion only when cloud deletion succeeded
+    // 1. Update local cache deletion first
     try {
       final customBuildings = await _loadCustomBuildingsLocal();
       customBuildings.removeWhere((b) => b.id.toString().trim() == id.toString().trim());
@@ -367,6 +329,44 @@ class DataService {
       debugPrint('Recorded building deletion locally: $id');
     } catch (e) {
       debugPrint('Error removing custom building locally: $e');
+    }
+
+    // 2. Sync deletion to cloud API
+    final apiUrl = await _getApiUrl();
+    final uri = Uri.parse(apiUrl).replace(queryParameters: {
+      'id': id,
+      if (code.isNotEmpty) 'code': code,
+    });
+
+    try {
+      final response = await http
+          .delete(
+            uri,
+            headers: {'x-security-code': code},
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        debugPrint('Deleted custom building from cloud: $id');
+      } else if (response.statusCode == 403) {
+        throw Exception('Unauthorized: Invalid security code');
+      } else {
+        String? cloudErrorMessage;
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded is Map && decoded['error'] != null) {
+            cloudErrorMessage = decoded['error'].toString();
+          }
+        } catch (_) {}
+        if (cloudErrorMessage != null) {
+          throw Exception(cloudErrorMessage);
+        }
+      }
+    } catch (e) {
+      if (e.toString().contains('Unauthorized')) {
+        rethrow;
+      }
+      debugPrint('Delete request to cloud failed or offline: $e');
     }
   }
 

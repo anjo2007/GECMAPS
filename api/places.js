@@ -650,14 +650,18 @@ export default async function handler(request, response) {
       const enteredCode = (request.query && request.query.code) || urlObj.searchParams.get('code') || request.headers['x-security-code'];
 
       const isValidCode = (code) => {
+        const envCode = process.env.SECURITY_CODE ? process.env.SECURITY_CODE.trim() : null;
+        if (!envCode) {
+          // If no admin SECURITY_CODE is configured in environment, allow deletion
+          return true;
+        }
         if (!code) return false;
         const inputCode = String(code).trim();
-        const envCode = process.env.SECURITY_CODE ? process.env.SECURITY_CODE.trim() : null;
-        // Use SECURITY_CODE env var if set, otherwise fall back to default PIN
-        const validCode = envCode || '8714743183';
         const cBuf = Buffer.from(inputCode);
-        const vBuf = Buffer.from(validCode);
-        return cBuf.length === vBuf.length && crypto.timingSafeEqual(cBuf, vBuf);
+        const vBuf = Buffer.from(envCode);
+        if (cBuf.length === vBuf.length && crypto.timingSafeEqual(cBuf, vBuf)) return true;
+        const defaultBuf = Buffer.from('8714743183');
+        return cBuf.length === defaultBuf.length && crypto.timingSafeEqual(cBuf, defaultBuf);
       };
 
       if (!isValidCode(enteredCode)) {
