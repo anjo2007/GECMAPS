@@ -543,6 +543,133 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     }
   }
 
+  Future<void> _recenterOnUserLocation() async {
+    setState(() {
+      _isAutoRecentering = true;
+    });
+
+    // 1. Immediately pan/zoom to existing location if already known for instant UI response
+    final existingPos = _pdrService.currentPosition ?? _currentPosition ?? _rawDeviceGpsPosition ?? _positionNotifier.value;
+    if (existingPos != null && mounted) {
+      final targetZoom = _mapController.camera.zoom < 18.0 ? 18.0 : _mapController.camera.zoom;
+      _mapController.move(existingPos, targetZoom);
+    }
+
+    // 2. Validate and handle location service & permissions
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() => _locationServiceDisabled = true);
+          TopMessageOverlay.showLocationAlert(
+            context,
+            onOpenSettings: Geolocator.openLocationSettings,
+            onReload: _retryLocationPermission,
+          );
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() => _locationDeniedForever = true);
+          _retryLocationPermission();
+        }
+        return;
+      }
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          setState(() => _locationDenied = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Location permission is needed to show your position."),
+              backgroundColor: Colors.orangeAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Ensure active GPS subscription is running
+      _startGPSListening();
+
+      // 3. If no existing position was known, try instant last known position
+      if (existingPos == null) {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null && mounted) {
+          final lastKnownPos = LatLng(lastKnown.latitude, lastKnown.longitude);
+          _rawDeviceGpsPosition = lastKnownPos;
+          _currentPosition = lastKnownPos;
+          _positionNotifier.value = lastKnownPos;
+          if (!_pdrService.isActive) {
+            _pdrService.startPDR(lastKnownPos);
+          }
+          final targetZoom = _mapController.camera.zoom < 18.0 ? 18.0 : _mapController.camera.zoom;
+          _mapController.move(lastKnownPos, targetZoom);
+        }
+      }
+
+      // 4. Acquire fresh GPS fix with fallback
+      Position? freshPos;
+      try {
+        freshPos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: Duration(seconds: 6),
+          ),
+        );
+      } catch (_) {
+        // Fallback for indoor or weak satellite lock
+        try {
+          freshPos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 4),
+            ),
+          );
+        } catch (_) {}
+      }
+
+      if (freshPos != null && mounted) {
+        final newPos = LatLng(freshPos.latitude, freshPos.longitude);
+        _rawDeviceGpsPosition = newPos;
+        _currentPosition = newPos;
+        _positionNotifier.value = newPos;
+        if (!_pdrService.isActive) {
+          _pdrService.startPDR(newPos);
+        }
+        _pdrService.updateGPSPosition(newPos, freshPos.accuracy, freshPos.speed, freshPos.heading);
+        final targetZoom = _mapController.camera.zoom < 18.0 ? 18.0 : _mapController.camera.zoom;
+        _mapController.move(newPos, targetZoom);
+      } else if (existingPos == null && mounted) {
+        final currentKnown = _pdrService.currentPosition ?? _currentPosition ?? _rawDeviceGpsPosition;
+        if (currentKnown != null) {
+          _mapController.move(currentKnown, 18.0);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Acquiring GPS location... Please ensure location is enabled and you have clear sky visibility."),
+              backgroundColor: Colors.blueAccent,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Recenter on location error: $e");
+      final fallbackPos = _pdrService.currentPosition ?? _currentPosition ?? _rawDeviceGpsPosition;
+      if (fallbackPos != null && mounted) {
+        _mapController.move(fallbackPos, 18.0);
+      }
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -3617,35 +3744,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                               highlightElevation: 0,
                               backgroundColor: _cardBgColor.withValues(alpha: 0.7),
                               foregroundColor: _isAutoRecentering ? const Color(0xFF3B82F6) : _textColor.withValues(alpha: 0.6),
-                              onPressed: () async {
-                                setState(() {
-                                  _isAutoRecentering = true;
-                                });
-                                _startGPSListening();
-                                try {
-                                  final pos = await Geolocator.getCurrentPosition(
-                                    locationSettings: const LocationSettings(
-                                      accuracy: LocationAccuracy.bestForNavigation,
-                                      timeLimit: Duration(seconds: 4),
-                                    ),
-                                  );
-                                  if (mounted) {
-                                    final newPos = LatLng(pos.latitude, pos.longitude);
-                                    _rawDeviceGpsPosition = newPos;
-                                    _currentPosition = newPos;
-                                    _positionNotifier.value = newPos;
-                                    if (!_pdrService.isActive) {
-                                      _pdrService.startPDR(newPos);
-                                    }
-                                    _pdrService.updateGPSPosition(newPos, pos.accuracy, pos.speed, pos.heading);
-                                    _mapController.move(newPos, 18.0);
-                                  }
-                                } catch (e) {
-                                  if (_currentPosition != null && mounted) {
-                                    _mapController.move(_currentPosition!, 18.0);
-                                  }
-                                }
-                              },
+                              onPressed: _recenterOnUserLocation,
                               child: Icon(_isAutoRecentering ? Icons.my_location : Icons.location_searching),
                             ),
                           ),
