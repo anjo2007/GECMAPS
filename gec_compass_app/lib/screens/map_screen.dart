@@ -2963,8 +2963,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         ),
                       ],
                       
-                      // Building markers with dynamic zoom and navigation text labels
+                      // Building markers with dynamic zoom and navigation text labels (always upright on screen rotation)
                       MarkerLayer(
+                        rotate: true,
                         markers: filteredBuildings.map((b) {
                           final isSelected = _selectedBuilding?.id == b.id;
                           final isEvent = b.tags['is_event'] == 'true';
@@ -2980,6 +2981,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                               width: markerWidth,
                               height: markerHeight,
                               alignment: Alignment.bottomCenter,
+                              rotate: true,
                               child: GestureDetector(
                                 onTap: () => _selectBuilding(b),
                                 child: Column(
@@ -3070,6 +3072,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                             width: markerWidth,
                             height: markerHeight,
                             alignment: showLabels ? Alignment.topCenter : Alignment.bottomCenter,
+                            rotate: true,
                             child: GestureDetector(
                               onTap: () => _selectBuilding(b),
                               child: Column(
@@ -3130,15 +3133,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         },
                       ),
                         
-                      // Shared Grid Location Marker
+                      // Shared Grid Location Marker (always upright on screen rotation)
                       if (_sharedGridLocation != null)
                         MarkerLayer(
+                          rotate: true,
                           markers: [
                             Marker(
                               point: _sharedGridLocation!,
                               width: 140,
                               height: 64,
                               alignment: Alignment.topCenter,
+                              rotate: true,
                               child: GestureDetector(
                                 onTap: () {
                                   final gridAddr = GridAddressingService.getCampusGridAddress(_sharedGridLocation!);

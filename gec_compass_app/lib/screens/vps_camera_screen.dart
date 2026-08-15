@@ -636,6 +636,7 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
                                     point: widget.routingPath.last,
                                     width: 32,
                                     height: 32,
+                                    rotate: true,
                                     child: const Icon(
                                       Icons.location_on_rounded,
                                       color: Colors.redAccent,
