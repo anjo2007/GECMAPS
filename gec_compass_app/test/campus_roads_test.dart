@@ -22,8 +22,8 @@ void main() {
       final nodes = data['nodes'] as List<dynamic>;
       final edges = data['edges'] as List<dynamic>;
 
-      expect(nodes.length, equals(229));
-      expect(edges.length, equals(257));
+      expect(nodes.length, equals(247));
+      expect(edges.length, equals(273));
     });
 
     test('RoutingService initializes campus road graph properly', () async {
@@ -32,8 +32,8 @@ void main() {
       final jsonStr = await file.readAsString();
       routingService.loadCampusRoadsFromJsonString(jsonStr);
 
-      expect(routingService.roadNodes.length, greaterThanOrEqualTo(229));
-      expect(routingService.roadAdjacency.length, greaterThanOrEqualTo(229));
+      expect(routingService.roadNodes.length, greaterThanOrEqualTo(247));
+      expect(routingService.roadAdjacency.length, greaterThanOrEqualTo(247));
     });
 
     test('RoutingService finds single optimal path between campus locations', () async {

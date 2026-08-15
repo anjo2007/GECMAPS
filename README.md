@@ -12,7 +12,7 @@ GEC Compass is a high-performance, cross-platform campus navigation application 
 ## ✨ Key Features
 
 - 🗺️ **Interactive Campus Map** — Comprehensive satellite, ambient, and light-themed map of GEC Thrissur with building markers, high-accuracy geometry, and zoom-aware label rendering.
-- 🚶 **Optimal Road & Path Navigation** — Dijkstra shortest-path network routing powered by `campus_roads.json` (229 nodes, 257 connected road/walkway edges) with turn-by-turn guidance and network-aware gate routing.
+- 🚶 **Optimal Road & Path Navigation** — Dijkstra shortest-path network routing powered by `campus_roads.json` (247 nodes, 273 connected road/walkway edges) with turn-by-turn guidance and network-aware gate routing.
 - 🎯 **Accurate Campus Boundaries** — Full coverage of both East and West wings of the campus (Main Blocks, Post Graduate Block, Dept. of Architecture, Hostels, Workshops).
 - 📍 **Reliable Location Recenter** — Instant-response location recenter button with cold-start cache fallback (`getLastKnownPosition()`) and high-accuracy GPS lock.
 - 🏢 **Place & Category Management** — Add, edit, and categorize custom places on the map with full Place Type editing (Departments, Workshops, Hostels, Cafes/ATMs, Rooms/Labs, Washrooms, Entrance Gate, Other), search keywords, operating hours, and floor mapping.
@@ -45,7 +45,7 @@ GEC Compass/
 │   │   └── widgets/                   # Reusable UI components
 │   ├── assets/
 │   │   ├── campus_buildings.json      # Base campus building & department dataset
-│   │   └── campus_roads.json          # 229-node connected road & walkway graph
+│   │   └── campus_roads.json          # 247-node connected road & walkway graph
 │   └── web/                           # Web assets & splash configuration
 ├── vercel.json                        # Vercel deployment configuration & routing
 ├── vercel-build.sh                    # Flutter web automated build script
@@ -118,7 +118,7 @@ You can configure a backup storage option that runs alongside the primary. When 
 
 ## 🗺️ Campus Road Graph & Navigation System
 
-The app utilizes a custom **Dijkstra shortest-path algorithm** executed over `campus_roads.json`, representing 229 nodes and 257 connected edges surveyed across GEC Thrissur.
+The app utilizes a custom **Dijkstra shortest-path algorithm** executed over `campus_roads.json`, representing 247 nodes and 273 connected edges surveyed across GEC Thrissur.
 
 ### Routing Logic
 
