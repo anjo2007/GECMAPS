@@ -332,24 +332,25 @@ export default async function handler(request, response) {
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>${escHtml(place.name)} | GECT Compass</title>
-  <meta name="description" content="${escHtml(desc)}">
-  <meta name="keywords" content="${escHtml(place.name)}, GEC Maps, GECT Maps, GEC Compass, GECT Compass, GEC Navigator, GEC Thrissur">
+  <title>${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps – GEC Thrissur</title>
+  <meta name="title" content="${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps">
+  <meta name="description" content="${escHtml(desc)} - Explore on GECT Compass (GECT Maps & GEC Maps) for Government Engineering College Thrissur.">
+  <meta name="keywords" content="${escHtml(place.name)}, GECT Compass, GECT Maps, GEC Maps, GEC Compass, gect compasss, GEC Thrissur, GECT Thrissur Maps, GEC Navigator">
   <link rel="canonical" href="${escHtml(redirectUrl)}">
   
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="${escHtml(shareUrl)}">
-  <meta property="og:title" content="${escHtml(place.name)} | GECT Compass">
-  <meta property="og:description" content="${escHtml(desc)}">
+  <meta property="og:title" content="${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps">
+  <meta property="og:description" content="${escHtml(desc)} - Navigate with GECT Compass (GECT Maps & GEC Maps).">
   <meta property="og:image" content="${escHtml(imageUrl)}">
   <meta property="og:site_name" content="GECT Compass">
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="${escHtml(shareUrl)}">
-  <meta name="twitter:title" content="${escHtml(place.name)} | GECT Compass">
-  <meta name="twitter:description" content="${escHtml(desc)}">
+  <meta name="twitter:title" content="${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps">
+  <meta name="twitter:description" content="${escHtml(desc)} - Navigate with GECT Compass (GECT Maps & GEC Maps).">
   <meta name="twitter:image" content="${escHtml(imageUrl)}">
 
   <!-- JSON-LD Structured Data for Location -->

@@ -1,14 +1,15 @@
 {
-    "name": "GECT Compass",
+    "name": "GECT Compass - GECT Maps & GEC Maps",
     "short_name": "GECT Compass",
-    "start_url": ".",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#F8FAFC",
     "theme_color": "#2563EB",
-    "description": "GECT Compass (GEC Maps & GECT Maps) indoor and outdoor campus navigation app for Government Engineering College Thrissur (GEC Navigator).",
+    "description": "GECT Compass (GECT Maps, GEC Maps & GEC Compass) indoor and outdoor campus navigation app for Government Engineering College (GEC) Thrissur.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
-    "categories": ["navigation", "maps", "education", "utilities"],
+    "categories": ["navigation", "maps", "education", "utilities", "travel"],
     "icons": [
         {
             "src": "icons/Icon-192.png",

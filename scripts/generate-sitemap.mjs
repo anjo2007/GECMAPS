@@ -85,8 +85,8 @@ try {
     xml += `    <priority>0.7</priority>\n`;
     xml += `    <image:image>\n`;
     xml += `      <image:loc>${imgUrl}</image:loc>\n`;
-    xml += `      <image:title>${name} - GEC Thrissur</image:title>\n`;
-    xml += `      <image:caption>Location of ${name} at Government Engineering College Thrissur${coordsStr}.</image:caption>\n`;
+    xml += `      <image:title>${name} - GECT Compass | GECT Maps &amp; GEC Maps Thrissur</image:title>\n`;
+    xml += `      <image:caption>Location and walking route for ${name} on GECT Compass campus map at Government Engineering College Thrissur${coordsStr}.</image:caption>\n`;
     xml += `    </image:image>\n`;
     xml += `  </url>\n`;
   }
