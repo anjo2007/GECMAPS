@@ -2963,7 +2963,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         ),
                       ],
                       
-                      // Building markers with dynamic zoom and navigation text labels (always upright on screen rotation)
+                      // Building markers with dynamic zoom and navigation text labels (always upright & readable on screen rotation)
                       MarkerLayer(
                         rotate: true,
                         markers: filteredBuildings.map((b) {
@@ -3133,7 +3133,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         },
                       ),
                         
-                      // Shared Grid Location Marker (always upright on screen rotation)
+                      // Shared Grid Location Marker
                       if (_sharedGridLocation != null)
                         MarkerLayer(
                           rotate: true,

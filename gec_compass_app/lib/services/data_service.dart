@@ -37,7 +37,11 @@ class DataService {
   Future<String> _getApiUrl() async {
     if (kIsWeb) {
       final baseUri = Uri.base;
-      if (baseUri.scheme == 'http' || baseUri.scheme == 'https') {
+      if ((baseUri.scheme == 'http' || baseUri.scheme == 'https') &&
+          baseUri.host != 'localhost' &&
+          baseUri.host != '127.0.0.1' &&
+          !baseUri.host.startsWith('192.168.') &&
+          !baseUri.host.startsWith('10.')) {
         final hasPort = baseUri.hasPort && baseUri.port != 80 && baseUri.port != 443;
         final portStr = hasPort ? ':${baseUri.port}' : '';
         return '${baseUri.scheme}://${baseUri.host}$portStr/api/places';
@@ -163,53 +167,23 @@ class DataService {
     return localList;
   }
 
-  static const String _gistPlacesFallbackUrl = 'https://gist.githubusercontent.com/anjo2007/553a8435d8cd2459358147935ecdd59b/raw/places.json';
+  static const String _lastKnownCloudIdsKey = 'last_known_cloud_ids';
 
-  /// Fetches latest custom buildings from cloud API (or Gist fallback) and merges with local data.
+  /// Fetches latest custom buildings from cloud API and merges with local data.
   Future<List<Building>> fetchCloudBuildings() async {
     try {
       final apiUrl = await _getApiUrl();
-      List<dynamic> apiList = [];
-      String persistenceHeader = 'persistent';
-
-      // 1. Try Vercel cloud API first
-      try {
-        final response = await http
-            .get(Uri.parse(apiUrl))
-            .timeout(const Duration(seconds: 4));
-        if (response.statusCode == 200) {
-          final decoded = json.decode(response.body);
-          if (decoded is List && decoded.isNotEmpty) {
-            apiList = decoded;
-            persistenceHeader = response.headers['x-storage-persistence'] ?? 'persistent';
-          }
-        }
-      } catch (e) {
-        debugPrint('Vercel API fetch timeout/error: $e');
-      }
-
-      // 2. Fallback to direct raw GitHub Gist if Vercel API is empty or offline
-      if (apiList.isEmpty) {
-        try {
-          final gistResponse = await http
-              .get(Uri.parse(_gistPlacesFallbackUrl))
-              .timeout(const Duration(seconds: 4));
-          if (gistResponse.statusCode == 200) {
-            final decoded = json.decode(gistResponse.body);
-            if (decoded is List) {
-              apiList = decoded;
-              debugPrint('Loaded ${apiList.length} places directly from GitHub Gist fallback');
-            }
-          }
-        } catch (e) {
-          debugPrint('Gist fallback fetch error: $e');
-        }
-      }
-
-      if (apiList.isNotEmpty) {
+      final response = await http
+          .get(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 4));
+      
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List<dynamic> apiList = decoded is List ? decoded : [];
         List<Building> customBuildings =
             apiList.map((j) => Building.fromJson(j)).toList();
 
+        final persistenceHeader = response.headers['x-storage-persistence'];
         if (persistenceHeader == 'none') {
           final localPlaces = await _loadCustomBuildingsLocal();
           final Map<String, Building> merged = {
@@ -232,25 +206,69 @@ class DataService {
         return baseBuildings;
       }
     } catch (e) {
-      debugPrint('Cloud API and Gist fetch failed: $e');
+      debugPrint('Cloud API fetch failed: $e');
     }
     return [];
   }
 
   /// Syncs buildings list into local SharedPreferences cache.
-  Future<void> _syncLocalCache(List<Building> buildings) async {
+  ///
+  /// When [isFromCloud] is true, compares the incoming cloud IDs against the
+  /// previously-seen cloud IDs. Any ID that vanished from the cloud was deleted
+  /// on another device — a local tombstone is created for it so that this device
+  /// also stops showing the pin. This propagates cross-device deletions without
+  /// needing the server to expose tombstones in its GET response.
+  Future<void> _syncLocalCache(List<Building> buildings, {bool isFromCloud = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final existingLocal = await _loadCustomBuildingsLocal();
 
-      final Map<String, Building> merged = {
-        for (var b in existingLocal) b.id.toString().trim(): b,
-        for (var b in buildings) b.id.toString().trim(): b,
-      };
+      if (isFromCloud) {
+        // Detect IDs that existed in cloud before but are gone now (deleted remotely)
+        final lastKnownJson = prefs.getString(_lastKnownCloudIdsKey);
+        final Set<String> lastKnownCloudIds = lastKnownJson != null
+            ? Set<String>.from((json.decode(lastKnownJson) as List).cast<String>())
+            : <String>{};
 
-      final String customJsonString =
-          json.encode(merged.values.map((b) => b.toJson()).toList());
-      await prefs.setString(_customBuildingsKey, customJsonString);
+        final currentCloudIds = buildings.map((b) => b.id.toString().trim()).toSet();
+
+        // IDs present in last known cloud snapshot but absent now → remote deletion
+        final remotelyDeletedIds = lastKnownCloudIds.difference(currentCloudIds);
+
+        // Persist the updated snapshot for next sync comparison
+        await prefs.setString(_lastKnownCloudIdsKey, json.encode(currentCloudIds.toList()));
+
+        // Standard merge: local first, cloud overrides
+        final Map<String, Building> merged = {
+          for (var b in existingLocal) b.id.toString().trim(): b,
+          for (var b in buildings) b.id.toString().trim(): b,
+        };
+
+        // Create tombstones for remotely deleted IDs so this device hides them
+        for (final deletedId in remotelyDeletedIds) {
+          merged[deletedId] = Building(
+            id: deletedId,
+            name: 'Deleted Place',
+            lat: 0.0,
+            lng: 0.0,
+            tags: {'deleted': true},
+            isDeleted: true,
+          );
+        }
+
+        final String customJsonString =
+            json.encode(merged.values.map((b) => b.toJson()).toList());
+        await prefs.setString(_customBuildingsKey, customJsonString);
+      } else {
+        // Local-only operation (save/delete): simple merge, no remote-deletion detection
+        final Map<String, Building> merged = {
+          for (var b in existingLocal) b.id.toString().trim(): b,
+          for (var b in buildings) b.id.toString().trim(): b,
+        };
+        final String customJsonString =
+            json.encode(merged.values.map((b) => b.toJson()).toList());
+        await prefs.setString(_customBuildingsKey, customJsonString);
+      }
     } catch (e) {
       debugPrint('Error syncing local cache: $e');
     }

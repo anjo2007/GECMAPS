@@ -78,60 +78,35 @@ function getAuthHeader(token) {
 }
 
 async function getGistPlaces(token, gistId) {
-  // Strategy: Try lightweight raw URL FIRST (avoids massive Gist API JSON wrapper),
-  // then fall back to full API if raw URL fails.
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'GEC-Compass-API'
+  };
+  if (token) {
+    headers['Authorization'] = getAuthHeader(token);
+  }
 
-  // 1. Direct Raw Gist Fetch (fastest, smallest response — just the JSON content)
-  try {
-    const rawRes = await fetch(`https://gist.githubusercontent.com/anjo2007/${gistId}/raw/places.json`, {
-      headers: { 'User-Agent': 'GEC-Compass-API', 'Cache-Control': 'no-cache' }
-    });
+  const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers });
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`Gist fetch error (${res.status}):`, errText);
+    throw new Error(`Gist fetch error (${res.status}): ${res.statusText}`);
+  }
+  const gist = await res.json();
+  if (!gist.files || Object.keys(gist.files).length === 0) return [];
+  const file = Object.values(gist.files)[0];
+
+  // If Gist file exceeds 1MB, GitHub API truncates file.content.
+  // Fall back to raw_url to fetch complete untruncated JSON.
+  if (file.truncated && file.raw_url) {
+    const rawRes = await fetch(file.raw_url, { headers });
     if (rawRes.ok) {
       const rawText = await rawRes.text();
-      const parsed = JSON.parse(rawText);
-      console.log(`getGistPlaces: raw URL returned ${Array.isArray(parsed) ? parsed.length : 0} places`);
-      return parsed;
+      return JSON.parse(rawText);
     }
-    console.error('getGistPlaces: raw URL returned status', rawRes.status);
-  } catch (rawErr) {
-    console.error('getGistPlaces: raw URL fetch error:', rawErr?.message || rawErr);
   }
 
-  // 2. Full Gist API (includes metadata wrapper — larger download, but works if raw URL changes)
-  try {
-    const headers = {
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GEC-Compass-API'
-    };
-    if (token) {
-      headers['Authorization'] = getAuthHeader(token);
-    }
-
-    const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers });
-    if (res.ok) {
-      const gist = await res.json();
-      if (gist.files && Object.keys(gist.files).length > 0) {
-        const file = Object.values(gist.files)[0];
-        // If content is truncated, fetch via raw_url
-        if (file.truncated && file.raw_url) {
-          const rawRes = await fetch(file.raw_url, { headers });
-          if (rawRes.ok) {
-            const rawText = await rawRes.text();
-            return JSON.parse(rawText);
-          }
-        }
-        if (file.content) {
-          return JSON.parse(file.content);
-        }
-      }
-    } else {
-      console.error('getGistPlaces: API returned status', res.status);
-    }
-  } catch (apiErr) {
-    console.error('getGistPlaces: API fetch error:', apiErr?.message || apiErr);
-  }
-
-  return [];
+  return JSON.parse(file.content || '[]');
 }
 
 async function saveGistPlaces(token, gistId, places) {
@@ -154,9 +129,6 @@ async function saveGistPlaces(token, gistId, places) {
     console.error('Error finding gist filename, defaulting to places.json:', e);
   }
 
-  const content = JSON.stringify(places, null, 2);
-  console.log(`saveGistPlaces: writing ${Array.isArray(places) ? places.length : 0} places (${(content.length / 1024).toFixed(1)} KB) to ${fileName}`);
-
   const res = await fetch(`https://api.github.com/gists/${gistId}`, {
     method: 'PATCH',
     headers: {
@@ -168,7 +140,7 @@ async function saveGistPlaces(token, gistId, places) {
     body: JSON.stringify({
       files: {
         [fileName]: {
-          content: content
+          content: JSON.stringify(places, null, 2)
         }
       }
     })
@@ -384,23 +356,16 @@ export default async function handler(request, response) {
 
   const PLACES_KEY = 'gec_compass_custom_places';
 
-  function extractGistId(input) {
-    if (!input) return '553a8435d8cd2459358147935ecdd59b';
-    const str = String(input).trim();
-    const match = str.match(/[a-f0-9]{32}/i);
-    return match ? match[0] : (str || '553a8435d8cd2459358147935ecdd59b');
-  }
-
   // Read environment variables
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
-  const ghToken = process.env.GITHUB_TOKEN ? process.env.GITHUB_TOKEN.trim() : '';
-  const gistId = extractGistId(process.env.GIST_ID);
+  const ghToken = process.env.GITHUB_TOKEN;
+  const gistId = process.env.GIST_ID;
   const ghRepo = process.env.GITHUB_REPO; // e.g. "anjo2007/GECMAPS"
 
   const backupKvUrl = process.env.BACKUP_KV_REST_API_URL;
   const backupKvToken = process.env.BACKUP_KV_REST_API_TOKEN;
-  const backupGistId = process.env.BACKUP_GIST_ID ? extractGistId(process.env.BACKUP_GIST_ID) : (gistId !== '553a8435d8cd2459358147935ecdd59b' ? '553a8435d8cd2459358147935ecdd59b' : null);
+  const backupGistId = process.env.BACKUP_GIST_ID;
   const backupGhRepo = process.env.BACKUP_GITHUB_REPO;
 
   const context = {
@@ -424,8 +389,6 @@ export default async function handler(request, response) {
     primaryDriver = 'gist';
   } else if (ghToken && ghRepo) {
     primaryDriver = 'repo';
-  } else if (gistId) {
-    primaryDriver = 'gist';
   } else if (isDev) {
     primaryDriver = 'local';
   }
@@ -445,19 +408,11 @@ export default async function handler(request, response) {
     
     // Safe environment diagnostic check (does not leak secret values)
     if (urlObj.searchParams.get('debug') === 'true') {
-      let debugReadPlaces = [];
-      let debugError = null;
-      try {
-        debugReadPlaces = await readPlaces(primaryDriver, false, context);
-      } catch (err) {
-        debugError = err?.message || String(err);
-      }
       return response.status(200).json({
         hasKvUrl: !!kvUrl,
         hasKvToken: !!kvToken,
         hasGhToken: !!ghToken,
         hasGistId: !!gistId,
-        gistIdSnippet: gistId ? `${gistId.slice(0, 6)}...` : null,
         hasGhRepo: !!ghRepo,
         hasBackupKvUrl: !!backupKvUrl,
         hasBackupKvToken: !!backupKvToken,
@@ -465,8 +420,6 @@ export default async function handler(request, response) {
         hasBackupGhRepo: !!backupGhRepo,
         primaryDriver,
         backupDriver,
-        primaryReadCount: debugReadPlaces.length,
-        debugError,
         nodeEnv: process.env.NODE_ENV,
         isVercel: !!process.env.VERCEL,
       });
@@ -779,17 +732,11 @@ export default async function handler(request, response) {
           return true;
         });
 
-        const existingPlace = placesList.find(p => String(p.id).trim() === String(idToDelete).trim());
-
         filtered.push({
-          ...(existingPlace || {}),
           id: String(idToDelete).trim(),
-          name: existingPlace ? existingPlace.name : 'Deleted Place',
+          name: 'Deleted Place',
           deleted: true,
-          tags: {
-            ...(existingPlace && existingPlace.tags ? existingPlace.tags : {}),
-            deleted: true
-          },
+          tags: { deleted: true },
           deletedAt: new Date().toISOString()
         });
 

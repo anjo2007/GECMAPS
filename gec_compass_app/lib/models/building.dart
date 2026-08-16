@@ -34,14 +34,10 @@ class Building {
         json['vpsBoardPhoto'] as String? ??
         json['vpsBoardPhotoBase64'] as String? ??
         json['tags']?['vpsBoardPhotoUrl'] as String?;
-    final deletedVal = json['deleted']?.toString().toLowerCase();
-    final tagDeletedVal = json['tags']?['deleted']?.toString().toLowerCase();
     final deleted = json['deleted'] == true ||
-        deletedVal == 'true' ||
-        deletedVal == '1' ||
+        json['deleted'] == 'true' ||
         json['tags']?['deleted'] == true ||
-        tagDeletedVal == 'true' ||
-        tagDeletedVal == '1';
+        json['tags']?['deleted'] == 'true';
 
     return Building(
       id: json['id']?.toString() ?? '',
@@ -60,21 +56,17 @@ class Building {
   Map<String, dynamic> toJson() {
     final mainPhoto = (photoUrl != null && photoUrl!.isNotEmpty) ? photoUrl : photoBase64;
     final vpsPhoto = (vpsBoardPhotoUrl != null && vpsBoardPhotoUrl!.isNotEmpty) ? vpsBoardPhotoUrl : vpsBoardPhotoBase64;
-    final cleanTags = Map<String, dynamic>.from(tags);
-    if (isDeleted) {
-      cleanTags['deleted'] = true;
-    }
     return {
       'id': id,
       'name': name,
       'lat': lat,
       'lng': lng,
-      'tags': cleanTags,
+      'tags': tags,
       if (isDeleted) 'deleted': true,
-      if (mainPhoto != null && mainPhoto.isNotEmpty && !isDeleted) 'photoUrl': mainPhoto,
-      if (mainPhoto != null && mainPhoto.isNotEmpty && !isDeleted) 'photoBase64': mainPhoto,
-      if (vpsPhoto != null && vpsPhoto.isNotEmpty && !isDeleted) 'vpsBoardPhotoUrl': vpsPhoto,
-      if (vpsPhoto != null && vpsPhoto.isNotEmpty && !isDeleted) 'vpsBoardPhotoBase64': vpsPhoto,
+      if (mainPhoto != null && mainPhoto.isNotEmpty) 'photoUrl': mainPhoto,
+      if (mainPhoto != null && mainPhoto.isNotEmpty) 'photoBase64': mainPhoto,
+      if (vpsPhoto != null && vpsPhoto.isNotEmpty) 'vpsBoardPhotoUrl': vpsPhoto,
+      if (vpsPhoto != null && vpsPhoto.isNotEmpty) 'vpsBoardPhotoBase64': vpsPhoto,
     };
   }
 }
