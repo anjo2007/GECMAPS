@@ -331,6 +331,16 @@ export default async function handler(request, response) {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-00MRVSKXXC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-00MRVSKXXC');
+  </script>
+
   <meta charset="utf-8">
   <title>${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps – GEC Thrissur</title>
   <meta name="title" content="${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps">
