@@ -175,7 +175,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   LatLng? _rawDeviceGpsPosition;
   LatLng? _sharedGridLocation;
   StreamSubscription<Position>? _gpsSubscription;
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _loadError;
   bool _locationDenied = false;
   bool _locationDeniedForever = false;
@@ -397,6 +397,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
             if (mounted) {
               setState(() {
                 _buildings = syncedBuildings;
+                _cachedFilteredBuildings = null;
+                _lastBuildingCount = -1;
               });
             }
           },
@@ -410,6 +412,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       // Instant UI unblock (< 50ms)
       setState(() {
         _buildings = buildings;
+        _cachedFilteredBuildings = null;
+        _lastBuildingCount = -1;
         _isLoading = false;
       });
 
@@ -540,6 +544,133 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       }
     } catch (e) {
       debugPrint("Async GPS location update note: $e");
+    }
+  }
+
+  Future<void> _recenterOnUserLocation() async {
+    setState(() {
+      _isAutoRecentering = true;
+    });
+
+    // 1. Immediately pan/zoom to existing location if already known for instant UI response
+    final existingPos = _pdrService.currentPosition ?? _currentPosition ?? _rawDeviceGpsPosition ?? _positionNotifier.value;
+    if (existingPos != null && mounted) {
+      final targetZoom = _mapController.camera.zoom < 18.0 ? 18.0 : _mapController.camera.zoom;
+      _mapController.move(existingPos, targetZoom);
+    }
+
+    // 2. Validate and handle location service & permissions
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() => _locationServiceDisabled = true);
+          TopMessageOverlay.showLocationAlert(
+            context,
+            onOpenSettings: Geolocator.openLocationSettings,
+            onReload: _retryLocationPermission,
+          );
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() => _locationDeniedForever = true);
+          _retryLocationPermission();
+        }
+        return;
+      }
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          setState(() => _locationDenied = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Location permission is needed to show your position."),
+              backgroundColor: Colors.orangeAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Ensure active GPS subscription is running
+      _startGPSListening();
+
+      // 3. If no existing position was known, try instant last known position
+      if (existingPos == null) {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null && mounted) {
+          final lastKnownPos = LatLng(lastKnown.latitude, lastKnown.longitude);
+          _rawDeviceGpsPosition = lastKnownPos;
+          _currentPosition = lastKnownPos;
+          _positionNotifier.value = lastKnownPos;
+          if (!_pdrService.isActive) {
+            _pdrService.startPDR(lastKnownPos);
+          }
+          final targetZoom = _mapController.camera.zoom < 18.0 ? 18.0 : _mapController.camera.zoom;
+          _mapController.move(lastKnownPos, targetZoom);
+        }
+      }
+
+      // 4. Acquire fresh GPS fix with fallback
+      Position? freshPos;
+      try {
+        freshPos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: Duration(seconds: 6),
+          ),
+        );
+      } catch (_) {
+        // Fallback for indoor or weak satellite lock
+        try {
+          freshPos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 4),
+            ),
+          );
+        } catch (_) {}
+      }
+
+      if (freshPos != null && mounted) {
+        final newPos = LatLng(freshPos.latitude, freshPos.longitude);
+        _rawDeviceGpsPosition = newPos;
+        _currentPosition = newPos;
+        _positionNotifier.value = newPos;
+        if (!_pdrService.isActive) {
+          _pdrService.startPDR(newPos);
+        }
+        _pdrService.updateGPSPosition(newPos, freshPos.accuracy, freshPos.speed, freshPos.heading);
+        final targetZoom = _mapController.camera.zoom < 18.0 ? 18.0 : _mapController.camera.zoom;
+        _mapController.move(newPos, targetZoom);
+      } else if (existingPos == null && mounted) {
+        final currentKnown = _pdrService.currentPosition ?? _currentPosition ?? _rawDeviceGpsPosition;
+        if (currentKnown != null) {
+          _mapController.move(currentKnown, 18.0);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Acquiring GPS location... Please ensure location is enabled and you have clear sky visibility."),
+              backgroundColor: Colors.blueAccent,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Recenter on location error: $e");
+      final fallbackPos = _pdrService.currentPosition ?? _currentPosition ?? _rawDeviceGpsPosition;
+      if (fallbackPos != null && mounted) {
+        _mapController.move(fallbackPos, 18.0);
+      }
     }
   }
 
@@ -1923,9 +2054,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         }
       }
 
-      final amenity = b.tags['amenity'] as String?;
-      final buildingType = b.tags['building'] as String?;
-      final tourism = b.tags['tourism'] as String?;
       final isRoom = b.tags['room'] == 'yes';
       final placeType = (b.tags['place_type'] ?? b.tags['type']) as String?;
 
@@ -1937,38 +2065,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         return true;
       }
 
-      if (placeType != null && placeType.isNotEmpty) {
-        if (_selectedCategory == 'Washrooms' && (placeType == 'Washrooms' || placeType == 'Wash room' || placeType == 'washroom' || placeType == 'toilets')) {
-          return true;
-        }
-        return placeType == _selectedCategory;
-      }
-
-      switch (_selectedCategory) {
-        case 'Departments':
-          return buildingType == 'college' && !isRoom;
-        case 'Workshops':
-          return b.name.toLowerCase().contains('workshop');
-        case 'Hostels':
-          return tourism == 'hostel' || b.name.toLowerCase().contains('hostel');
-        case 'Cafes/ATMs':
-          return ['restaurant', 'cafe', 'food_court', 'atm', 'bank'].contains(amenity);
-        case 'Rooms/Labs':
-          return isRoom;
-        case 'Washrooms':
-        case 'Wash room':
-          final nameLower = b.name.toLowerCase();
-          final tagsStr = (b.tags['search_tags'] ?? '').toString().toLowerCase();
-          return amenity == 'toilets' ||
-                 nameLower.contains('washroom') ||
-                 nameLower.contains('wash room') ||
-                 nameLower.contains('toilet') ||
-                 nameLower.contains('restroom') ||
-                 tagsStr.contains('washroom') ||
-                 tagsStr.contains('toilet');
-        default:
-          return true;
-      }
+      final resolvedCategory = _resolveBuildingCategory(b);
+      return resolvedCategory == _selectedCategory;
     }).toList();
 
     _lastFilterCategory = _selectedCategory;
@@ -2862,8 +2960,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                         ),
                       ],
                       
-                      // Building markers with dynamic zoom and navigation text labels
+                      // Building markers with dynamic zoom and navigation text labels (always upright & readable on screen rotation)
                       MarkerLayer(
+                        rotate: true,
                         markers: filteredBuildings.map((b) {
                           final isSelected = _selectedBuilding?.id == b.id;
                           final isEvent = b.tags['is_event'] == 'true';
@@ -2879,6 +2978,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                               width: markerWidth,
                               height: markerHeight,
                               alignment: Alignment.bottomCenter,
+                              rotate: true,
                               child: GestureDetector(
                                 onTap: () => _selectBuilding(b),
                                 child: Column(
@@ -2969,6 +3069,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                             width: markerWidth,
                             height: markerHeight,
                             alignment: showLabels ? Alignment.topCenter : Alignment.bottomCenter,
+                            rotate: true,
                             child: GestureDetector(
                               onTap: () => _selectBuilding(b),
                               child: Column(
@@ -3032,12 +3133,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                       // Shared Grid Location Marker
                       if (_sharedGridLocation != null)
                         MarkerLayer(
+                          rotate: true,
                           markers: [
                             Marker(
                               point: _sharedGridLocation!,
                               width: 140,
                               height: 64,
                               alignment: Alignment.topCenter,
+                              rotate: true,
                               child: GestureDetector(
                                 onTap: () {
                                   final gridAddr = GridAddressingService.getCampusGridAddress(_sharedGridLocation!);
@@ -3617,35 +3720,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                               highlightElevation: 0,
                               backgroundColor: _cardBgColor.withValues(alpha: 0.7),
                               foregroundColor: _isAutoRecentering ? const Color(0xFF3B82F6) : _textColor.withValues(alpha: 0.6),
-                              onPressed: () async {
-                                setState(() {
-                                  _isAutoRecentering = true;
-                                });
-                                _startGPSListening();
-                                try {
-                                  final pos = await Geolocator.getCurrentPosition(
-                                    locationSettings: const LocationSettings(
-                                      accuracy: LocationAccuracy.bestForNavigation,
-                                      timeLimit: Duration(seconds: 4),
-                                    ),
-                                  );
-                                  if (mounted) {
-                                    final newPos = LatLng(pos.latitude, pos.longitude);
-                                    _rawDeviceGpsPosition = newPos;
-                                    _currentPosition = newPos;
-                                    _positionNotifier.value = newPos;
-                                    if (!_pdrService.isActive) {
-                                      _pdrService.startPDR(newPos);
-                                    }
-                                    _pdrService.updateGPSPosition(newPos, pos.accuracy, pos.speed, pos.heading);
-                                    _mapController.move(newPos, 18.0);
-                                  }
-                                } catch (e) {
-                                  if (_currentPosition != null && mounted) {
-                                    _mapController.move(_currentPosition!, 18.0);
-                                  }
-                                }
-                              },
+                              onPressed: _recenterOnUserLocation,
                               child: Icon(_isAutoRecentering ? Icons.my_location : Icons.location_searching),
                             ),
                           ),
@@ -4853,52 +4928,228 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     );
   }
 
-  IconData _getMarkerIcon(Building b) {
-    final amenity = b.tags['amenity'] as String?;
-    final buildingType = b.tags['building'] as String?;
-    final tourism = b.tags['tourism'] as String?;
-    final barrier = b.tags['barrier'] as String?;
-    final placeType = b.tags['place_type'] as String?;
+  String _resolveBuildingCategory(Building b) {
+    final explicitType = (b.tags['place_type'] ?? b.tags['type'])?.toString().trim();
+    if (explicitType != null && explicitType.isNotEmpty && explicitType != 'Other') {
+      if (explicitType == 'Wash room' || explicitType == 'washroom') return 'Washrooms';
+      return explicitType;
+    }
 
-    if (barrier == 'gate' || placeType == 'Entrance Gate') return Icons.sensor_door;
-    if (b.tags['is_event'] == 'true') return Icons.star;
-    if (placeType == 'Washrooms' || placeType == 'Wash room' || amenity == 'toilets' || b.name.toLowerCase().contains('washroom') || b.name.toLowerCase().contains('toilet')) {
-      return Icons.wc_rounded;
+    final amenity = b.tags['amenity']?.toString().toLowerCase();
+    final buildingType = b.tags['building']?.toString().toLowerCase();
+    final tourism = b.tags['tourism']?.toString().toLowerCase();
+    final barrier = b.tags['barrier']?.toString().toLowerCase();
+    final leisure = b.tags['leisure']?.toString().toLowerCase();
+    final isRoom = b.tags['room'] == 'yes' || b.tags['room'] == true;
+    final nameLower = b.name.toLowerCase();
+    final tagsStr = (b.tags['search_tags'] ?? '').toString().toLowerCase();
+
+    // 1. Entrance Gates
+    if (barrier == 'gate' || nameLower.contains(' gate') || nameLower.startsWith('gate') || nameLower.contains('entrance')) {
+      return 'Entrance Gate';
     }
-    if (amenity == 'restaurant' || amenity == 'cafe' || amenity == 'food_court') {
-      return Icons.restaurant;
+
+    // 2. Washrooms
+    if (amenity == 'toilets' ||
+        nameLower.contains('washroom') ||
+        nameLower.contains('wash room') ||
+        nameLower.contains('toilet') ||
+        nameLower.contains('restroom') ||
+        tagsStr.contains('washroom') ||
+        tagsStr.contains('toilet')) {
+      return 'Washrooms';
     }
-    if (amenity == 'atm' || amenity == 'bank') return Icons.account_balance;
-    if (amenity == 'place_of_worship') return Icons.temple_hindu;
-    if (amenity == 'pharmacy') return Icons.local_pharmacy;
-    if (amenity == 'police') return Icons.local_police;
-    if (amenity == 'post_office') return Icons.local_post_office;
-    if (amenity == 'fire_station') return Icons.local_fire_department;
-    if (amenity == 'events_venue' || amenity == 'community_centre') return Icons.event;
-    if (tourism == 'hostel') return Icons.hotel;
-    if (buildingType == 'college') return Icons.school;
-    return Icons.location_on;
+
+    // 3. Cafes / Canteen / Food / ATMs
+    if (['restaurant', 'cafe', 'food_court', 'canteen', 'fast_food'].contains(amenity) ||
+        nameLower.contains('canteen') ||
+        nameLower.contains('cafe') ||
+        nameLower.contains('cafeteria') ||
+        nameLower.contains('coffee') ||
+        nameLower.contains('mess') ||
+        nameLower.contains('bakery')) {
+      return 'Cafes/ATMs';
+    }
+    if (['atm', 'bank'].contains(amenity) || nameLower.contains('atm') || nameLower.contains('bank') || nameLower.contains('sbi')) {
+      return 'Cafes/ATMs';
+    }
+
+    // 4. Hostels / Residential
+    if (tourism == 'hostel' ||
+        nameLower.contains('hostel') ||
+        nameLower.contains('mens hostel') ||
+        nameLower.contains('ladies hostel') ||
+        nameLower.contains('lh ') ||
+        nameLower.contains('mh ') ||
+        nameLower.startsWith('lh') ||
+        nameLower.startsWith('mh') ||
+        nameLower.contains('dormitory')) {
+      return 'Hostels';
+    }
+
+    // 5. Workshops
+    if (nameLower.contains('workshop') ||
+        nameLower.contains('foundry') ||
+        nameLower.contains('smithy') ||
+        nameLower.contains('carpentry') ||
+        nameLower.contains('welding') ||
+        nameLower.contains('machine shop') ||
+        nameLower.contains('fitting')) {
+      return 'Workshops';
+    }
+
+    // 6. Rooms / Labs / Classrooms
+    if (isRoom ||
+        nameLower.contains(' lab') ||
+        nameLower.contains('laboratory') ||
+        nameLower.contains('classroom') ||
+        nameLower.contains('drawing hall') ||
+        nameLower.contains('seminar hall') ||
+        nameLower.contains('ccf')) {
+      return 'Rooms/Labs';
+    }
+
+    // 7. Library
+    if (amenity == 'library' || nameLower.contains('library')) {
+      return 'Library';
+    }
+
+    // 8. Auditorium / Hall
+    if (amenity == 'events_venue' ||
+        amenity == 'community_centre' ||
+        nameLower.contains('auditorium') ||
+        nameLower.contains('open air stage') ||
+        nameLower.contains('oas')) {
+      return 'Auditorium';
+    }
+
+    // 9. Sports / Ground
+    if (leisure == 'pitch' ||
+        leisure == 'sports_centre' ||
+        nameLower.contains('ground') ||
+        nameLower.contains('court') ||
+        nameLower.contains('stadium') ||
+        nameLower.contains('gym')) {
+      return 'Sports';
+    }
+
+    // 10. Medical
+    if (amenity == 'pharmacy' ||
+        amenity == 'clinic' ||
+        amenity == 'hospital' ||
+        nameLower.contains('medical') ||
+        nameLower.contains('health') ||
+        nameLower.contains('dispensary')) {
+      return 'Medical';
+    }
+
+    // 11. Place of worship
+    if (amenity == 'place_of_worship' ||
+        nameLower.contains('temple') ||
+        nameLower.contains('mosque') ||
+        nameLower.contains('church') ||
+        nameLower.contains('prayer')) {
+      return 'Worship';
+    }
+
+    // 12. Departments / Academic Blocks
+    if (buildingType == 'college' ||
+        nameLower.contains('dept') ||
+        nameLower.contains('department') ||
+        nameLower.contains('block') ||
+        nameLower.contains('engineering') ||
+        nameLower.contains('architecture') ||
+        nameLower.contains('admin')) {
+      return 'Departments';
+    }
+
+    return 'Other';
+  }
+
+  IconData _getMarkerIcon(Building b) {
+    if (b.tags['is_event'] == 'true') return Icons.stars_rounded;
+
+    final category = _resolveBuildingCategory(b);
+    final nameLower = b.name.toLowerCase();
+    final amenity = b.tags['amenity']?.toString().toLowerCase();
+
+    switch (category) {
+      case 'Entrance Gate':
+        return Icons.sensor_door_rounded;
+      case 'Departments':
+        return Icons.school_rounded;
+      case 'Workshops':
+        return Icons.construction_rounded;
+      case 'Hostels':
+        return Icons.hotel_rounded;
+      case 'Cafes/ATMs':
+        if (['atm', 'bank'].contains(amenity) || nameLower.contains('atm') || nameLower.contains('bank') || nameLower.contains('sbi')) {
+          return Icons.atm_rounded;
+        }
+        return Icons.restaurant_rounded;
+      case 'Rooms/Labs':
+        if (nameLower.contains('computer') || nameLower.contains('ccf') || nameLower.contains('it lab')) {
+          return Icons.computer_rounded;
+        }
+        if (nameLower.contains('lab') || nameLower.contains('laboratory')) {
+          return Icons.science_rounded;
+        }
+        return Icons.meeting_room_rounded;
+      case 'Washrooms':
+        return Icons.wc_rounded;
+      case 'Library':
+        return Icons.local_library_rounded;
+      case 'Auditorium':
+        return Icons.theater_comedy_rounded;
+      case 'Sports':
+        return Icons.sports_soccer_rounded;
+      case 'Medical':
+        return Icons.local_hospital_rounded;
+      case 'Worship':
+        return Icons.temple_hindu_rounded;
+      default:
+        return Icons.location_on_rounded;
+    }
   }
 
   Color _getMarkerColor(Building b) {
-    final amenity = b.tags['amenity'] as String?;
-    final buildingType = b.tags['building'] as String?;
-    final isRoom = b.tags['room'] == 'yes';
-    final barrier = b.tags['barrier'] as String?;
-    final placeType = b.tags['place_type'] as String?;
+    if (b.tags['is_event'] == 'true') return const Color(0xFFEF4444);
 
-    if (barrier == 'gate' || placeType == 'Entrance Gate') return const Color(0xFF10B981);
-    if (b.tags['is_event'] == 'true') return Colors.redAccent;
-    if (placeType == 'Washrooms' || placeType == 'Wash room' || amenity == 'toilets' || b.name.toLowerCase().contains('washroom') || b.name.toLowerCase().contains('toilet')) {
-      return const Color(0xFF06B6D4);
+    final category = _resolveBuildingCategory(b);
+    final nameLower = b.name.toLowerCase();
+    final amenity = b.tags['amenity']?.toString().toLowerCase();
+
+    switch (category) {
+      case 'Entrance Gate':
+        return const Color(0xFF10B981); // Emerald
+      case 'Departments':
+        return const Color(0xFF2563EB); // Royal Blue
+      case 'Workshops':
+        return const Color(0xFFD97706); // Amber / Bronze
+      case 'Hostels':
+        return const Color(0xFF7C3AED); // Deep Violet
+      case 'Cafes/ATMs':
+        if (['atm', 'bank'].contains(amenity) || nameLower.contains('atm') || nameLower.contains('bank') || nameLower.contains('sbi')) {
+          return const Color(0xFFF59E0B); // Gold Amber for ATMs
+        }
+        return const Color(0xFFEA580C); // Warm Orange for Cafes
+      case 'Rooms/Labs':
+        return const Color(0xFF9333EA); // Purple
+      case 'Washrooms':
+        return const Color(0xFF0891B2); // Cyan Teal
+      case 'Library':
+        return const Color(0xFF0284C7); // Sky Blue
+      case 'Auditorium':
+        return const Color(0xFFDB2777); // Rose Pink
+      case 'Sports':
+        return const Color(0xFF059669); // Forest Green
+      case 'Medical':
+        return const Color(0xFFDC2626); // Crimson Red
+      case 'Worship':
+        return const Color(0xFFCA8A04); // Golden Yellow
+      default:
+        return const Color(0xFFE11D48); // Classic Red
     }
-    if (amenity == 'restaurant' || amenity == 'cafe' || amenity == 'food_court') {
-      return Colors.orangeAccent;
-    }
-    if (isRoom) return Colors.purpleAccent;
-    if (buildingType == 'college') return const Color(0xFF3B82F6);
-    if (amenity == 'atm' || amenity == 'bank') return Colors.amberAccent;
-    return Colors.redAccent;
   }
 
   Widget _buildPlaceThumbnailImage(Building building, {double size = 50}) {
@@ -4961,7 +5212,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.place, color: Colors.white, size: 20),
+          Icon(_getMarkerIcon(building), color: Colors.white, size: 20),
           const SizedBox(height: 2),
           Text(
             building.name.length > 5 ? '${building.name.substring(0, 4)}..' : building.name,
@@ -6532,10 +6783,38 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     final vpsTextController = TextEditingController(text: building.tags['vps_text']?.toString() ?? '');
     final openTimeController = TextEditingController(text: building.tags['opening_time']?.toString() ?? '06:00 AM');
     final closeTimeController = TextEditingController(text: building.tags['closing_time']?.toString() ?? '10:00 PM');
-    bool isEntranceGate = building.tags['barrier'] == 'gate' || building.tags['place_type'] == 'Entrance Gate';
-    bool isWashroom = building.tags['place_type'] == 'Washrooms' || building.tags['place_type'] == 'Wash room' || building.tags['amenity'] == 'toilets' || building.name.toLowerCase().contains('washroom');
+    const validPlaceTypes = [
+      'Departments',
+      'Workshops',
+      'Hostels',
+      'Cafes/ATMs',
+      'Rooms/Labs',
+      'Washrooms',
+      'Entrance Gate',
+      'Other',
+    ];
+
+    String selectedPlaceType = 'Departments';
+    final existingPlaceType = building.tags['place_type']?.toString() ?? building.tags['type']?.toString();
+    if (existingPlaceType != null && validPlaceTypes.contains(existingPlaceType)) {
+      selectedPlaceType = existingPlaceType;
+    } else if (building.tags['barrier'] == 'gate' || (existingPlaceType != null && existingPlaceType.toLowerCase().contains('gate')) || building.name.toLowerCase().contains('gate')) {
+      selectedPlaceType = 'Entrance Gate';
+    } else if (building.tags['amenity'] == 'toilets' || (existingPlaceType != null && (existingPlaceType == 'Wash room' || existingPlaceType.toLowerCase().contains('washroom') || existingPlaceType.toLowerCase().contains('toilet'))) || building.name.toLowerCase().contains('washroom') || building.name.toLowerCase().contains('toilet')) {
+      selectedPlaceType = 'Washrooms';
+    } else if (building.tags['room'] == 'yes' || (existingPlaceType != null && existingPlaceType.toLowerCase().contains('room'))) {
+      selectedPlaceType = 'Rooms/Labs';
+    } else if (building.tags['tourism'] == 'hostel' || building.name.toLowerCase().contains('hostel') || (existingPlaceType != null && existingPlaceType.toLowerCase().contains('hostel'))) {
+      selectedPlaceType = 'Hostels';
+    } else if (['restaurant', 'cafe', 'food_court', 'atm', 'bank'].contains(building.tags['amenity']) || building.name.toLowerCase().contains('cafe') || building.name.toLowerCase().contains('canteen') || building.name.toLowerCase().contains('atm')) {
+      selectedPlaceType = 'Cafes/ATMs';
+    } else if (building.name.toLowerCase().contains('workshop')) {
+      selectedPlaceType = 'Workshops';
+    } else if (existingPlaceType != null && existingPlaceType.isNotEmpty) {
+      selectedPlaceType = 'Other';
+    }
     
-    bool isClassroom = building.tags['room'] == 'yes';
+    bool isClassroom = (selectedPlaceType == 'Rooms/Labs') || (building.tags['room'] == 'yes');
     Building? selectedParent;
     try {
       final parentId = building.tags['parent_id'];
@@ -6611,64 +6890,39 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                     ),
                     const SizedBox(height: 20),
                     
-                    // Choice of type
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text("Building/Lab"),
-                          selected: !isClassroom && !isEntranceGate && !isWashroom,
-                          onSelected: (val) => setModalState(() {
-                            isClassroom = false;
-                            isEntranceGate = false;
-                            isWashroom = false;
-                          }),
-                          selectedColor: const Color(0xFF3B82F6),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: (!isClassroom && !isEntranceGate && !isWashroom) ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        ChoiceChip(
-                          label: const Text("Room/Classroom"),
-                          selected: isClassroom,
-                          onSelected: (val) => setModalState(() {
-                            isClassroom = true;
-                            isEntranceGate = false;
-                            isWashroom = false;
-                          }),
-                          selectedColor: const Color(0xFF3B82F6),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: isClassroom ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        ChoiceChip(
-                          label: const Text("🚻 Washroom"),
-                          selected: isWashroom,
-                          onSelected: (val) => setModalState(() {
-                            isWashroom = true;
-                            isClassroom = false;
-                            isEntranceGate = false;
-                          }),
-                          selectedColor: const Color(0xFF06B6D4),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: isWashroom ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        ChoiceChip(
-                          label: const Text("🚪 Entrance Gate"),
-                          selected: isEntranceGate,
-                          onSelected: (val) => setModalState(() {
-                            isEntranceGate = true;
-                            isClassroom = false;
-                            isWashroom = false;
-                          }),
-                          selectedColor: const Color(0xFF10B981),
-                          backgroundColor: _scaffoldBgColor.withValues(alpha: 0.5),
-                          labelStyle: TextStyle(color: isEntranceGate ? Colors.white : _textColor.withValues(alpha: 0.7), fontSize: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
+                    // Place Type / Category Selection for Sorting & Filtering
+                    Text(
+                      "Place Type (Used for Sorting & Filtering):",
+                      style: TextStyle(color: _textColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedPlaceType,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: _scaffoldBgColor.withValues(alpha: 0.5),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                      dropdownColor: _cardBgColor,
+                      items: const [
+                        DropdownMenuItem(value: 'Departments', child: Text("🏛️ Department / Academic Block")),
+                        DropdownMenuItem(value: 'Workshops', child: Text("🛠️ Workshop / Lab Facility")),
+                        DropdownMenuItem(value: 'Hostels', child: Text("🏢 Hostel (Student / Staff)")),
+                        DropdownMenuItem(value: 'Cafes/ATMs', child: Text("☕ Cafe / ATM / Canteen")),
+                        DropdownMenuItem(value: 'Rooms/Labs', child: Text("🔬 Room / Classroom / Lab")),
+                        DropdownMenuItem(value: 'Washrooms', child: Text("🚻 Washroom / Restroom / Toilet")),
+                        DropdownMenuItem(value: 'Entrance Gate', child: Text("🚪 Entrance Gate / Campus Boundary")),
+                        DropdownMenuItem(value: 'Other', child: Text("📌 Other / Campus Landmark")),
                       ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            selectedPlaceType = val;
+                            isClassroom = (val == 'Rooms/Labs');
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 20),
 
@@ -6704,102 +6958,104 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                     const SizedBox(height: 16),
 
                     // Gate Operating Schedule & Timing
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _scaffoldBgColor.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _borderColor),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time_filled_rounded, color: Color(0xFF3B82F6), size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                "Operating Schedule / Gate Timing",
-                                style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: openTimeController,
-                                  style: TextStyle(color: _textColor, fontSize: 13),
-                                  decoration: InputDecoration(
-                                    labelText: "Opening Time",
-                                    hintText: "06:00 AM",
-                                    prefixIcon: const Icon(Icons.wb_sunny_outlined, size: 16, color: Color(0xFFF59E0B)),
-                                    filled: true,
-                                    fillColor: _cardBgColor,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                  ),
-                                  onChanged: (_) => setModalState(() {}),
+                    if (selectedPlaceType == 'Entrance Gate' || selectedPlaceType == 'Cafes/ATMs' || (building.tags['opening_time'] != null && building.tags['opening_time'].toString().isNotEmpty)) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _scaffoldBgColor.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _borderColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.access_time_filled_rounded, color: Color(0xFF3B82F6), size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Operating Schedule / Gate Timing",
+                                  style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextField(
-                                  controller: closeTimeController,
-                                  style: TextStyle(color: _textColor, fontSize: 13),
-                                  decoration: InputDecoration(
-                                    labelText: "Closing Time",
-                                    hintText: "10:00 PM",
-                                    prefixIcon: const Icon(Icons.nightlight_outlined, size: 16, color: Color(0xFF8B5CF6)),
-                                    filled: true,
-                                    fillColor: _cardBgColor,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: openTimeController,
+                                    style: TextStyle(color: _textColor, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      labelText: "Opening Time",
+                                      hintText: "06:00 AM",
+                                      prefixIcon: const Icon(Icons.wb_sunny_outlined, size: 16, color: Color(0xFFF59E0B)),
+                                      filled: true,
+                                      fillColor: _cardBgColor,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    ),
+                                    onChanged: (_) => setModalState(() {}),
                                   ),
-                                  onChanged: (_) => setModalState(() {}),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              ActionChip(
-                                label: const Text("24/7 Open", style: TextStyle(fontSize: 11)),
-                                onPressed: () {
-                                  setModalState(() {
-                                    openTimeController.text = "24/7";
-                                    closeTimeController.text = "24/7";
-                                  });
-                                },
-                              ),
-                              ActionChip(
-                                label: const Text("06:00 AM - 10:30 PM", style: TextStyle(fontSize: 11)),
-                                onPressed: () {
-                                  setModalState(() {
-                                    openTimeController.text = "06:00 AM";
-                                    closeTimeController.text = "10:30 PM";
-                                  });
-                                },
-                              ),
-                              ActionChip(
-                                label: const Text("06:00 AM - 09:00 PM", style: TextStyle(fontSize: 11)),
-                                onPressed: () {
-                                  setModalState(() {
-                                    openTimeController.text = "06:00 AM";
-                                    closeTimeController.text = "09:00 PM";
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextField(
+                                    controller: closeTimeController,
+                                    style: TextStyle(color: _textColor, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      labelText: "Closing Time",
+                                      hintText: "10:00 PM",
+                                      prefixIcon: const Icon(Icons.nightlight_outlined, size: 16, color: Color(0xFF8B5CF6)),
+                                      filled: true,
+                                      fillColor: _cardBgColor,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    ),
+                                    onChanged: (_) => setModalState(() {}),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                ActionChip(
+                                  label: const Text("24/7 Open", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "24/7";
+                                      closeTimeController.text = "24/7";
+                                    });
+                                  },
+                                ),
+                                ActionChip(
+                                  label: const Text("06:00 AM - 10:30 PM", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "06:00 AM";
+                                      closeTimeController.text = "10:30 PM";
+                                    });
+                                  },
+                                ),
+                                ActionChip(
+                                  label: const Text("06:00 AM - 09:00 PM", style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      openTimeController.text = "06:00 AM";
+                                      closeTimeController.text = "09:00 PM";
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Parent Building Search Selector (if room)
-                    if (isClassroom) ...[
+                    if (isClassroom || selectedPlaceType == 'Rooms/Labs') ...[
                       Autocomplete<Building>(
                         initialValue: TextEditingValue(text: selectedParent?.name ?? ''),
                         optionsBuilder: (TextEditingValue textEditingValue) {
@@ -7534,20 +7790,20 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                   tags: {
                                     ...building.tags,
                                     'custom': true,
-                                    if (isWashroom) 'place_type': 'Washrooms',
-                                    if (isWashroom) 'amenity': 'toilets',
-                                    if (!isWashroom && building.tags['amenity'] == 'toilets') 'amenity': null,
-                                    if (isEntranceGate) 'barrier': 'gate',
-                                    if (isEntranceGate) 'place_type': 'Entrance Gate',
-                                    if (!isEntranceGate && !isWashroom && building.tags['barrier'] == 'gate') ...{'barrier': null, 'place_type': isClassroom ? 'Rooms/Labs' : 'Departments'},
-                                    if (!isEntranceGate && !isWashroom && !isClassroom && building.tags['place_type'] == 'Entrance Gate') 'place_type': 'Departments',
+                                    'place_type': selectedPlaceType,
+                                    'type': selectedPlaceType,
+                                    if (selectedPlaceType == 'Washrooms') 'amenity': 'toilets',
+                                    if (selectedPlaceType != 'Washrooms' && building.tags['amenity'] == 'toilets') 'amenity': null,
+                                    if (selectedPlaceType == 'Entrance Gate') 'barrier': 'gate',
+                                    if (selectedPlaceType != 'Entrance Gate' && building.tags['barrier'] == 'gate') 'barrier': null,
+                                    if (selectedPlaceType == 'Rooms/Labs' || isClassroom) 'room': 'yes',
+                                    if (selectedPlaceType != 'Rooms/Labs' && !isClassroom && building.tags['room'] == 'yes') 'room': null,
+                                    if (selectedPlaceType == 'Hostels') 'tourism': 'hostel',
                                     'opening_time': openTimeController.text.trim().isNotEmpty ? openTimeController.text.trim() : null,
                                     'closing_time': closeTimeController.text.trim().isNotEmpty ? closeTimeController.text.trim() : null,
                                     'opening_hours': (openTimeController.text.trim().isNotEmpty && closeTimeController.text.trim().isNotEmpty) ? "${openTimeController.text.trim()} - ${closeTimeController.text.trim()}" : null,
                                     'search_tags': searchTagsController.text.trim().isNotEmpty ? searchTagsController.text.trim() : null,
-                                    if (isClassroom) 'room': 'yes',
-                                    if (!isClassroom) ...{'room': null},
-                                    'parent_id': isClassroom && selectedParent != null ? selectedParent!.id : null,
+                                    'parent_id': (isClassroom || selectedPlaceType == 'Rooms/Labs') && selectedParent != null ? selectedParent!.id : null,
                                     'floor': floorController.text.isNotEmpty ? floorController.text.trim() : null,
                                     'ref': roomController.text.isNotEmpty ? roomController.text.trim() : null,
                                     'vps_enabled': enableVPS ? 'yes' : 'no',
@@ -7643,7 +7899,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                              children: [
                                                Text('Are you sure you want to delete "${building.name}" permanently?', style: TextStyle(color: _textColor, fontSize: 14)),
                                                const SizedBox(height: 16),
-                                               Text('Security verification code:', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                                               Text('Security verification code (Required):', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
                                                const SizedBox(height: 6),
                                                TextField(
                                                  controller: controller,
@@ -7651,7 +7907,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                                  style: TextStyle(color: _textColor),
                                                  decoration: InputDecoration(
                                                    hintText: 'Enter Security Code',
-                                                   hintStyle: TextStyle(color: _textColor.withValues(alpha: 0.5)),
+                                                   hintStyle: TextStyle(color: _textColor.withValues(alpha: 0.5), fontSize: 13),
                                                    enabledBorder: OutlineInputBorder(
                                                      borderSide: BorderSide(color: _borderColor),
                                                      borderRadius: BorderRadius.circular(8),
@@ -7683,7 +7939,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
                                              ),
                                              TextButton(
-                                               onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                                               onPressed: () {
+                                                 final code = controller.text.trim();
+                                                 if (code.isEmpty) {
+                                                   ScaffoldMessenger.of(context).showSnackBar(
+                                                     const SnackBar(
+                                                       content: Text('Security code is required to delete a place.'),
+                                                       backgroundColor: Colors.redAccent,
+                                                     ),
+                                                   );
+                                                   return;
+                                                 }
+                                                 Navigator.pop(ctx, code);
+                                               },
                                                child: const Text('Confirm Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
                                              ),
                                            ],

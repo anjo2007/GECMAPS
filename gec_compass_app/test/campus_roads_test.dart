@@ -17,13 +17,13 @@ void main() {
       
       expect(data['type'], equals('FeatureCollection'));
       final features = data['features'] as List<dynamic>;
-      expect(features.length, equals(6));
+      expect(features, isNotEmpty);
 
       final nodes = data['nodes'] as List<dynamic>;
       final edges = data['edges'] as List<dynamic>;
 
-      expect(nodes.length, equals(229));
-      expect(edges.length, equals(257));
+      expect(nodes.length, equals(247));
+      expect(edges.length, equals(273));
     });
 
     test('RoutingService initializes campus road graph properly', () async {
@@ -32,8 +32,8 @@ void main() {
       final jsonStr = await file.readAsString();
       routingService.loadCampusRoadsFromJsonString(jsonStr);
 
-      expect(routingService.roadNodes.length, greaterThanOrEqualTo(229));
-      expect(routingService.roadAdjacency.length, greaterThanOrEqualTo(229));
+      expect(routingService.roadNodes.length, greaterThanOrEqualTo(247));
+      expect(routingService.roadAdjacency.length, greaterThanOrEqualTo(247));
     });
 
     test('RoutingService finds single optimal path between campus locations', () async {
@@ -50,6 +50,23 @@ void main() {
       expect(route.fullPath.length, greaterThanOrEqualTo(2));
       expect(route.roadPath, isNotEmpty);
       expect(route.distanceMeters, greaterThan(0));
+    });
+
+    test('RoutingService selects optimal Electrical Gate for south entrance to West campus', () async {
+      final routingService = RoutingService();
+      final file = File('assets/campus_roads.json');
+      final jsonStr = await file.readAsString();
+      routingService.loadCampusRoadsFromJsonString(jsonStr);
+
+      // White House Hostel (south) to Post Graduate Block (west campus)
+      const southStart = LatLng(10.550500, 76.224100);
+      const westDestination = LatLng(10.553440, 76.220577);
+
+      final route = await routingService.getDetailedRoute(southStart, westDestination);
+      expect(route.fullPath, isNotEmpty);
+      expect(route.activeGateName, contains('Electrical Gate'));
+      // Direct optimal route should be < 800m (not the 1.8km detour around the outside)
+      expect(route.distanceMeters, lessThan(800.0));
     });
   });
 

@@ -19,9 +19,11 @@ class DataService {
   // Default Vercel API URL — used as fallback if dynamic config fetch fails
   static const String _defaultApiUrl = 'https://gecmaps.vercel.app/api/places';
 
-  // GitHub raw URL for the config.json file in the repository
+  // GitHub raw URL for the config.json file in the repository (main branch)
   static const String _configUrl =
-      'https://raw.githubusercontent.com/anjo2007/GECMAPS/master/config.json';
+      'https://raw.githubusercontent.com/anjo2007/Gec__compass/main/config.json';
+  static const String _fallbackConfigUrl =
+      'https://raw.githubusercontent.com/anjo2007/GECMAPS/main/config.json';
 
   // Cached resolved API URL (in-memory for the session)
   String? _resolvedApiUrl;
@@ -29,9 +31,23 @@ class DataService {
   // Cached base campus buildings parsed from JSON asset
   List<Building>? _cachedBaseBuildings;
 
-  /// Resolves the API URL dynamically from the GitHub-hosted config.json.
-  /// Falls back to the locally cached URL, then to the hardcoded default.
+  /// Resolves the API URL dynamically.
+  /// On Web, uses the current domain origin + '/api/places' to ensure same-origin consistency.
+  /// On Mobile, reads from config.json on GitHub, falling back to local cache or default.
   Future<String> _getApiUrl() async {
+    if (kIsWeb) {
+      final baseUri = Uri.base;
+      if ((baseUri.scheme == 'http' || baseUri.scheme == 'https') &&
+          baseUri.host != 'localhost' &&
+          baseUri.host != '127.0.0.1' &&
+          !baseUri.host.startsWith('192.168.') &&
+          !baseUri.host.startsWith('10.')) {
+        final hasPort = baseUri.hasPort && baseUri.port != 80 && baseUri.port != 443;
+        final portStr = hasPort ? ':${baseUri.port}' : '';
+        return '${baseUri.scheme}://${baseUri.host}$portStr/api/places';
+      }
+    }
+
     // Return already-resolved URL if available this session
     if (_resolvedApiUrl != null) return _resolvedApiUrl!;
 
@@ -41,7 +57,6 @@ class DataService {
       final cached = prefs.getString(_apiUrlCacheKey);
       if (cached != null && cached.isNotEmpty) {
         _resolvedApiUrl = cached;
-        // Non-blocking update check from GitHub in background
         _checkGitHubConfigInBackground();
         return cached;
       }
@@ -83,7 +98,19 @@ class DataService {
           debugPrint('Updated API URL in background: $url');
         }
       }
-    }).catchError((_) {});
+    }).catchError((_) {
+      http.get(Uri.parse(_fallbackConfigUrl)).timeout(const Duration(seconds: 4)).then((fallbackRes) async {
+        if (fallbackRes.statusCode == 200) {
+          final config = json.decode(fallbackRes.body);
+          final url = config['vercel_api_url'] as String?;
+          if (url != null && url.isNotEmpty && url != _resolvedApiUrl) {
+            _resolvedApiUrl = url;
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_apiUrlCacheKey, url);
+          }
+        }
+      }).catchError((_) {});
+    });
   }
 
   /// Instant local building loader (asset + SharedPreferences cache)
@@ -313,60 +340,54 @@ class DataService {
   }
 
   Future<void> deleteCustomBuilding(String id, String code) async {
+    final cleanCode = code.trim();
+    if (cleanCode.isEmpty) {
+      throw Exception('Security verification code is required to delete a place.');
+    }
+
     final apiUrl = await _getApiUrl();
     final uri = Uri.parse(apiUrl).replace(queryParameters: {
       'id': id,
-      if (code.isNotEmpty) 'code': code,
+      'code': cleanCode,
     });
 
-    bool cloudDeleteSuccess = false;
-    String? cloudErrorMessage;
+    final response = await http
+        .delete(
+          uri,
+          headers: {'x-security-code': cleanCode},
+        )
+        .timeout(const Duration(seconds: 15));
 
-    try {
-      final response = await http
-          .delete(
-            uri,
-            headers: {'x-security-code': code},
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        debugPrint('Deleted custom building from cloud: $id');
-        cloudDeleteSuccess = true;
-      } else {
-        try {
-          final decoded = json.decode(response.body);
-          if (decoded is Map && decoded['error'] != null) {
-            cloudErrorMessage = decoded['error'].toString();
-          }
-        } catch (_) {}
-        cloudErrorMessage ??= 'Server responded with status ${response.statusCode}';
+    if (response.statusCode == 200) {
+      debugPrint('Deleted custom building from cloud: $id');
+      // Update local cache deletion only after verified server approval
+      try {
+        final customBuildings = await _loadCustomBuildingsLocal();
+        customBuildings.removeWhere((b) => b.id.toString().trim() == id.toString().trim());
+        customBuildings.add(Building(
+          id: id,
+          name: 'Deleted Place',
+          lat: 0.0,
+          lng: 0.0,
+          tags: {'deleted': true},
+          isDeleted: true,
+        ));
+        await _syncLocalCache(customBuildings);
+        debugPrint('Recorded building deletion locally: $id');
+      } catch (e) {
+        debugPrint('Error removing custom building locally: $e');
       }
-    } catch (e) {
-      debugPrint('Delete request to cloud failed or offline: $e');
-      cloudErrorMessage ??= e.toString();
-    }
-
-    if (!cloudDeleteSuccess) {
-      throw Exception(cloudErrorMessage ?? 'Failed to delete pin from server. Please verify your security PIN.');
-    }
-
-    // Update local cache deletion only when cloud deletion succeeded
-    try {
-      final customBuildings = await _loadCustomBuildingsLocal();
-      customBuildings.removeWhere((b) => b.id.toString().trim() == id.toString().trim());
-      customBuildings.add(Building(
-        id: id,
-        name: 'Deleted Place',
-        lat: 0.0,
-        lng: 0.0,
-        tags: {'deleted': true},
-        isDeleted: true,
-      ));
-      await _syncLocalCache(customBuildings);
-      debugPrint('Recorded building deletion locally: $id');
-    } catch (e) {
-      debugPrint('Error removing custom building locally: $e');
+    } else if (response.statusCode == 403) {
+      throw Exception('Unauthorized: Invalid security code');
+    } else {
+      String? cloudErrorMessage;
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          cloudErrorMessage = decoded['error'].toString();
+        }
+      } catch (_) {}
+      throw Exception(cloudErrorMessage ?? 'Failed to delete pin from server (status ${response.statusCode})');
     }
   }
 

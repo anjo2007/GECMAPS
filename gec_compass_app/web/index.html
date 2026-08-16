@@ -355,16 +355,38 @@
     }
   </script>
   <script>
-    window.addEventListener('flutter-first-frame', function () {
+    function dismissWebSplash() {
       var splash = document.getElementById('loading-splash');
       if (splash) {
-        splash.style.transition = 'opacity 0.2s ease-out';
+        splash.style.transition = 'opacity 0.25s ease-out';
         splash.style.opacity = '0';
-        setTimeout(function() { splash.remove(); }, 220);
+        setTimeout(function() {
+          if (splash && splash.parentNode) {
+            splash.parentNode.removeChild(splash);
+          }
+        }, 260);
       }
       var seoContent = document.getElementById('seo-content');
-      if (seoContent) seoContent.remove();
-    });
+      if (seoContent && seoContent.parentNode) {
+        seoContent.parentNode.removeChild(seoContent);
+      }
+    }
+
+    // 1. Flutter standard frame events
+    window.addEventListener('flutter-first-frame', dismissWebSplash);
+    window.addEventListener('flutter-app-loaded', dismissWebSplash);
+
+    // 2. DOM ready / loaded fallback
+    if (document.readyState === 'complete') {
+      setTimeout(dismissWebSplash, 2000);
+    } else {
+      window.addEventListener('load', function() {
+        setTimeout(dismissWebSplash, 2000);
+      });
+    }
+
+    // 3. Absolute safety timeout (guarantees splash is never stuck even if Flutter web bootstrap is delayed)
+    setTimeout(dismissWebSplash, 3500);
   </script>
   <script src="flutter_bootstrap.js" async fetchpriority="high"></script>
 </body>

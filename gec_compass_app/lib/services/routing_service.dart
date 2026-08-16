@@ -203,7 +203,30 @@ class RoutingService {
     for (final gate in validGates) {
       final LatLng gatePos = gate['pos'] as LatLng;
       final double distExternalToGate = distance(userPos, gatePos);
-      final double distGateToInternal = distance(gatePos, destination);
+
+      double distGateToInternal = distance(gatePos, destination);
+      if (_isGraphInitialized && _graph.isNotEmpty) {
+        final gateId = gate['id'] as String?;
+        final destSnap = snapToNearestGraphEdge(destination);
+        double minDijkstra = double.infinity;
+        final startNodes = (gateId != null && _graph.containsKey(gateId))
+            ? [gateId]
+            : [snapToNearestGraphEdge(gatePos).nodeA, snapToNearestGraphEdge(gatePos).nodeB];
+        final endNodes = [destSnap.nodeA, destSnap.nodeB];
+        for (final s in startNodes) {
+          for (final e in endNodes) {
+            final p = getRouteBetweenWaypoints(s, e);
+            if (p.isNotEmpty || s == e) {
+              final d = getRouteDistance(p) + distance(destination, destSnap.snappedPoint);
+              if (d < minDijkstra) minDijkstra = d;
+            }
+          }
+        }
+        if (minDijkstra < double.infinity) {
+          distGateToInternal = minDijkstra;
+        }
+      }
+
       final double totalCost = distExternalToGate + distGateToInternal;
 
       if (totalCost < minTotalCost) {
@@ -751,10 +774,10 @@ class RoutingService {
 
   /// Campus perimeter bounding box check
   static bool isPointOutsideCampus(LatLng point) {
-    const double minLat = 10.5516;
-    const double maxLat = 10.5562;
-    const double minLng = 76.2215;
-    const double maxLng = 76.2268;
+    const double minLat = 10.5512;
+    const double maxLat = 10.5568;
+    const double minLng = 76.2168;
+    const double maxLng = 76.2272;
 
     return point.latitude < minLat ||
         point.latitude > maxLat ||
@@ -1013,19 +1036,26 @@ class RoutingService {
       final LatLng gatePos = gate['pos'] as LatLng;
       final externalDist = distance(externalPoint, gatePos);
 
+      final gateId = gate['id'] as String?;
       final gateSnap = snapToNearestGraphEdge(gatePos);
+      final startNodes = (gateId != null && _graph.containsKey(gateId))
+          ? [gateId, gateSnap.nodeA, gateSnap.nodeB]
+          : [gateSnap.nodeA, gateSnap.nodeB];
+
       double campusDist = double.infinity;
-      for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
-        final path = getRouteBetweenWaypoints(
-          gateSnap.nodeA,
-          snapNode,
-          closedNodeIds: closedNodeIds,
-        );
-        if (path.isNotEmpty) {
-          final d = getRouteDistance(path) +
-              distance(internalPoint, internalSnap.snappedPoint) +
-              distance(gatePos, gateSnap.snappedPoint);
-          if (d < campusDist) campusDist = d;
+      for (final gNode in startNodes) {
+        for (final snapNode in [internalSnap.nodeA, internalSnap.nodeB]) {
+          final path = getRouteBetweenWaypoints(
+            gNode,
+            snapNode,
+            closedNodeIds: closedNodeIds,
+          );
+          if (path.isNotEmpty || gNode == snapNode) {
+            final d = getRouteDistance(path) +
+                distance(internalPoint, internalSnap.snappedPoint) +
+                distance(gatePos, gateSnap.snappedPoint);
+            if (d < campusDist) campusDist = d;
+          }
         }
       }
       if (campusDist == double.infinity) campusDist = distance(gatePos, internalPoint);
@@ -1136,11 +1166,22 @@ class RoutingService {
     final startSnap = snapToNearestGraphEdge(start);
     final endSnap = snapToNearestGraphEdge(end);
 
-    final candidateStartNodes = [startSnap.nodeA, startSnap.nodeB];
-    final candidateEndNodes = [endSnap.nodeA, endSnap.nodeB];
-
     List<LatLng> bestRoadPath = [];
     double minTotalDist = double.infinity;
+
+    // Direct segment check if both start and end snap to the exact same road edge
+    final bool isSameEdge = (startSnap.nodeA == endSnap.nodeA && startSnap.nodeB == endSnap.nodeB) ||
+        (startSnap.nodeA == endSnap.nodeB && startSnap.nodeB == endSnap.nodeA);
+    if (isSameEdge) {
+      final directDist = distance(startSnap.snappedPoint, endSnap.snappedPoint);
+      if (directDist < minTotalDist) {
+        minTotalDist = directDist;
+        bestRoadPath = [startSnap.snappedPoint, endSnap.snappedPoint];
+      }
+    }
+
+    final candidateStartNodes = [startSnap.nodeA, startSnap.nodeB];
+    final candidateEndNodes = [endSnap.nodeA, endSnap.nodeB];
 
     for (final sNode in candidateStartNodes) {
       for (final eNode in candidateEndNodes) {
@@ -1151,8 +1192,16 @@ class RoutingService {
         );
         if (subPath.isNotEmpty || sNode == eNode) {
           final List<LatLng> candidate = [startSnap.snappedPoint];
-          if (subPath.isNotEmpty) candidate.addAll(subPath);
-          candidate.add(endSnap.snappedPoint);
+          if (subPath.isNotEmpty) {
+            for (final pt in subPath) {
+              if (candidate.isEmpty || distance(candidate.last, pt) > 0.5) {
+                candidate.add(pt);
+              }
+            }
+          }
+          if (candidate.isEmpty || distance(candidate.last, endSnap.snappedPoint) > 0.5) {
+            candidate.add(endSnap.snappedPoint);
+          }
 
           final candidateDist = getRouteDistance(candidate);
           if (candidateDist < minTotalDist) {

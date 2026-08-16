@@ -6,6 +6,14 @@ import crypto from 'crypto';
 // Ephemeral in-memory cache for production fallback if no DB is configured
 let memoryCache = null;
 
+// Dedicated Gist memory cache with ETag tracking to protect against GitHub API rate limits
+let gistMemoryCache = {
+  data: null,
+  etag: null,
+  timestamp: 0,
+  gistId: null
+};
+
 // Path for local cache file in development
 const LOCAL_CACHE_PATH = path.join(process.cwd(), 'api', 'places_local_cache.json');
 
@@ -68,50 +76,118 @@ async function uploadToCloudinary(base64Data, folder = 'gec_compass_places') {
 }
 
 // GitHub Gist Driver
-async function getGistPlaces(token, gistId) {
-  const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GEC-Compass-API'
-    }
-  });
-  if (!res.ok) throw new Error(`Gist fetch error: ${res.statusText}`);
-  const gist = await res.json();
-  const file = Object.values(gist.files)[0];
+function getAuthHeader(token) {
+  if (!token) return '';
+  const trimmed = token.trim();
+  if (trimmed.startsWith('ghp_') || trimmed.startsWith('github_pat_')) {
+    return `token ${trimmed}`;
+  }
+  return `Bearer ${trimmed}`;
+}
 
+async function getGistPlaces(token, gistId) {
+  const now = Date.now();
+  // Return cached result if fetched within 3.5 seconds to protect GitHub API rate limit (5,000 req/hr)
+  if (gistMemoryCache.data && gistMemoryCache.gistId === gistId && (now - gistMemoryCache.timestamp < 3500)) {
+    return gistMemoryCache.data;
+  }
+
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'GEC-Compass-API'
+  };
+  if (token) {
+    headers['Authorization'] = getAuthHeader(token);
+  }
+  if (gistMemoryCache.etag && gistMemoryCache.gistId === gistId) {
+    headers['If-None-Match'] = gistMemoryCache.etag;
+  }
+
+  const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers });
+  
+  if (res.status === 304 && gistMemoryCache.data) {
+    gistMemoryCache.timestamp = now;
+    return gistMemoryCache.data;
+  }
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`Gist fetch error (${res.status}):`, errText);
+    // Graceful fallback to memory cache if rate limited
+    if (gistMemoryCache.data && gistMemoryCache.gistId === gistId) {
+      console.warn('Returning stale Gist memory cache due to GitHub fetch error');
+      return gistMemoryCache.data;
+    }
+    throw new Error(`Gist fetch error (${res.status}): ${res.statusText}`);
+  }
+
+  const gist = await res.json();
+  if (!gist.files || Object.keys(gist.files).length === 0) return [];
+  
+  // Prioritize places.json, then any .json file, then the first file
+  let file = gist.files['places.json'];
+  if (!file) {
+    const jsonKey = Object.keys(gist.files).find(k => k.toLowerCase().endsWith('.json'));
+    file = jsonKey ? gist.files[jsonKey] : Object.values(gist.files)[0];
+  }
+
+  let parsed = [];
   // If Gist file exceeds 1MB, GitHub API truncates file.content.
   // Fall back to raw_url to fetch complete untruncated JSON.
   if (file.truncated && file.raw_url) {
-    const rawRes = await fetch(file.raw_url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'User-Agent': 'GEC-Compass-API'
-      }
-    });
+    const rawRes = await fetch(file.raw_url, { headers: { 'User-Agent': 'GEC-Compass-API' } });
     if (rawRes.ok) {
       const rawText = await rawRes.text();
-      return JSON.parse(rawText);
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        console.error('Error parsing raw truncated gist JSON:', e);
+        parsed = [];
+      }
+    }
+  } else if (file.content && file.content.trim().length > 0) {
+    try {
+      parsed = JSON.parse(file.content);
+    } catch (e) {
+      console.error('Error parsing gist file content as JSON:', e);
+      parsed = [];
     }
   }
 
-  return JSON.parse(file.content);
+  if (!Array.isArray(parsed)) {
+    parsed = [];
+  }
+
+  // Update in-memory cache and ETag
+  gistMemoryCache = {
+    data: parsed,
+    etag: res.headers.get('etag'),
+    timestamp: now,
+    gistId: gistId
+  };
+
+  return parsed;
 }
 
 async function saveGistPlaces(token, gistId, places) {
+  const authHeader = getAuthHeader(token);
   let fileName = 'places.json';
   try {
     const res = await fetch(`https://api.github.com/gists/${gistId}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': authHeader,
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'GEC-Compass-API'
       }
     });
     if (res.ok) {
       const gist = await res.json();
-      const files = Object.keys(gist.files);
-      if (files.length > 0) fileName = files[0];
+      const files = Object.keys(gist.files || {});
+      if (files.includes('places.json')) {
+        fileName = 'places.json';
+      } else if (files.length > 0) {
+        fileName = files[0];
+      }
     }
   } catch (e) {
     console.error('Error finding gist filename, defaulting to places.json:', e);
@@ -120,7 +196,7 @@ async function saveGistPlaces(token, gistId, places) {
   const res = await fetch(`https://api.github.com/gists/${gistId}`, {
     method: 'PATCH',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': authHeader,
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
       'User-Agent': 'GEC-Compass-API'
@@ -133,20 +209,38 @@ async function saveGistPlaces(token, gistId, places) {
       }
     })
   });
-  return res.ok;
+
+  if (!res.ok) {
+    console.error(`saveGistPlaces PATCH error (${res.status}):`, await res.text());
+    return false;
+  }
+
+  // Immediately synchronize in-memory cache to guarantee read-after-write consistency
+  gistMemoryCache = {
+    data: places,
+    etag: null,
+    timestamp: Date.now(),
+    gistId: gistId
+  };
+
+  return true;
 }
 
 // GitHub Repository Driver
 async function getRepoPlaces(token, repo, filePath = 'places.json') {
-  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GEC-Compass-API'
-    }
-  });
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'GEC-Compass-API'
+  };
+  if (token) {
+    headers['Authorization'] = getAuthHeader(token);
+  }
+
+  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, { headers });
   if (!res.ok) {
     if (res.status === 404) return [];
+    const errText = await res.text();
+    console.error(`Repo fetch error (${res.status}):`, errText);
     throw new Error(`Repo fetch error: ${res.statusText}`);
   }
   const fileData = await res.json();
@@ -155,11 +249,12 @@ async function getRepoPlaces(token, repo, filePath = 'places.json') {
 }
 
 async function saveRepoPlaces(token, repo, filePath = 'places.json', places) {
+  const authHeader = getAuthHeader(token);
   let sha;
   try {
     const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': authHeader,
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'GEC-Compass-API'
       }
@@ -175,7 +270,7 @@ async function saveRepoPlaces(token, repo, filePath = 'places.json', places) {
   const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
     method: 'PUT',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': authHeader,
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
       'User-Agent': 'GEC-Compass-API'
@@ -186,6 +281,9 @@ async function saveRepoPlaces(token, repo, filePath = 'places.json', places) {
       sha: sha
     })
   });
+  if (!res.ok) {
+    console.error(`saveRepoPlaces PUT error (${res.status}):`, await res.text());
+  }
   return res.ok;
 }
 
@@ -257,24 +355,38 @@ function formatPlaceForStorage(place) {
   const vpsBoardPhotoUrl = place.vpsBoardPhotoUrl || place.vpsBoardPhoto || place.vpsBoardPhotoBase64 || place.tags?.vpsBoardPhotoUrl;
 
   const tags = place.tags ? { ...place.tags } : {};
-  if (photoUrl) {
-    tags.image = tags.image || photoUrl;
-    tags.photoUrl = tags.photoUrl || photoUrl;
-  }
-  if (vpsBoardPhotoUrl) {
-    tags.vpsBoardPhotoUrl = tags.vpsBoardPhotoUrl || vpsBoardPhotoUrl;
-  }
+  // Strip duplicate image fields from tags to save maximum Gist storage space
+  delete tags.image;
+  delete tags.photoUrl;
+  delete tags.photo;
+  delete tags.photoBase64;
+  delete tags.vpsBoardPhotoUrl;
+  delete tags.vpsBoardPhotoBase64;
+  delete tags.vpsBoardPhoto;
+
+  const isDeleted = place.deleted === true || place.tags?.deleted === true || place.deleted === 'true' || place.tags?.deleted === 'true';
 
   const cleanPlace = {
     id: String(place.id),
     name: String(place.name),
-    lat: Number(place.lat),
-    lng: Number(place.lng),
+    lat: Number(place.lat || 0),
+    lng: Number(place.lng || 0),
     tags
   };
 
-  if (photoUrl) cleanPlace.photoUrl = photoUrl;
-  if (vpsBoardPhotoUrl) cleanPlace.vpsBoardPhotoUrl = vpsBoardPhotoUrl;
+  if (isDeleted) {
+    cleanPlace.deleted = true;
+    cleanPlace.tags.deleted = true;
+    cleanPlace.deletedAt = place.deletedAt || new Date().toISOString();
+  }
+
+  // Store photo only once under the single top-level photoUrl field
+  if (photoUrl && String(photoUrl).trim().length > 0) {
+    cleanPlace.photoUrl = photoUrl;
+  }
+  if (vpsBoardPhotoUrl && String(vpsBoardPhotoUrl).trim().length > 0) {
+    cleanPlace.vpsBoardPhotoUrl = vpsBoardPhotoUrl;
+  }
 
   return cleanPlace;
 }
@@ -318,7 +430,7 @@ export default async function handler(request, response) {
   // CORS Headers
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-security-code');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-security-code, Authorization, *');
 
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
@@ -351,12 +463,26 @@ export default async function handler(request, response) {
     PLACES_KEY
   };
 
-  // Determine primary driver
+  const explicitDriver = (process.env.PRIMARY_STORAGE_DRIVER || process.env.STORAGE_DRIVER || '').toLowerCase().trim();
+
+  // Determine primary driver:
+  // 1. Explicit env var override (e.g. PRIMARY_STORAGE_DRIVER=gist)
+  // 2. Gist if GITHUB_TOKEN & GIST_ID are configured
+  // 3. Vercel KV if KV_REST_API_URL & KV_REST_API_TOKEN are configured
+  // 4. GitHub Repo if GITHUB_TOKEN & GITHUB_REPO are configured
+  // 5. Dev local cache / Memory fallback
   let primaryDriver = 'memory';
-  if (kvUrl && kvToken) {
-    primaryDriver = 'kv';
-  } else if (ghToken && gistId) {
+  if (explicitDriver === 'gist' && ghToken && gistId) {
     primaryDriver = 'gist';
+  } else if (explicitDriver === 'kv' && kvUrl && kvToken) {
+    primaryDriver = 'kv';
+  } else if (explicitDriver === 'repo' && ghToken && ghRepo) {
+    primaryDriver = 'repo';
+  } else if (ghToken && gistId) {
+    // Primary default when Gist environment variables are provided
+    primaryDriver = 'gist';
+  } else if (kvUrl && kvToken) {
+    primaryDriver = 'kv';
   } else if (ghToken && ghRepo) {
     primaryDriver = 'repo';
   } else if (isDev) {
@@ -365,11 +491,11 @@ export default async function handler(request, response) {
 
   // Determine backup driver (exclude primary driver from acting as backup)
   let backupDriver = null;
-  if (backupGhRepo || (ghToken && ghRepo && primaryDriver !== 'repo')) {
+  if (primaryDriver !== 'repo' && (backupGhRepo || (ghToken && ghRepo))) {
     backupDriver = 'repo';
-  } else if ((backupKvUrl && backupKvToken) || (kvUrl && kvToken && primaryDriver !== 'kv')) {
+  } else if (primaryDriver !== 'kv' && ((backupKvUrl && backupKvToken) || (kvUrl && kvToken))) {
     backupDriver = 'kv';
-  } else if (backupGistId || (ghToken && gistId && primaryDriver !== 'gist')) {
+  } else if (primaryDriver !== 'gist' && (backupGistId || (ghToken && gistId))) {
     backupDriver = 'gist';
   }
 
@@ -387,7 +513,6 @@ export default async function handler(request, response) {
         hasBackupKvUrl: !!backupKvUrl,
         hasBackupKvToken: !!backupKvToken,
         hasBackupGistId: !!backupGistId,
-        hasBackupGhRepo: !!backupGhRepo,
         primaryDriver,
         backupDriver,
         nodeEnv: process.env.NODE_ENV,
@@ -413,46 +538,62 @@ export default async function handler(request, response) {
         }
       }
 
-      // Normalize places to ensure all photo variants are unified under photoUrl and vpsBoardPhotoUrl
+      // Normalize places to ensure all photo variants are unified under single photoUrl and vpsBoardPhotoUrl
       const normalizedPlaces = places.map(p => {
         if (!p) return p;
-        let photoUrl = p.photoUrl || p.photo || p.photoBase64 || p.tags?.image || p.tags?.photoUrl;
-        let vpsUrl = p.vpsBoardPhotoUrl || p.vpsBoardPhoto || p.vpsBoardPhotoBase64 || p.tags?.vpsBoardPhotoUrl;
-        let photoBase64 = p.photoBase64 || photoUrl || null;
-        let vpsBoardPhotoBase64 = p.vpsBoardPhotoBase64 || vpsUrl || null;
+        const photoUrl = p.photoUrl || p.photo || p.photoBase64 || p.tags?.image || p.tags?.photoUrl;
+        const vpsUrl = p.vpsBoardPhotoUrl || p.vpsBoardPhoto || p.vpsBoardPhotoBase64 || p.tags?.vpsBoardPhotoUrl;
 
         const tags = p.tags ? { ...p.tags } : {};
-        if (photoUrl) {
-          tags.image = tags.image || photoUrl;
-          tags.photoUrl = tags.photoUrl || photoUrl;
-        }
-        if (vpsUrl) {
-          tags.vpsBoardPhotoUrl = tags.vpsBoardPhotoUrl || vpsUrl;
-        }
+        delete tags.image;
+        delete tags.photoUrl;
+        delete tags.photo;
+        delete tags.photoBase64;
+        delete tags.vpsBoardPhotoUrl;
+        delete tags.vpsBoardPhotoBase64;
+        delete tags.vpsBoardPhoto;
 
-        return {
-          ...p,
-          photoUrl: photoUrl || null,
-          vpsBoardPhotoUrl: vpsUrl || null,
-          photoBase64: photoBase64 || null,
-          vpsBoardPhotoBase64: vpsBoardPhotoBase64 || null,
+        const isDeleted = p.deleted === true || p.tags?.deleted === true || p.deleted === 'true' || p.tags?.deleted === 'true';
+
+        const cleanObj = {
+          id: String(p.id),
+          name: String(p.name),
+          lat: Number(p.lat || 0),
+          lng: Number(p.lng || 0),
           tags
         };
-      });
 
-      // Filter out tombstones from standard GET response
-      const activePlaces = normalizedPlaces.filter(p => p && !p.deleted && !p.tags?.deleted);
+        if (isDeleted) {
+          cleanObj.deleted = true;
+          cleanObj.deletedAt = p.deletedAt || new Date().toISOString();
+        }
+
+        if (photoUrl && String(photoUrl).trim().length > 0) {
+          cleanObj.photoUrl = photoUrl;
+          cleanObj.photoBase64 = photoUrl;
+        }
+        if (vpsUrl && String(vpsUrl).trim().length > 0) {
+          cleanObj.vpsBoardPhotoUrl = vpsUrl;
+          cleanObj.vpsBoardPhotoBase64 = vpsUrl;
+        }
+
+        return cleanObj;
+      });
 
       // Handle export backup for zero-data-loss platform migration
       if (urlObj.searchParams.get('export') === 'true' || urlObj.searchParams.get('backup') === 'true') {
+        const activePlaces = normalizedPlaces.filter(p => p && !p.deleted && !p.tags?.deleted);
         response.setHeader('Content-Type', 'application/json');
         response.setHeader('Content-Disposition', 'attachment; filename="gec_compass_places_backup.json"');
         return response.status(200).send(JSON.stringify(activePlaces, null, 2));
       }
 
-      response.setHeader('Cache-Control', 'public, max-age=5, s-maxage=5');
+      response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      response.setHeader('Pragma', 'no-cache');
+      response.setHeader('Expires', '0');
       response.setHeader('x-storage-persistence', primaryDriver === 'memory' ? 'none' : 'persistent');
-      return response.status(200).json(activePlaces);
+      // Return normalized places including deletion tombstones so all devices synchronize deletions
+      return response.status(200).json(normalizedPlaces);
     } catch (error) {
       console.error('Read handler error:', error);
       return response.status(500).json({ error: 'Failed to read places data' });
@@ -653,7 +794,6 @@ export default async function handler(request, response) {
         if (!code) return false;
         const inputCode = String(code).trim();
         const envCode = process.env.SECURITY_CODE ? process.env.SECURITY_CODE.trim() : null;
-        // Use SECURITY_CODE env var if set, otherwise fall back to default PIN
         const validCode = envCode || '8714743183';
         const cBuf = Buffer.from(inputCode);
         const vBuf = Buffer.from(validCode);
@@ -688,7 +828,8 @@ export default async function handler(request, response) {
         const filtered = placesList.filter(p => {
           if (String(p.id).trim() === String(idToDelete).trim()) return false;
           // Prune tombstones older than 90 days
-          if (p.deleted || p.tags?.deleted) {
+          const isTombstone = p.deleted === true || p.tags?.deleted === true || p.deleted === 'true' || p.tags?.deleted === 'true';
+          if (isTombstone) {
             const deletedTime = p.deletedAt ? new Date(p.deletedAt).getTime() : 0;
             return deletedTime > NinetyDaysAgo;
           }

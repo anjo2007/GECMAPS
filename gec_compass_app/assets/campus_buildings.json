@@ -56,26 +56,7 @@
       "short_name": "SBI"
     }
   },
-  {
-    "id": "5491824377",
-    "name": "Ushus",
-    "lat": 10.5524399,
-    "lng": 76.2282883,
-    "tags": {
-      "building": "yes",
-      "name": "Ushus"
-    }
-  },
-  {
-    "id": "5907766700",
-    "name": "Unnamed Location",
-    "lat": 10.5519133,
-    "lng": 76.2267944,
-    "tags": {
-      "amenity": "atm",
-      "operator": "South Indian Bank ATM"
-    }
-  },
+
   {
     "id": "5907766702",
     "name": "South Indian Bank",
@@ -105,17 +86,6 @@
     "tags": {
       "amenity": "atm",
       "operator": "HDFC Bank ATM"
-    }
-  },
-  {
-    "id": "5907766705",
-    "name": "Milma Store",
-    "lat": 10.5535849,
-    "lng": 76.2261035,
-    "tags": {
-      "amenity": "cafe",
-      "name": "Milma Store",
-      "opening_hours": "closed"
     }
   },
   {
@@ -201,16 +171,7 @@
       "religion": "muslim"
     }
   },
-  {
-    "id": "7465588097",
-    "name": "Unnamed Location",
-    "lat": 10.5542328,
-    "lng": 76.2265731,
-    "tags": {
-      "amenity": "atm",
-      "operator": "HDFC Bank"
-    }
-  },
+  
   {
     "id": "7736908650",
     "name": "Thrissur Engineering College Sub-Post Office",
@@ -2060,34 +2021,6 @@
     }
   },
   {
-    "id": "839560996",
-    "name": "Government Vocational Higher Secondary School, Ramavarmapuram",
-    "lat": 10.5595864,
-    "lng": 76.2259272,
-    "tags": {
-      "addr:city": "Viyyur",
-      "addr:postcode": "680631",
-      "addr:street": "ramavarmapuram road",
-      "building": "school",
-      "governance_type": "government",
-      "name": "Government Vocational Higher Secondary School, Ramavarmapuram"
-    }
-  },
-  {
-    "id": "839561005",
-    "name": "Government Vocational Higher Secondary School, Ramavarmapuram",
-    "lat": 10.5594212,
-    "lng": 76.225361,
-    "tags": {
-      "addr:city": "Viyyur",
-      "addr:postcode": "680631",
-      "addr:street": "ramavarmapuram road",
-      "building": "school",
-      "governance_type": "government",
-      "name": "Government Vocational Higher Secondary School, Ramavarmapuram"
-    }
-  },
-  {
     "id": "843061098",
     "name": "Fire and Rescue Station Thrissur",
     "lat": 10.5586782,
@@ -2213,16 +2146,6 @@
       "building": "yes",
       "building:levels": "3",
       "name": "Central Computing Facility (CCF)"
-    }
-  },
-  {
-    "id": "954403683",
-    "name": "District Institute Of Education And Training Men's Hostel",
-    "lat": 10.556052,
-    "lng": 76.2261015,
-    "tags": {
-      "building": "yes",
-      "name": "District Institute Of Education And Training Men's Hostel"
     }
   },
   {
@@ -2383,19 +2306,12 @@
   },
   {
     "id": "1035563841",
-    "name": "Dept. of Computer Schience Engineering extension",
+    "name": "Dept. of Computer Science Engineering extension",
     "lat": 10.5525513,
     "lng": 76.2219875,
     "tags": {
       "building": "college",
-      "name": "Dept. of Computer Schience Engineering extension"
+      "name": "Dept. of Computer Science Engineering extension"
     }
-  },
-  {
-    "id": "custom_room_101",
-    "name": "Prof. Smith's Secret Lab (Mock Navigation Target)",
-    "lat": 10.5561,
-    "lng": 76.2245,
-    "tags": {}
   }
 ]

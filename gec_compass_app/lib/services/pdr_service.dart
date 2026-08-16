@@ -64,6 +64,7 @@ class PDRService {
   DateTime? _lastBiasTime;
 
   bool get isActive => _currentPosition != null && (_accelSub != null || kIsWeb);
+  LatLng? get currentPosition => _currentPosition;
   double get currentHeading => _currentHeading;
   double get stepLengthMeters => _stepLengthMeters;
   int get stepCount => _stepCount;
