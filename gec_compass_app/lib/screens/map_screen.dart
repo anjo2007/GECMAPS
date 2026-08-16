@@ -2054,9 +2054,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         }
       }
 
-      final amenity = b.tags['amenity'] as String?;
-      final buildingType = b.tags['building'] as String?;
-      final tourism = b.tags['tourism'] as String?;
       final isRoom = b.tags['room'] == 'yes';
       final placeType = (b.tags['place_type'] ?? b.tags['type']) as String?;
 

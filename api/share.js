@@ -3,44 +3,111 @@ import { kv, createClient } from '@vercel/kv';
 // Ephemeral memory cache for fallback
 let memoryCache = null;
 
+// Dedicated Gist memory cache with ETag tracking to protect against GitHub API rate limits
+let gistMemoryCache = {
+  data: null,
+  etag: null,
+  timestamp: 0,
+  gistId: null
+};
+
+// Helper for auth headers
+function getAuthHeader(token) {
+  if (!token) return '';
+  const trimmed = token.trim();
+  if (trimmed.startsWith('ghp_') || trimmed.startsWith('github_pat_')) {
+    return `token ${trimmed}`;
+  }
+  return `Bearer ${trimmed}`;
+}
+
 // GitHub Gist Driver
 async function getGistPlaces(token, gistId) {
-  const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GEC-Compass-API'
-    }
-  });
-  if (!res.ok) throw new Error(`Gist fetch error: ${res.statusText}`);
-  const gist = await res.json();
-  const file = Object.values(gist.files)[0];
+  const now = Date.now();
+  if (gistMemoryCache.data && gistMemoryCache.gistId === gistId && (now - gistMemoryCache.timestamp < 3500)) {
+    return gistMemoryCache.data;
+  }
 
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'GEC-Compass-API'
+  };
+  if (token) {
+    headers['Authorization'] = getAuthHeader(token);
+  }
+  if (gistMemoryCache.etag && gistMemoryCache.gistId === gistId) {
+    headers['If-None-Match'] = gistMemoryCache.etag;
+  }
+
+  const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers });
+  
+  if (res.status === 304 && gistMemoryCache.data) {
+    gistMemoryCache.timestamp = now;
+    return gistMemoryCache.data;
+  }
+
+  if (!res.ok) {
+    if (gistMemoryCache.data && gistMemoryCache.gistId === gistId) {
+      return gistMemoryCache.data;
+    }
+    throw new Error(`Gist fetch error: ${res.statusText}`);
+  }
+
+  const gist = await res.json();
+  if (!gist.files || Object.keys(gist.files).length === 0) return [];
+  
+  let file = gist.files['places.json'];
+  if (!file) {
+    const jsonKey = Object.keys(gist.files).find(k => k.toLowerCase().endsWith('.json'));
+    file = jsonKey ? gist.files[jsonKey] : Object.values(gist.files)[0];
+  }
+
+  let parsed = [];
   if (file.truncated && file.raw_url) {
     const rawRes = await fetch(file.raw_url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'User-Agent': 'GEC-Compass-API'
-      }
+      headers: { 'User-Agent': 'GEC-Compass-API' }
     });
     if (rawRes.ok) {
       const rawText = await rawRes.text();
-      return JSON.parse(rawText);
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (_) {
+        parsed = [];
+      }
+    }
+  } else if (file.content && file.content.trim().length > 0) {
+    try {
+      parsed = JSON.parse(file.content);
+    } catch (_) {
+      parsed = [];
     }
   }
 
-  return JSON.parse(file.content);
+  if (!Array.isArray(parsed)) {
+    parsed = [];
+  }
+
+  gistMemoryCache = {
+    data: parsed,
+    etag: res.headers.get('etag'),
+    timestamp: now,
+    gistId: gistId
+  };
+
+  return parsed;
 }
 
 // GitHub Repository Driver
 async function getRepoPlaces(token, repo, filePath = 'places.json') {
-  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GEC-Compass-API'
-    }
-  });
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'GEC-Compass-API'
+  };
+  if (token) {
+    headers['Authorization'] = getAuthHeader(token);
+  }
+
+  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, { headers });
   if (!res.ok) {
     if (res.status === 404) return [];
     throw new Error(`Repo fetch error: ${res.statusText}`);
@@ -149,21 +216,29 @@ export default async function handler(request, response) {
     PLACES_KEY
   };
 
+  const explicitDriver = (process.env.PRIMARY_STORAGE_DRIVER || process.env.STORAGE_DRIVER || '').toLowerCase().trim();
+
   let primaryDriver = 'memory';
-  if (kvUrl && kvToken) {
+  if (explicitDriver === 'gist' && ghToken && gistId) {
+    primaryDriver = 'gist';
+  } else if (explicitDriver === 'kv' && kvUrl && kvToken) {
     primaryDriver = 'kv';
+  } else if (explicitDriver === 'repo' && ghToken && ghRepo) {
+    primaryDriver = 'repo';
   } else if (ghToken && gistId) {
     primaryDriver = 'gist';
+  } else if (kvUrl && kvToken) {
+    primaryDriver = 'kv';
   } else if (ghToken && ghRepo) {
     primaryDriver = 'repo';
   }
 
   let backupDriver = null;
-  if (backupGhRepo || (ghToken && ghRepo && primaryDriver !== 'repo')) {
+  if (primaryDriver !== 'repo' && (backupGhRepo || (ghToken && ghRepo))) {
     backupDriver = 'repo';
-  } else if ((backupKvUrl && backupKvToken) || (kvUrl && kvToken && primaryDriver !== 'kv')) {
+  } else if (primaryDriver !== 'kv' && ((backupKvUrl && backupKvToken) || (kvUrl && kvToken))) {
     backupDriver = 'kv';
-  } else if (backupGistId || (ghToken && gistId && primaryDriver !== 'gist')) {
+  } else if (primaryDriver !== 'gist' && (backupGistId || (ghToken && gistId))) {
     backupDriver = 'gist';
   }
 

@@ -39,12 +39,20 @@ class Building {
         json['tags']?['deleted'] == true ||
         json['tags']?['deleted'] == 'true';
 
+    final cleanTags = json['tags'] != null ? Map<String, dynamic>.from(json['tags']) : <String, dynamic>{};
+    // Strip redundant image copies from tags to save memory and storage
+    cleanTags.remove('image');
+    cleanTags.remove('photoUrl');
+    cleanTags.remove('photoBase64');
+    cleanTags.remove('vpsBoardPhotoUrl');
+    cleanTags.remove('vpsBoardPhotoBase64');
+
     return Building(
       id: json['id']?.toString() ?? '',
       name: json['name'] as String? ?? '',
       lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
       lng: (json['lng'] as num?)?.toDouble() ?? 0.0,
-      tags: json['tags'] != null ? Map<String, dynamic>.from(json['tags']) : {},
+      tags: cleanTags,
       photoBase64: rawPhoto,
       vpsBoardPhotoBase64: rawVps,
       photoUrl: rawPhoto,
@@ -56,17 +64,22 @@ class Building {
   Map<String, dynamic> toJson() {
     final mainPhoto = (photoUrl != null && photoUrl!.isNotEmpty) ? photoUrl : photoBase64;
     final vpsPhoto = (vpsBoardPhotoUrl != null && vpsBoardPhotoUrl!.isNotEmpty) ? vpsBoardPhotoUrl : vpsBoardPhotoBase64;
+    final cleanTags = Map<String, dynamic>.from(tags);
+    cleanTags.remove('image');
+    cleanTags.remove('photoUrl');
+    cleanTags.remove('photoBase64');
+    cleanTags.remove('vpsBoardPhotoUrl');
+    cleanTags.remove('vpsBoardPhotoBase64');
+
     return {
       'id': id,
       'name': name,
       'lat': lat,
       'lng': lng,
-      'tags': tags,
+      'tags': cleanTags,
       if (isDeleted) 'deleted': true,
       if (mainPhoto != null && mainPhoto.isNotEmpty) 'photoUrl': mainPhoto,
-      if (mainPhoto != null && mainPhoto.isNotEmpty) 'photoBase64': mainPhoto,
       if (vpsPhoto != null && vpsPhoto.isNotEmpty) 'vpsBoardPhotoUrl': vpsPhoto,
-      if (vpsPhoto != null && vpsPhoto.isNotEmpty) 'vpsBoardPhotoBase64': vpsPhoto,
     };
   }
 }
