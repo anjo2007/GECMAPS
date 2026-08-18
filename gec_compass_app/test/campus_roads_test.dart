@@ -62,7 +62,9 @@ void main() {
       const southStart = LatLng(10.550500, 76.224100);
       const westDestination = LatLng(10.553440, 76.220577);
 
-      final route = await routingService.getDetailedRoute(southStart, westDestination);
+      // Daytime route when Electrical Gate is open (08:00 AM - 05:30 PM)
+      final daytime = DateTime(2026, 8, 14, 10, 0);
+      final route = await routingService.getDetailedRoute(southStart, westDestination, currentTime: daytime);
       expect(route.fullPath, isNotEmpty);
       expect(route.activeGateName, contains('Electrical Gate'));
       // Direct optimal route should be < 800m (not the 1.8km detour around the outside)
@@ -129,8 +131,8 @@ void main() {
           lng: 76.2241280,
           tags: {
             'barrier': 'gate',
-            'opening_time': '06:00 AM',
-            'closing_time': '09:30 PM',
+            'opening_time': '08:00 AM',
+            'closing_time': '05:30 PM',
           },
         ),
       ];
@@ -139,7 +141,7 @@ void main() {
       final outsidePos = const LatLng(10.550500, 76.224000);
       final campusTarget = const LatLng(10.553250, 76.224850);
 
-      // Route at 10:00 PM (Electrical gate closed at 9:30 PM, Main gate still open until 10:30 PM)
+      // Route at 10:00 PM (Electrical gate closed at 5:30 PM, Main gate still open until 10:30 PM)
       final at10pm = DateTime(2026, 8, 14, 22, 0);
       final bestGate = routingService.selectOptimalGate(
         outsidePos,

@@ -1718,13 +1718,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                   if (_currentPosition != null) {
                     final grid = GridAddressingService.getCampusGridAddress(_currentPosition!);
                     final precisionGrid = GridAddressingService.getPrecisionGridAddress(_currentPosition!);
-                    final lat = _currentPosition!.latitude.toStringAsFixed(6);
-                    final lng = _currentPosition!.longitude.toStringAsFixed(6);
-                    final shareUrl = Uri.base.replace(queryParameters: {'grid': grid}).toString();
+                    final shareUrl = (kIsWeb && Uri.base.host.isNotEmpty && !Uri.base.host.contains('localhost') && !Uri.base.host.contains('127.0.0.1'))
+                        ? Uri.base.replace(queryParameters: {'grid': grid}).toString()
+                        : 'https://gecmaps.vercel.app/?grid=$grid';
                     final shareMsg = "📍 My Live Campus Location (GEC Compass):\n"
                         "• Grid Code: $grid ($precisionGrid)\n"
-                        "• Open in GEC Compass: $shareUrl\n"
-                        "• Google Maps: https://maps.google.com/?q=$lat,$lng";
+                        "• Open in GEC Compass: $shareUrl";
                     SharePlus.instance.share(ShareParams(text: shareMsg));
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Location not available to share")));
@@ -2414,10 +2413,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                   child: Text(
                     building.name,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 19,
                       fontWeight: FontWeight.bold,
                       color: _textColor,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
@@ -2472,42 +2471,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                 ),
               ],
             ),
-            // Gate Operating Hours & Status Badge
-            if (building.tags['opening_time'] != null || building.tags['closing_time'] != null || building.tags['barrier'] == 'gate') ...[
-              const SizedBox(height: 8),
-              Builder(
-                builder: (context) {
-                  final openStr = building.tags['opening_time']?.toString();
-                  final closeStr = building.tags['closing_time']?.toString();
-                  final isOpen = RoutingService.isGateOpenNow(openStr, closeStr);
-                  final label = RoutingService.getGateStatusLabel(openStr, closeStr);
-                  final color = isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: color.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          label,
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: color),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
             if (building.tags['venue'] != null) ...[
               const SizedBox(height: 8),
               Row(

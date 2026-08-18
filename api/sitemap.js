@@ -172,7 +172,7 @@ export default async function handler(request, response) {
   xml += `    <priority>1.0</priority>\n`;
   xml += `    <image:image>\n`;
   xml += `      <image:loc>${baseUrl}/icons/Icon-512.png</image:loc>\n`;
-  xml += `      <image:title>GECT Compass - GEC Thrissur Campus Map</image:title>\n`;
+  xml += `      <image:title>GEC Maps | GECT Compass - GEC Thrissur Campus Map</image:title>\n`;
   xml += `      <image:caption>Interactive campus map &amp; navigation system for Government Engineering College Thrissur.</image:caption>\n`;
   xml += `    </image:image>\n`;
   xml += `  </url>\n`;
@@ -199,10 +199,10 @@ export default async function handler(request, response) {
     xml += `    <loc>${locUrl}</loc>\n`;
     xml += `    <lastmod>${today}</lastmod>\n`;
     xml += `    <changefreq>weekly</changefreq>\n`;
-    xml += `    <priority>0.7</priority>\n`;
+    xml += `    <priority>0.8</priority>\n`;
     xml += `    <image:image>\n`;
     xml += `      <image:loc>${imgUrl}</image:loc>\n`;
-    xml += `      <image:title>${name} - GECT Compass | GECT Maps &amp; GEC Maps Thrissur</image:title>\n`;
+    xml += `      <image:title>${name} - GEC Maps | GECT Compass | GECT Maps &amp; GEC Compass Thrissur</image:title>\n`;
     xml += `      <image:caption>Location and walking route for ${name} on GECT Compass campus map at Government Engineering College Thrissur${coordsStr}.</image:caption>\n`;
     xml += `    </image:image>\n`;
     xml += `  </url>\n`;

@@ -2,14 +2,24 @@
 <html lang="en">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-00MRVSKXXC"></script>
+  <!-- Defer Analytics to idle/background so it does not compete with Flutter bootstrap -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
     gtag('config', 'G-00MRVSKXXC');
+
+    function _loadAnalytics() {
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=G-00MRVSKXXC';
+      document.head.appendChild(s);
+    }
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(_loadAnalytics, { timeout: 2000 });
+    } else {
+      window.addEventListener('load', _loadAnalytics);
+    }
   </script>
 
   <base href="$FLUTTER_BASE_HREF">
@@ -19,12 +29,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 
   <!-- Primary SEO Meta Tags -->
-  <title>GECT Compass – GEC Thrissur Campus Navigation</title>
-  <meta name="title" content="GECT Compass | GECT Maps, GEC Maps & GEC Compass – GEC Thrissur Campus Navigation">
+  <title>GEC Maps | GECT Compass | GECT Maps & GEC Compass – Official Campus Navigation</title>
+  <meta name="title" content="GEC Maps | GECT Compass | GECT Maps & GEC Compass – GEC Thrissur Campus Navigation">
   <meta name="description"
-    content="GECT Compass (GECT Maps, GEC Maps & GEC Compass) – Official interactive campus navigation system for Government Engineering College Thrissur (GEC Thrissur). Explore departments, classrooms, labs, hostels, and amenities with real-time GPS, live compass heading & offline routing.">
+    content="GEC Maps & GECT Compass (GECT Maps / GEC Compass) – Official interactive campus navigation and indoor room finder for Government Engineering College Thrissur (GEC Thrissur). Locate all 70+ departments, labs, classrooms, hostels, canteens, and gates with real-time GPS & offline walking directions.">
   <meta name="keywords"
-    content="gect compass, gect maps, gec compass, gect compasss, gec maps, gecmaps, gectcompass, gect map, gec map, gec maps thrissur, gect maps thrissur, gec compass thrissur, gect compass thrissur, gectcr maps, gectcr compass, gec thrissur maps, gect thrissur compass, government engineering college thrissur map, gec campus map, gec indoor navigation, gect navigation app, gec thrissur location, gec route finder, gec campus navigation, gec compass app, gect compass apk, gec tcr maps, gectcr navigation, gec thrissur navigation, engineering college thrissur compass">
+    content="gec maps, gect compass, gect maps, gec compass, gecmaps, gectcompass, gec map, gect map, gec maps thrissur, gect maps thrissur, gec compass thrissur, gect compass thrissur, gectcr maps, gectcr compass, gec thrissur maps, gect thrissur compass, government engineering college thrissur map, gec campus map, gec indoor navigation, gect navigation app, gec thrissur location, gec route finder, gec campus navigation, gec compass app, gect compass apk, gec tcr maps, gectcr navigation, gec thrissur navigation, engineering college thrissur compass">
   <meta name="author" content="Government Engineering College Thrissur (GEC TCR)">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="theme-color" content="#2563EB">
@@ -39,22 +49,26 @@
   <meta name="ICBM" content="10.5540, 76.2255">
 
   <!-- Performance & Speed Optimizations (DNS Prefetching & Preconnect) -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="dns-prefetch" href="https://res.cloudinary.com">
   <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
   <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com">
   <link rel="preconnect" href="https://a.basemaps.cartocdn.com" crossorigin>
   <link rel="dns-prefetch" href="https://server.arcgisonline.com">
   <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" href="flutter_bootstrap.js" as="script">
+  <link rel="preload" href="flutter_bootstrap.js" as="script" fetchpriority="high">
 
   <!-- Open Graph / Facebook / WhatsApp Social Media Meta Tags -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://gecmaps.vercel.app/">
-  <meta property="og:title" content="GECT Compass | GECT Maps, GEC Maps & GEC Compass">
+  <meta property="og:title" content="GEC Maps | GECT Compass | GECT Maps & GEC Compass">
   <meta property="og:description"
-    content="GECT Compass (GECT Maps & GEC Maps) – Interactive campus navigation for Government Engineering College Thrissur. Locate departments, labs, classrooms, hostels, and amenities with real-time GPS & offline routing.">
+    content="GEC Maps & GECT Compass (GECT Maps / GEC Compass) – Interactive campus navigation for Government Engineering College Thrissur. Locate all 70+ departments, labs, classrooms, hostels, and amenities with real-time GPS & offline routing.">
   <meta property="og:image" content="https://gecmaps.vercel.app/icons/Icon-512.png">
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
@@ -65,9 +79,9 @@
   <!-- Twitter Card Meta Tags -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://gecmaps.vercel.app/">
-  <meta name="twitter:title" content="GECT Compass | GECT Maps, GEC Maps & GEC Compass">
+  <meta name="twitter:title" content="GEC Maps | GECT Compass | GECT Maps & GEC Compass">
   <meta name="twitter:description"
-    content="GECT Compass (GECT Maps & GEC Maps) – Interactive campus navigation for Government Engineering College Thrissur. Locate departments, labs, classrooms, hostels, and amenities with real-time GPS & offline routing.">
+    content="GEC Maps & GECT Compass (GECT Maps / GEC Compass) – Interactive campus navigation for Government Engineering College Thrissur. Locate all 70+ departments, labs, classrooms, hostels, and amenities with real-time GPS & offline routing.">
   <meta name="twitter:image" content="https://gecmaps.vercel.app/icons/Icon-512.png">
   <meta name="twitter:image:alt" content="GECT Compass - GEC Maps Navigation System">
 
@@ -83,150 +97,1535 @@
 
   <!-- JSON-LD Structured Data Graph for Search Engine Optimization -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebApplication",
-        "@id": "https://gecmaps.vercel.app/#webapp",
-        "name": "GECT Compass",
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://gecmaps.vercel.app/#webapp",
+      "name": "GECT Compass",
+      "alternateName": [
+        "GECT Maps",
+        "GEC Maps",
+        "GEC Compass",
+        "gect compasss",
+        "GECMaps",
+        "GECTCompass",
+        "GEC Navigator",
+        "GECT Navigator",
+        "GECT Thrissur Compass",
+        "GEC Thrissur Maps",
+        "GECT Map",
+        "GEC Map",
+        "GECTCR Maps"
+      ],
+      "url": "https://gecmaps.vercel.app/",
+      "description": "GECT Compass (GECT Maps & GEC Maps) indoor & outdoor campus navigation system for Government Engineering College (GEC) Thrissur. Locate departments, labs, classrooms, hostels, and amenities with real-time GPS & offline routing.",
+      "applicationCategory": "NavigationApplication",
+      "operatingSystem": "Android, iOS, Web, All",
+      "browserRequirements": "Requires JavaScript and HTML5 canvas support",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "author": {
+        "@type": "EducationalOrganization",
+        "name": "Government Engineering College Thrissur",
         "alternateName": [
-          "GECT Maps",
-          "GEC Maps",
-          "GEC Compass",
-          "gect compasss",
-          "GECMaps",
-          "GECTCompass",
-          "GEC Navigator",
-          "GECT Navigator",
-          "GECT Thrissur Compass",
-          "GEC Thrissur Maps",
-          "GECT Map",
-          "GEC Map",
-          "GECTCR Maps"
+          "GEC Thrissur",
+          "GECT",
+          "GEC TCR"
         ],
-        "url": "https://gecmaps.vercel.app/",
-        "description": "GECT Compass (GECT Maps & GEC Maps) indoor & outdoor campus navigation system for Government Engineering College (GEC) Thrissur. Locate departments, labs, classrooms, hostels, and amenities with real-time GPS & offline routing.",
-        "applicationCategory": "NavigationApplication",
-        "operatingSystem": "Android, iOS, Web, All",
-        "browserRequirements": "Requires JavaScript and HTML5 canvas support",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR"
-        },
-        "author": {
-          "@type": "EducationalOrganization",
-          "name": "Government Engineering College Thrissur",
-          "alternateName": ["GEC Thrissur", "GECT", "GEC TCR"],
-          "url": "http://gectcr.ac.in/",
-          "sameAs": [
-            "https://en.wikipedia.org/wiki/Government_Engineering_College,_Thrissur",
-            "https://github.com/anjo2007/GECMAPS"
-          ]
-        },
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": {
-            "@type": "EntryPoint",
-            "urlTemplate": "https://gecmaps.vercel.app/?search={search_term_string}"
-          },
-          "query-input": "required name=search_term_string"
-        }
-      },
-      {
-        "@type": "CivicStructure",
-        "@id": "https://gecmaps.vercel.app/#place",
-        "name": "Government Engineering College Thrissur Campus",
-        "alternateName": ["GEC Thrissur Campus", "GECT Campus", "GEC TCR"],
         "url": "http://gectcr.ac.in/",
-        "hasMap": "https://gecmaps.vercel.app/",
-        "geo": {
-          "@type": "GeoCoordinates",
-          "latitude": 10.5540,
-          "longitude": 76.2255
+        "sameAs": [
+          "https://en.wikipedia.org/wiki/Government_Engineering_College,_Thrissur",
+          "https://github.com/anjo2007/GECMAPS"
+        ]
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://gecmaps.vercel.app/?search={search_term_string}"
         },
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "Engineering College PO, Ramavarmapuram",
-          "addressLocality": "Thrissur",
-          "addressRegion": "Kerala",
-          "postalCode": "680009",
-          "addressCountry": "IN"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "@id": "https://gecmaps.vercel.app/#breadcrumb",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Home",
-            "item": "https://gecmaps.vercel.app/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "GECT Compass & GEC Maps",
-            "item": "https://gecmaps.vercel.app/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 3,
-            "name": "About GECT Compass",
-            "item": "https://gecmaps.vercel.app/about"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "@id": "https://gecmaps.vercel.app/#faq",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is GECT Compass / GECT Maps / GEC Maps?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GECT Compass (also searched as GECT Maps, GEC Maps, GEC Compass, or gect compasss) is the official interactive indoor and outdoor campus navigation application for Government Engineering College (GEC) Thrissur. It provides turn-by-turn walking directions, real-time GPS tracking, live compass orientation, and an extensive room and department directory."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I navigate GEC Thrissur campus using GECT Compass?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Open GECT Compass online at https://gecmaps.vercel.app/ in any web browser or open the Android App. Search or tap on any classroom, lab, department (CSE, ECE, EEE, ME, CE, CHE, PE, MCA), auditorium, canteen, or hostel to view optimal walking routes with real-time GPS compass guidance."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does GECT Compass / GEC Maps support offline navigation?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes! GECT Compass is engineered with offline campus map caching and client-side shortest-path routing, allowing users to navigate GEC Thrissur smoothly even without an active internet connection."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Where can I download the GECT Compass Android APK?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "You can download the latest official GECT Compass Android App APK directly from https://gecmaps.vercel.app/app-release.apk."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Who developed GECT Compass and GECT Maps?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "GECT Compass was developed as a community project by Gectians (Anjo M J, Aman Hemanth, and ABID MUHAMMED N) for the students, faculty, and visitors of Government Engineering College Thrissur."
-            }
-          }
-        ]
+        "query-input": "required name=search_term_string"
       }
-    ]
-  }
+    },
+    {
+      "@type": "CivicStructure",
+      "@id": "https://gecmaps.vercel.app/#place",
+      "name": "Government Engineering College Thrissur Campus",
+      "alternateName": [
+        "GEC Thrissur Campus",
+        "GECT Campus",
+        "GEC TCR"
+      ],
+      "url": "http://gectcr.ac.in/",
+      "hasMap": "https://gecmaps.vercel.app/",
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 10.554,
+        "longitude": 76.2255
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Engineering College PO, Ramavarmapuram",
+        "addressLocality": "Thrissur",
+        "addressRegion": "Kerala",
+        "postalCode": "680009",
+        "addressCountry": "IN"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://gecmaps.vercel.app/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://gecmaps.vercel.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "GECT Compass & GEC Maps",
+          "item": "https://gecmaps.vercel.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "About GECT Compass",
+          "item": "https://gecmaps.vercel.app/about"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://gecmaps.vercel.app/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is GECT Compass / GECT Maps / GEC Maps?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GECT Compass (also searched as GECT Maps, GEC Maps, GEC Compass, or gect compasss) is the official interactive indoor and outdoor campus navigation application for Government Engineering College (GEC) Thrissur. It provides turn-by-turn walking directions, real-time GPS tracking, live compass orientation, and an extensive room and department directory."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I navigate GEC Thrissur campus using GECT Compass?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Open GECT Compass online at https://gecmaps.vercel.app/ in any web browser or open the Android App. Search or tap on any classroom, lab, department (CSE, ECE, EEE, ME, CE, CHE, PE, MCA), auditorium, canteen, or hostel to view optimal walking routes with real-time GPS compass guidance."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does GECT Compass / GEC Maps support offline navigation?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! GECT Compass is engineered with offline campus map caching and client-side shortest-path routing, allowing users to navigate GEC Thrissur smoothly even without an active internet connection."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where can I download the GECT Compass Android APK?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can download the latest official GECT Compass Android App APK directly from https://gecmaps.vercel.app/app-release.apk."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who developed GECT Compass and GECT Maps?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "GECT Compass was developed as a community project by Gectians (Anjo M J, Aman Hemanth, and ABID MUHAMMED N) for the students, faculty, and visitors of Government Engineering College Thrissur."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "ItemList",
+      "@id": "https://gecmaps.vercel.app/#places-directory",
+      "name": "GECT Compass & GEC Maps - Complete Campus Directory",
+      "description": "Complete directory of all departments, laboratories, hostels, canteens, and amenities at Government Engineering College Thrissur on GEC Maps & GECT Compass.",
+      "numberOfItems": 72,
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "item": {
+            "@type": "Place",
+            "name": "Main Gate Entrance",
+            "url": "https://gecmaps.vercel.app/api/share?id=gate_main_entrance",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=gate_main_entrance",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5541214,
+              "longitude": 76.2264419
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "item": {
+            "@type": "Place",
+            "name": "Electrical Gate Entrance",
+            "url": "https://gecmaps.vercel.app/api/share?id=gate_south_canteen_entrance",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=gate_south_canteen_entrance",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5520947,
+              "longitude": 76.224128
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "item": {
+            "@type": "Place",
+            "name": "East Electrical Gate Entrance",
+            "url": "https://gecmaps.vercel.app/api/share?id=gate_east_electrical_entrance",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=gate_east_electrical_entrance",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5531511,
+              "longitude": 76.226493
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "item": {
+            "@type": "Place",
+            "name": "State Bank of India",
+            "url": "https://gecmaps.vercel.app/api/share?id=3673608143",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=3673608143",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5540944,
+              "longitude": 76.2264121
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 5,
+          "item": {
+            "@type": "Place",
+            "name": "South Indian Bank",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907766702",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907766702",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5520774,
+              "longitude": 76.2267813
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 6,
+          "item": {
+            "@type": "Place",
+            "name": "Vimala College Chapel",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907766703",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907766703",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5523134,
+              "longitude": 76.2264343
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 7,
+          "item": {
+            "@type": "Place",
+            "name": "Ice and Bakes",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907766712",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907766712",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5545195,
+              "longitude": 76.2267115
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 8,
+          "item": {
+            "@type": "Place",
+            "name": "Bay Leaf Restaurant",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907781916",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907781916",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5558752,
+              "longitude": 76.2273301
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 9,
+          "item": {
+            "@type": "Place",
+            "name": "Rockland",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907781917",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907781917",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5558108,
+              "longitude": 76.22717
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 10,
+          "item": {
+            "@type": "Place",
+            "name": "MEA Masjid",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907781918",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907781918",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5551133,
+              "longitude": 76.228247
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 11,
+          "item": {
+            "@type": "Place",
+            "name": "Office of The Deputy Commandant, Dist. Armed Reserve, Ramavarmapuram,Thrissur",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907781921",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907781921",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5565513,
+              "longitude": 76.2272391
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 12,
+          "item": {
+            "@type": "Place",
+            "name": "916 Fried Chicken",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907781922",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907781922",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.556258,
+              "longitude": 76.2281124
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 13,
+          "item": {
+            "@type": "Place",
+            "name": "Lassi Corner",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907781923",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907781923",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5569722,
+              "longitude": 76.2285766
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 14,
+          "item": {
+            "@type": "Place",
+            "name": "Juma Masji",
+            "url": "https://gecmaps.vercel.app/api/share?id=5907816966",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=5907816966",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.557934,
+              "longitude": 76.2299149
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 15,
+          "item": {
+            "@type": "Place",
+            "name": "Thrissur Engineering College Sub-Post Office",
+            "url": "https://gecmaps.vercel.app/api/share?id=7736908650",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=7736908650",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5540642,
+              "longitude": 76.2264114
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 16,
+          "item": {
+            "@type": "Place",
+            "name": "Akshaya Centre, Pallimoola",
+            "url": "https://gecmaps.vercel.app/api/share?id=8344921530",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=8344921530",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5554878,
+              "longitude": 76.2271479
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 17,
+          "item": {
+            "@type": "Place",
+            "name": "Green Pharma",
+            "url": "https://gecmaps.vercel.app/api/share?id=8833391700",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=8833391700",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5560978,
+              "longitude": 76.2278388
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 18,
+          "item": {
+            "@type": "Place",
+            "name": "Gloria Gopikumar Hall (Wester Amphitheatre)",
+            "url": "https://gecmaps.vercel.app/api/share?id=9537578161",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=9537578161",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5545006,
+              "longitude": 76.2241289
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 19,
+          "item": {
+            "@type": "Place",
+            "name": "Eastern Amphitheatre",
+            "url": "https://gecmaps.vercel.app/api/share?id=9537578162",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=9537578162",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5545058,
+              "longitude": 76.2252164
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 20,
+          "item": {
+            "@type": "Place",
+            "name": "GECT Cafeteria",
+            "url": "https://gecmaps.vercel.app/api/share?id=9537578167",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=9537578167",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5539729,
+              "longitude": 76.2242327
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 21,
+          "item": {
+            "@type": "Place",
+            "name": "Cake With Us",
+            "url": "https://gecmaps.vercel.app/api/share?id=10841759609",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=10841759609",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5545964,
+              "longitude": 76.2265357
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 22,
+          "item": {
+            "@type": "Place",
+            "name": "Central Auditorium",
+            "url": "https://gecmaps.vercel.app/api/share?id=115714366",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=115714366",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5535948,
+              "longitude": 76.2245669
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 23,
+          "item": {
+            "@type": "Place",
+            "name": "Mechanical Engineering Workshops",
+            "url": "https://gecmaps.vercel.app/api/share?id=115714450",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=115714450",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.552883,
+              "longitude": 76.2246257
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 24,
+          "item": {
+            "@type": "Place",
+            "name": "Electrical Engineering workshops",
+            "url": "https://gecmaps.vercel.app/api/share?id=115714487",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=115714487",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5530023,
+              "longitude": 76.2259154
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 25,
+          "item": {
+            "@type": "Place",
+            "name": "Civil Engineering Workshop",
+            "url": "https://gecmaps.vercel.app/api/share?id=115714492",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=115714492",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5537076,
+              "longitude": 76.2258611
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 26,
+          "item": {
+            "@type": "Place",
+            "name": "Vimala College Thrissur",
+            "url": "https://gecmaps.vercel.app/api/share?id=115714570",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=115714570",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5530736,
+              "longitude": 76.2268773
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 27,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Chemical Engineering",
+            "url": "https://gecmaps.vercel.app/api/share?id=115714680",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=115714680",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.552614,
+              "longitude": 76.2232924
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 28,
+          "item": {
+            "@type": "Place",
+            "name": "St. Francis Xavier's Church Vijayapuram",
+            "url": "https://gecmaps.vercel.app/api/share?id=315753702",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=315753702",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5550309,
+              "longitude": 76.226831
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 29,
+          "item": {
+            "@type": "Place",
+            "name": "Jubilee Parish Hall",
+            "url": "https://gecmaps.vercel.app/api/share?id=315753811",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=315753811",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5548361,
+              "longitude": 76.2271242
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 30,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Electronics and Communication Engineering, GECT",
+            "url": "https://gecmaps.vercel.app/api/share?id=333757869",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=333757869",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5527095,
+              "longitude": 76.2216185
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 31,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Computer Science and Engineering",
+            "url": "https://gecmaps.vercel.app/api/share?id=333758244",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=333758244",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5527399,
+              "longitude": 76.2220205
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 32,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Production Engineering",
+            "url": "https://gecmaps.vercel.app/api/share?id=333758245",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=333758245",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5527995,
+              "longitude": 76.2225682
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 33,
+          "item": {
+            "@type": "Place",
+            "name": "Main Building",
+            "url": "https://gecmaps.vercel.app/api/share?id=363172473",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=363172473",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5544176,
+              "longitude": 76.2246677
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 34,
+          "item": {
+            "@type": "Place",
+            "name": "A-Block Mens Hostel",
+            "url": "https://gecmaps.vercel.app/api/share?id=363172794",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=363172794",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5544423,
+              "longitude": 76.2221209
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 35,
+          "item": {
+            "@type": "Place",
+            "name": "vimala college hostel",
+            "url": "https://gecmaps.vercel.app/api/share?id=425745732",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=425745732",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5522469,
+              "longitude": 76.2262863
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 36,
+          "item": {
+            "@type": "Place",
+            "name": "I.M.A. Blood Bank Complex and Research Centre",
+            "url": "https://gecmaps.vercel.app/api/share?id=429995792",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=429995792",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5598421,
+              "longitude": 76.2268681
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 37,
+          "item": {
+            "@type": "Place",
+            "name": "Fire and Rescue Station, Viyyur",
+            "url": "https://gecmaps.vercel.app/api/share?id=453249819",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=453249819",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5558619,
+              "longitude": 76.2237502
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 38,
+          "item": {
+            "@type": "Place",
+            "name": "Canteen",
+            "url": "https://gecmaps.vercel.app/api/share?id=664126474",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=664126474",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5523325,
+              "longitude": 76.2243316
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 39,
+          "item": {
+            "@type": "Place",
+            "name": "South Indian Bank",
+            "url": "https://gecmaps.vercel.app/api/share?id=673856257",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=673856257",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.552176,
+              "longitude": 76.2268524
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 40,
+          "item": {
+            "@type": "Place",
+            "name": "South Indian Bank",
+            "url": "https://gecmaps.vercel.app/api/share?id=673856472",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=673856472",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5519768,
+              "longitude": 76.2268941
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 41,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Architecture",
+            "url": "https://gecmaps.vercel.app/api/share?id=726612600",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=726612600",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.553398,
+              "longitude": 76.2211375
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 42,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Civil Engineering",
+            "url": "https://gecmaps.vercel.app/api/share?id=726628926",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=726628926",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5539403,
+              "longitude": 76.2251566
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 43,
+          "item": {
+            "@type": "Place",
+            "name": "GECT Library",
+            "url": "https://gecmaps.vercel.app/api/share?id=726629162",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=726629162",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5539858,
+              "longitude": 76.2247009
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 44,
+          "item": {
+            "@type": "Place",
+            "name": "Ladies Amenity Centre",
+            "url": "https://gecmaps.vercel.app/api/share?id=726764417",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=726764417",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5538525,
+              "longitude": 76.2249177
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 45,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Physical Education and gym",
+            "url": "https://gecmaps.vercel.app/api/share?id=726764929",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=726764929",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5539421,
+              "longitude": 76.2242923
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 46,
+          "item": {
+            "@type": "Place",
+            "name": "Post Graduate block",
+            "url": "https://gecmaps.vercel.app/api/share?id=760600128",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=760600128",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5534405,
+              "longitude": 76.2205772
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 47,
+          "item": {
+            "@type": "Place",
+            "name": "E-Block Mens Hostel",
+            "url": "https://gecmaps.vercel.app/api/share?id=760600129",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=760600129",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.553727,
+              "longitude": 76.2206448
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 48,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Electrical and Electronics Engineering",
+            "url": "https://gecmaps.vercel.app/api/share?id=760602029",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=760602029",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5521713,
+              "longitude": 76.2237962
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 49,
+          "item": {
+            "@type": "Place",
+            "name": "Little Star Restaurant",
+            "url": "https://gecmaps.vercel.app/api/share?id=798214455",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=798214455",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5542094,
+              "longitude": 76.2266852
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 50,
+          "item": {
+            "@type": "Place",
+            "name": "District institution of education and training,Thrissur",
+            "url": "https://gecmaps.vercel.app/api/share?id=799003385",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=799003385",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5556283,
+              "longitude": 76.2256698
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 51,
+          "item": {
+            "@type": "Place",
+            "name": "MEA masjid",
+            "url": "https://gecmaps.vercel.app/api/share?id=800962532",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=800962532",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5550963,
+              "longitude": 76.2282792
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 52,
+          "item": {
+            "@type": "Place",
+            "name": "Pee Jey complex",
+            "url": "https://gecmaps.vercel.app/api/share?id=800969715",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=800969715",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5544531,
+              "longitude": 76.2267137
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 53,
+          "item": {
+            "@type": "Place",
+            "name": "Quarters",
+            "url": "https://gecmaps.vercel.app/api/share?id=824615089",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=824615089",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5531721,
+              "longitude": 76.2203488
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 54,
+          "item": {
+            "@type": "Place",
+            "name": "Quarters",
+            "url": "https://gecmaps.vercel.app/api/share?id=824615428",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=824615428",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5532238,
+              "longitude": 76.2201514
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 55,
+          "item": {
+            "@type": "Place",
+            "name": "Co Operative Store",
+            "url": "https://gecmaps.vercel.app/api/share?id=824616928",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=824616928",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5539061,
+              "longitude": 76.2240978
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 56,
+          "item": {
+            "@type": "Place",
+            "name": "Fire and Rescue Station Thrissur",
+            "url": "https://gecmaps.vercel.app/api/share?id=843061098",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=843061098",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5586782,
+              "longitude": 76.2265309
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 57,
+          "item": {
+            "@type": "Place",
+            "name": "Vignan Sagar Science and Technology Park",
+            "url": "https://gecmaps.vercel.app/api/share?id=866736396",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=866736396",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5581686,
+              "longitude": 76.225602
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 58,
+          "item": {
+            "@type": "Place",
+            "name": "Central Computing Facility (CCF)",
+            "url": "https://gecmaps.vercel.app/api/share?id=893279304",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=893279304",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5536573,
+              "longitude": 76.2251171
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 59,
+          "item": {
+            "@type": "Place",
+            "name": "Geetha Homes",
+            "url": "https://gecmaps.vercel.app/api/share?id=954403684",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=954403684",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5552649,
+              "longitude": 76.2249632
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 60,
+          "item": {
+            "@type": "Place",
+            "name": "Madathilparambil Hostel",
+            "url": "https://gecmaps.vercel.app/api/share?id=954403685",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=954403685",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5561744,
+              "longitude": 76.2242336
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 61,
+          "item": {
+            "@type": "Place",
+            "name": "Varappilli Shiva Temple",
+            "url": "https://gecmaps.vercel.app/api/share?id=954403686",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=954403686",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.556444,
+              "longitude": 76.2245815
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 62,
+          "item": {
+            "@type": "Place",
+            "name": "Preethi Hostel",
+            "url": "https://gecmaps.vercel.app/api/share?id=954403687",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=954403687",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5561652,
+              "longitude": 76.2246143
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 63,
+          "item": {
+            "@type": "Place",
+            "name": "Bus Garage",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035390651",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035390651",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5524794,
+              "longitude": 76.2239685
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 64,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Electrical and Electronics Engineering extension",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035390652",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035390652",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5533335,
+              "longitude": 76.2258053
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 65,
+          "item": {
+            "@type": "Place",
+            "name": "Environmental Engineering block",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035390653",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035390653",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5528104,
+              "longitude": 76.2255582
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 66,
+          "item": {
+            "@type": "Place",
+            "name": "Academic Block",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035390654",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035390654",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.553437,
+              "longitude": 76.2250819
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 67,
+          "item": {
+            "@type": "Place",
+            "name": "NSS GECT",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035390655",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035390655",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5540112,
+              "longitude": 76.2262909
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 68,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Mechanical Engineering extension",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035390656",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035390656",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5526897,
+              "longitude": 76.2254346
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 69,
+          "item": {
+            "@type": "Place",
+            "name": "Mens Hostel Mess B",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035400071",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035400071",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5538387,
+              "longitude": 76.2211766
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 70,
+          "item": {
+            "@type": "Place",
+            "name": "Mens Hoste Mess A",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035400072",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035400072",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5536843,
+              "longitude": 76.2221877
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 71,
+          "item": {
+            "@type": "Place",
+            "name": "Dyuthi Room",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035563836",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035563836",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5534669,
+              "longitude": 76.2257176
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        },
+        {
+          "@type": "ListItem",
+          "position": 72,
+          "item": {
+            "@type": "Place",
+            "name": "Dept. of Computer Science Engineering extension",
+            "url": "https://gecmaps.vercel.app/api/share?id=1035563841",
+            "hasMap": "https://gecmaps.vercel.app/?placeId=1035563841",
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 10.5525513,
+              "longitude": 76.2219875
+            },
+            "containedInPlace": {
+              "@type": "CollegeOrUniversity",
+              "name": "Government Engineering College Thrissur"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 </head>
 
@@ -327,79 +1726,154 @@
   <!-- Crawlable Semantic HTML for Search Engine Bots & Web Indexers (Google, Bing, DuckDuckGo, Yandex, Yahoo) -->
   <div id="seo-content" class="seo-crawlable-content">
     <header>
-      <h1>GECT Compass | GECT Maps & GEC Maps – GEC Thrissur Campus Navigation System</h1>
-      <p>Welcome to <strong>GECT Compass</strong> (also known as <strong>GECT Maps</strong>, <strong>GEC Maps</strong>, <strong>GEC Compass</strong>, or <strong>gect compasss</strong>) — the official digital campus map, indoor room finder, and turn-by-turn navigation system for <strong>Government Engineering College (GEC) Thrissur</strong>, Kerala, India.</p>
+      <h1>GEC Maps | GECT Compass | GECT Maps &amp; GEC Compass – GEC Thrissur Campus Navigation</h1>
+      <p>Welcome to <strong>GEC Maps</strong> &amp; <strong>GECT Compass</strong> (also widely searched as <strong>GECT Maps</strong>, <strong>GEC Compass</strong>, or <strong>gect compasss</strong>) — the official digital campus navigation map, indoor room finder, and offline walking guide for <strong>Government Engineering College (GEC) Thrissur</strong>, Kerala, India.</p>
     </header>
     <main>
       <section>
-        <h2>About GECT Compass & GECT Maps</h2>
-        <p>GECT Compass provides interactive indoor and outdoor spatial navigation across the entire 120-acre campus of Government Engineering College Thrissur. Whether you are a student, faculty member, parent, or campus visitor searching for "GECT Maps", "GEC Maps", "GECT Compass", or "GEC Navigator", GECT Compass helps you quickly find every department block, laboratory, seminar hall, administrative office, hostel, and canteen with real-time GPS location tracking, hardware compass heading, and Dijkstra shortest-path walking routes.</p>
+        <h2>About GEC Maps &amp; GECT Compass</h2>
+        <p>GEC Maps and GECT Compass deliver real-time interactive indoor and outdoor spatial guidance across the 120-acre lush campus of Government Engineering College Thrissur. Designed by Gectians, GEC Maps lets students, faculty, alumni, parents, and campus visitors navigate to any department, research laboratory, classroom, seminar hall, hostel, mess, canteen, ATM, sports ground, or entrance gate with live compass orientation and shortest-path walking routes.</p>
       </section>
 
       <section>
-        <h2>Key Campus Navigation Features & Capabilities</h2>
-        <ul>
-          <li><strong>GECT Maps & GEC Maps:</strong> Comprehensive vector and satellite mapping covering all college buildings, pedestrian walkways, gates, and roads.</li>
-          <li><strong>GECT Compass Direction:</strong> Real-time device compass orientation and live blue-dot GPS tracking to guide your walk across campus.</li>
-          <li><strong>GEC Navigator Turn-by-Turn Routing:</strong> Dijkstra graph-based shortest road and walkway paths directly to your destination without unnecessary gate detours.</li>
-          <li><strong>Indoor Room & Lab Finder:</strong> Detailed floor-wise search for lecture halls, laboratories, faculty rooms, and department seminar halls.</li>
-          <li><strong>Offline Map Support:</strong> Local caching technology allowing smooth campus navigation even in low or zero mobile data connectivity zones.</li>
-          <li><strong>Cross-Platform Accessibility:</strong> Accessible instantly online as a Progressive Web App (PWA) and available as a lightweight native Android APK.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Complete Campus Directory at GEC Thrissur Covered by GECT Compass</h2>
+        <h2>Complete Campus Directory &amp; Interactive Navigation Locations (GEC Maps &amp; GECT Compass)</h2>
+        <p>Explore every single department block, laboratory, hostel, canteen, entrance gate, and campus amenity on GEC Maps and GECT Compass at Government Engineering College Thrissur:</p>
         <article>
-          <h3>Engineering Departments & Facilities</h3>
+          <h3>Engineering Departments & Academic Blocks</h3>
           <ul>
-            <li><strong>Computer Science & Engineering (CSE):</strong> Main CSE Block, Hardware Lab, Software Lab, Network Lab, Department Library, CCF (Central Computing Facility).</li>
-            <li><strong>Electronics & Communication Engineering (ECE):</strong> ECE Main Building, DSP Lab, VLSI Lab, Communication Systems Lab, Microprocessor Lab.</li>
-            <li><strong>Electrical & Electronics Engineering (EEE):</strong> Electrical Machines Lab, Power Electronics Lab, High Voltage Lab, Measurements Lab.</li>
-            <li><strong>Mechanical Engineering (ME):</strong> Mechanical Block, Heat Engines Lab, Fluid Mechanics Lab, Machine Shop, CAD/CAM Centre, Central Workshop.</li>
-            <li><strong>Civil Engineering (CE):</strong> Civil Block, Survey Lab, Strength of Materials (SM) Lab, Geotechnical Lab, Environmental Engineering Lab, Structural Lab.</li>
-            <li><strong>Chemical Engineering (CHE):</strong> Chemical Engineering Building, Mass Transfer Lab, Reaction Engineering Lab, Process Control Lab.</li>
-            <li><strong>Production Engineering (PE):</strong> Production Department, Metrology Lab, CNC Machining Center, Foundry & Welding Lab.</li>
-            <li><strong>Master of Computer Applications (MCA):</strong> MCA Department Building, Advanced Computer Labs & Seminar Hall.</li>
-            <li><strong>Applied Science & Humanities:</strong> Mathematics, Physics, Chemistry, and Humanities Departments.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=115714570"><strong>Vimala College Thrissur</strong></a> (Lat: 10.5530736, Lng: 76.2268773) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=115714680"><strong>Dept. of Chemical Engineering</strong></a> (Lat: 10.552614, Lng: 76.2232924) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=333757869"><strong>Dept. of Electronics and Communication Engineering, GECT</strong></a> (Lat: 10.5527095, Lng: 76.2216185) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=333758244"><strong>Dept. of Computer Science and Engineering</strong></a> (Lat: 10.5527399, Lng: 76.2220205) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=333758245"><strong>Dept. of Production Engineering</strong></a> (Lat: 10.5527995, Lng: 76.2225682) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=363172473"><strong>Main Building</strong></a> (Lat: 10.5544176, Lng: 76.2246677) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=726612600"><strong>Dept. of Architecture</strong></a> (Lat: 10.553398, Lng: 76.2211375) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=726628926"><strong>Dept. of Civil Engineering</strong></a> (Lat: 10.5539403, Lng: 76.2251566) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=726629162"><strong>GECT Library</strong></a> (Lat: 10.5539858, Lng: 76.2247009) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=726764929"><strong>Dept. of Physical Education and gym</strong></a> (Lat: 10.5539421, Lng: 76.2242923) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=760600128"><strong>Post Graduate block</strong></a> (Lat: 10.5534405, Lng: 76.2205772) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=760602029"><strong>Dept. of Electrical and Electronics Engineering</strong></a> (Lat: 10.5521713, Lng: 76.2237962) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=824616928"><strong>Co Operative Store</strong></a> (Lat: 10.5539061, Lng: 76.2240978) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035390652"><strong>Dept. of Electrical and Electronics Engineering extension</strong></a> (Lat: 10.5533335, Lng: 76.2258053) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035390653"><strong>Environmental Engineering block</strong></a> (Lat: 10.5528104, Lng: 76.2255582) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035390654"><strong>Academic Block</strong></a> (Lat: 10.553437, Lng: 76.2250819) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035390655"><strong>NSS GECT</strong></a> (Lat: 10.5540112, Lng: 76.2262909) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035390656"><strong>Dept. of Mechanical Engineering extension</strong></a> (Lat: 10.5526897, Lng: 76.2254346) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035563841"><strong>Dept. of Computer Science Engineering extension</strong></a> (Lat: 10.5525513, Lng: 76.2219875) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
           </ul>
         </article>
         <article>
-          <h3>Administrative, Academic & Campus Amenities</h3>
+          <h3>Laboratories & Technical Centers</h3>
           <ul>
-            <li><strong>Main Administrative Building:</strong> Principal's Office, Academic Section, Accounts Section, Examination Cell, Placement Cell (CGPC).</li>
-            <li><strong>Central Library:</strong> Digital Library, Reference Section, Reading Rooms, Book Bank.</li>
-            <li><strong>Millennium Auditorium & Open Air Theatre (OAT):</strong> Cultural events, technical symposiums, and college assemblies.</li>
-            <li><strong>Campus Hostels:</strong> Men's Hostel 1 (MH1), Men's Hostel 2 (MH2), Men's Hostel 3 (MH3), Ladies' Hostel 1 (LH1), Ladies' Hostel 2 (LH2), PG Hostel.</li>
-            <li><strong>Canteen & Refreshments:</strong> College Main Canteen, South Canteen, Nescafe Kiosk, Cooperative Store.</li>
-            <li><strong>Sports & Recreation:</strong> Main Football Ground, Cricket Pitch, Basketball Court, Volleyball Court, Badminton Court, Gymnasium.</li>
-            <li><strong>Campus Gates:</strong> Main Entrance Gate, Electrical Gate, South Canteen Gate, Hostels Gate.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=8344921530"><strong>Akshaya Centre, Pallimoola</strong></a> (Lat: 10.5554878, Lng: 76.2271479) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=115714450"><strong>Mechanical Engineering Workshops</strong></a> (Lat: 10.552883, Lng: 76.2246257) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=115714487"><strong>Electrical Engineering workshops</strong></a> (Lat: 10.5530023, Lng: 76.2259154) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=115714492"><strong>Civil Engineering Workshop</strong></a> (Lat: 10.5537076, Lng: 76.2258611) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=726764417"><strong>Ladies Amenity Centre</strong></a> (Lat: 10.5538525, Lng: 76.2249177) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Administrative, Library & Seminar Halls</h3>
+          <ul>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907766703"><strong>Vimala College Chapel</strong></a> (Lat: 10.5523134, Lng: 76.2264343) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=115714366"><strong>Central Auditorium</strong></a> (Lat: 10.5535948, Lng: 76.2245669) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Campus Hostels & Residential Buildings</h3>
+          <ul>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=363172794"><strong>A-Block Mens Hostel</strong></a> (Lat: 10.5544423, Lng: 76.2221209) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=425745732"><strong>vimala college hostel</strong></a> (Lat: 10.5522469, Lng: 76.2262863) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=760600129"><strong>E-Block Mens Hostel</strong></a> (Lat: 10.553727, Lng: 76.2206448) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=954403685"><strong>Madathilparambil Hostel</strong></a> (Lat: 10.5561744, Lng: 76.2242336) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=954403687"><strong>Preethi Hostel</strong></a> (Lat: 10.5561652, Lng: 76.2246143) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035400071"><strong>Mens Hostel Mess B</strong></a> (Lat: 10.5538387, Lng: 76.2211766) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Cafeterias, Canteens & Refreshments</h3>
+          <ul>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907766712"><strong>Ice and Bakes</strong></a> (Lat: 10.5545195, Lng: 76.2267115) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907781916"><strong>Bay Leaf Restaurant</strong></a> (Lat: 10.5558752, Lng: 76.2273301) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907781917"><strong>Rockland</strong></a> (Lat: 10.5558108, Lng: 76.22717) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907781921"><strong>Office of The Deputy Commandant, Dist. Armed Reserve, Ramavarmapuram,Thrissur</strong></a> (Lat: 10.5565513, Lng: 76.2272391) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907781922"><strong>916 Fried Chicken</strong></a> (Lat: 10.556258, Lng: 76.2281124) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907781923"><strong>Lassi Corner</strong></a> (Lat: 10.5569722, Lng: 76.2285766) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=7736908650"><strong>Thrissur Engineering College Sub-Post Office</strong></a> (Lat: 10.5540642, Lng: 76.2264114) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=9537578167"><strong>GECT Cafeteria</strong></a> (Lat: 10.5539729, Lng: 76.2242327) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=10841759609"><strong>Cake With Us</strong></a> (Lat: 10.5545964, Lng: 76.2265357) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=664126474"><strong>Canteen</strong></a> (Lat: 10.5523325, Lng: 76.2243316) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=798214455"><strong>Little Star Restaurant</strong></a> (Lat: 10.5542094, Lng: 76.2266852) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035400072"><strong>Mens Hoste Mess A</strong></a> (Lat: 10.5536843, Lng: 76.2221877) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Campus Entrance Gates</h3>
+          <ul>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=gate_main_entrance"><strong>Main Gate Entrance</strong></a> (Lat: 10.5541214, Lng: 76.2264419) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=gate_south_canteen_entrance"><strong>Electrical Gate Entrance</strong></a> (Lat: 10.5520947, Lng: 76.224128) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=gate_east_electrical_entrance"><strong>East Electrical Gate Entrance</strong></a> (Lat: 10.5531511, Lng: 76.226493) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Banking & Utilities</h3>
+          <ul>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=3673608143"><strong>State Bank of India</strong></a> (Lat: 10.5540944, Lng: 76.2264121) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907766702"><strong>South Indian Bank</strong></a> (Lat: 10.5520774, Lng: 76.2267813) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=429995792"><strong>I.M.A. Blood Bank Complex and Research Centre</strong></a> (Lat: 10.5598421, Lng: 76.2268681) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=673856257"><strong>South Indian Bank</strong></a> (Lat: 10.552176, Lng: 76.2268524) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=673856472"><strong>South Indian Bank</strong></a> (Lat: 10.5519768, Lng: 76.2268941) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Other Campus Landmarks</h3>
+          <ul>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907781918"><strong>MEA Masjid</strong></a> (Lat: 10.5551133, Lng: 76.228247) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=5907816966"><strong>Juma Masji</strong></a> (Lat: 10.557934, Lng: 76.2299149) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=8833391700"><strong>Green Pharma</strong></a> (Lat: 10.5560978, Lng: 76.2278388) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=9537578161"><strong>Gloria Gopikumar Hall (Wester Amphitheatre)</strong></a> (Lat: 10.5545006, Lng: 76.2241289) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=9537578162"><strong>Eastern Amphitheatre</strong></a> (Lat: 10.5545058, Lng: 76.2252164) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=315753702"><strong>St. Francis Xavier's Church Vijayapuram</strong></a> (Lat: 10.5550309, Lng: 76.226831) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=315753811"><strong>Jubilee Parish Hall</strong></a> (Lat: 10.5548361, Lng: 76.2271242) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=453249819"><strong>Fire and Rescue Station, Viyyur</strong></a> (Lat: 10.5558619, Lng: 76.2237502) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=799003385"><strong>District institution of education and training,Thrissur</strong></a> (Lat: 10.5556283, Lng: 76.2256698) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=800962532"><strong>MEA masjid</strong></a> (Lat: 10.5550963, Lng: 76.2282792) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=800969715"><strong>Pee Jey complex</strong></a> (Lat: 10.5544531, Lng: 76.2267137) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=824615089"><strong>Quarters</strong></a> (Lat: 10.5531721, Lng: 76.2203488) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=824615428"><strong>Quarters</strong></a> (Lat: 10.5532238, Lng: 76.2201514) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=843061098"><strong>Fire and Rescue Station Thrissur</strong></a> (Lat: 10.5586782, Lng: 76.2265309) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=866736396"><strong>Vignan Sagar Science and Technology Park</strong></a> (Lat: 10.5581686, Lng: 76.225602) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=893279304"><strong>Central Computing Facility (CCF)</strong></a> (Lat: 10.5536573, Lng: 76.2251171) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=954403684"><strong>Geetha Homes</strong></a> (Lat: 10.5552649, Lng: 76.2249632) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=954403686"><strong>Varappilli Shiva Temple</strong></a> (Lat: 10.556444, Lng: 76.2245815) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035390651"><strong>Bus Garage</strong></a> (Lat: 10.5524794, Lng: 76.2239685) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
+            <li><a href="https://gecmaps.vercel.app/api/share?id=1035563836"><strong>Dyuthi Room</strong></a> (Lat: 10.5534669, Lng: 76.2257176) — walking directions and compass navigation on GEC Maps / GECT Compass.</li>
           </ul>
         </article>
       </section>
 
       <section>
-        <h2>Frequently Asked Questions (FAQ) - GECT Compass & GEC Maps</h2>
+        <h2>Frequently Asked Questions (FAQ) - GEC Maps &amp; GECT Compass</h2>
         <dl>
-          <dt><strong>Q: What is GECT Compass / GECT Maps?</strong></dt>
-          <dd>A: GECT Compass (also known as GEC Maps, GEC Compass, or gect compasss) is the interactive indoor and outdoor navigation system for Government Engineering College Thrissur (GEC TCR). It provides students, faculty, and visitors with GPS compass navigation, department directories, and turn-by-turn walking routes.</dd>
+          <dt><strong>Q: What is GEC Maps / GECT Compass?</strong></dt>
+          <dd>A: GEC Maps (also known as GECT Compass, GECT Maps, GEC Compass, or gect compasss) is the official interactive navigation application for Government Engineering College Thrissur (GEC TCR). It provides GPS-guided blue-dot location tracking, compass bearing heading, and turn-by-turn walking routes to all campus places.</dd>
 
-          <dt><strong>Q: How do I access GECT Maps online?</strong></dt>
-          <dd>A: Visit <a href="https://gecmaps.vercel.app/">https://gecmaps.vercel.app/</a> in any web browser on your phone, tablet, or PC to launch GECT Compass instantly without installing software.</dd>
+          <dt><strong>Q: How can I use GEC Maps / GECT Compass online?</strong></dt>
+          <dd>A: Open <a href="https://gecmaps.vercel.app/">https://gecmaps.vercel.app/</a> in any mobile or desktop web browser to start exploring the campus map immediately with zero installation required.</dd>
 
-          <dt><strong>Q: Where can I download the GECT Compass Android APK?</strong></dt>
-          <dd>A: You can download the latest official compressed Android APK directly from <a href="https://gecmaps.vercel.app/app-release.apk">https://gecmaps.vercel.app/app-release.apk</a>.</dd>
+          <dt><strong>Q: Where can I download the official GECT Compass Android APK?</strong></dt>
+          <dd>A: You can download the latest compressed Android APK directly from <a href="https://gecmaps.vercel.app/app-release.apk">https://gecmaps.vercel.app/app-release.apk</a>.</dd>
 
-          <dt><strong>Q: Does GECT Compass work offline on GEC campus?</strong></dt>
-          <dd>A: Yes, GECT Compass caches map geometry, road networks, and building data locally so you can calculate routes and view locations offline without active mobile internet.</dd>
+          <dt><strong>Q: Does GEC Maps work offline on campus?</strong></dt>
+          <dd>A: Yes, GEC Maps caches the full road graph, topological walkways, and building database offline on your device, so you can search and route without active cellular internet.</dd>
         </dl>
       </section>
 
       <section>
-        <h2>Quick Links & Resources</h2>
+        <h2>Quick Links &amp; Resources</h2>
         <ul>
-          <li><a href="https://gecmaps.vercel.app/">GECT Compass Web App Homepage</a></li>
-          <li><a href="https://gecmaps.vercel.app/about">About GECT Compass & Developer Team</a></li>
+          <li><a href="https://gecmaps.vercel.app/">GEC Maps &amp; GECT Compass Web App Homepage</a></li>
+          <li><a href="https://gecmaps.vercel.app/about">About GECT Compass &amp; Developer Team</a></li>
           <li><a href="https://gecmaps.vercel.app/app-release.apk">Download Android APK (Direct Download)</a></li>
           <li><a href="https://gecmaps.vercel.app/sitemap.xml">GECT Compass Campus XML Sitemap</a></li>
           <li><a href="http://gectcr.ac.in/" rel="external">Government Engineering College Thrissur Official Website</a></li>
@@ -407,7 +1881,7 @@
       </section>
     </main>
     <footer>
-      <p>© 2026 Government Engineering College Thrissur (GEC Thrissur). GECT Compass &amp; GEC Maps Navigation System. Developed with pride by Gectians.</p>
+      <p>© 2026 Government Engineering College Thrissur (GEC Thrissur). GEC Maps &amp; GECT Compass Navigation System. Developed with pride by Gectians.</p>
     </footer>
   </div>
 
@@ -454,13 +1928,13 @@
     function dismissWebSplash() {
       var splash = document.getElementById('loading-splash');
       if (splash) {
-        splash.style.transition = 'opacity 0.25s ease-out';
+        splash.style.transition = 'opacity 0.15s ease-out';
         splash.style.opacity = '0';
         setTimeout(function() {
           if (splash && splash.parentNode) {
             splash.parentNode.removeChild(splash);
           }
-        }, 260);
+        }, 160);
       }
       var seoContent = document.getElementById('seo-content');
       if (seoContent && seoContent.parentNode) {
@@ -474,15 +1948,15 @@
 
     // 2. DOM ready / loaded fallback
     if (document.readyState === 'complete') {
-      setTimeout(dismissWebSplash, 2000);
+      setTimeout(dismissWebSplash, 1000);
     } else {
       window.addEventListener('load', function() {
-        setTimeout(dismissWebSplash, 2000);
+        setTimeout(dismissWebSplash, 1000);
       });
     }
 
-    // 3. Absolute safety timeout (guarantees splash is never stuck even if Flutter web bootstrap is delayed)
-    setTimeout(dismissWebSplash, 3500);
+    // 3. Absolute safety timeout
+    setTimeout(dismissWebSplash, 2500);
   </script>
   <script src="flutter_bootstrap.js" async fetchpriority="high"></script>
 </body>

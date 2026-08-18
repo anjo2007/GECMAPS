@@ -1,0 +1,1377 @@
+{
+  "@type": "ItemList",
+  "@id": "https://gecmaps.vercel.app/#places-directory",
+  "name": "GECT Compass & GEC Maps - Complete Campus Directory",
+  "description": "Complete directory of all departments, laboratories, hostels, canteens, and amenities at Government Engineering College Thrissur on GEC Maps & GECT Compass.",
+  "numberOfItems": 72,
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "item": {
+        "@type": "Place",
+        "name": "Main Gate Entrance",
+        "url": "https://gecmaps.vercel.app/api/share?id=gate_main_entrance",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=gate_main_entrance",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5541214,
+          "longitude": 76.2264419
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "item": {
+        "@type": "Place",
+        "name": "Electrical Gate Entrance",
+        "url": "https://gecmaps.vercel.app/api/share?id=gate_south_canteen_entrance",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=gate_south_canteen_entrance",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5520947,
+          "longitude": 76.224128
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "item": {
+        "@type": "Place",
+        "name": "East Electrical Gate Entrance",
+        "url": "https://gecmaps.vercel.app/api/share?id=gate_east_electrical_entrance",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=gate_east_electrical_entrance",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5531511,
+          "longitude": 76.226493
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "item": {
+        "@type": "Place",
+        "name": "State Bank of India",
+        "url": "https://gecmaps.vercel.app/api/share?id=3673608143",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=3673608143",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5540944,
+          "longitude": 76.2264121
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 5,
+      "item": {
+        "@type": "Place",
+        "name": "South Indian Bank",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907766702",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907766702",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5520774,
+          "longitude": 76.2267813
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 6,
+      "item": {
+        "@type": "Place",
+        "name": "Vimala College Chapel",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907766703",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907766703",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5523134,
+          "longitude": 76.2264343
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 7,
+      "item": {
+        "@type": "Place",
+        "name": "Ice and Bakes",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907766712",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907766712",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5545195,
+          "longitude": 76.2267115
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 8,
+      "item": {
+        "@type": "Place",
+        "name": "Bay Leaf Restaurant",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907781916",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907781916",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5558752,
+          "longitude": 76.2273301
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 9,
+      "item": {
+        "@type": "Place",
+        "name": "Rockland",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907781917",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907781917",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5558108,
+          "longitude": 76.22717
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 10,
+      "item": {
+        "@type": "Place",
+        "name": "MEA Masjid",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907781918",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907781918",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5551133,
+          "longitude": 76.228247
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 11,
+      "item": {
+        "@type": "Place",
+        "name": "Office of The Deputy Commandant, Dist. Armed Reserve, Ramavarmapuram,Thrissur",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907781921",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907781921",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5565513,
+          "longitude": 76.2272391
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 12,
+      "item": {
+        "@type": "Place",
+        "name": "916 Fried Chicken",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907781922",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907781922",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.556258,
+          "longitude": 76.2281124
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 13,
+      "item": {
+        "@type": "Place",
+        "name": "Lassi Corner",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907781923",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907781923",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5569722,
+          "longitude": 76.2285766
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 14,
+      "item": {
+        "@type": "Place",
+        "name": "Juma Masji",
+        "url": "https://gecmaps.vercel.app/api/share?id=5907816966",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=5907816966",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.557934,
+          "longitude": 76.2299149
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 15,
+      "item": {
+        "@type": "Place",
+        "name": "Thrissur Engineering College Sub-Post Office",
+        "url": "https://gecmaps.vercel.app/api/share?id=7736908650",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=7736908650",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5540642,
+          "longitude": 76.2264114
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 16,
+      "item": {
+        "@type": "Place",
+        "name": "Akshaya Centre, Pallimoola",
+        "url": "https://gecmaps.vercel.app/api/share?id=8344921530",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=8344921530",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5554878,
+          "longitude": 76.2271479
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 17,
+      "item": {
+        "@type": "Place",
+        "name": "Green Pharma",
+        "url": "https://gecmaps.vercel.app/api/share?id=8833391700",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=8833391700",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5560978,
+          "longitude": 76.2278388
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 18,
+      "item": {
+        "@type": "Place",
+        "name": "Gloria Gopikumar Hall (Wester Amphitheatre)",
+        "url": "https://gecmaps.vercel.app/api/share?id=9537578161",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=9537578161",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5545006,
+          "longitude": 76.2241289
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 19,
+      "item": {
+        "@type": "Place",
+        "name": "Eastern Amphitheatre",
+        "url": "https://gecmaps.vercel.app/api/share?id=9537578162",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=9537578162",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5545058,
+          "longitude": 76.2252164
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 20,
+      "item": {
+        "@type": "Place",
+        "name": "GECT Cafeteria",
+        "url": "https://gecmaps.vercel.app/api/share?id=9537578167",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=9537578167",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5539729,
+          "longitude": 76.2242327
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 21,
+      "item": {
+        "@type": "Place",
+        "name": "Cake With Us",
+        "url": "https://gecmaps.vercel.app/api/share?id=10841759609",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=10841759609",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5545964,
+          "longitude": 76.2265357
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 22,
+      "item": {
+        "@type": "Place",
+        "name": "Central Auditorium",
+        "url": "https://gecmaps.vercel.app/api/share?id=115714366",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=115714366",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5535948,
+          "longitude": 76.2245669
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 23,
+      "item": {
+        "@type": "Place",
+        "name": "Mechanical Engineering Workshops",
+        "url": "https://gecmaps.vercel.app/api/share?id=115714450",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=115714450",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.552883,
+          "longitude": 76.2246257
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 24,
+      "item": {
+        "@type": "Place",
+        "name": "Electrical Engineering workshops",
+        "url": "https://gecmaps.vercel.app/api/share?id=115714487",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=115714487",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5530023,
+          "longitude": 76.2259154
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 25,
+      "item": {
+        "@type": "Place",
+        "name": "Civil Engineering Workshop",
+        "url": "https://gecmaps.vercel.app/api/share?id=115714492",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=115714492",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5537076,
+          "longitude": 76.2258611
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 26,
+      "item": {
+        "@type": "Place",
+        "name": "Vimala College Thrissur",
+        "url": "https://gecmaps.vercel.app/api/share?id=115714570",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=115714570",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5530736,
+          "longitude": 76.2268773
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 27,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Chemical Engineering",
+        "url": "https://gecmaps.vercel.app/api/share?id=115714680",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=115714680",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.552614,
+          "longitude": 76.2232924
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 28,
+      "item": {
+        "@type": "Place",
+        "name": "St. Francis Xavier's Church Vijayapuram",
+        "url": "https://gecmaps.vercel.app/api/share?id=315753702",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=315753702",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5550309,
+          "longitude": 76.226831
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 29,
+      "item": {
+        "@type": "Place",
+        "name": "Jubilee Parish Hall",
+        "url": "https://gecmaps.vercel.app/api/share?id=315753811",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=315753811",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5548361,
+          "longitude": 76.2271242
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 30,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Electronics and Communication Engineering, GECT",
+        "url": "https://gecmaps.vercel.app/api/share?id=333757869",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=333757869",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5527095,
+          "longitude": 76.2216185
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 31,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Computer Science and Engineering",
+        "url": "https://gecmaps.vercel.app/api/share?id=333758244",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=333758244",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5527399,
+          "longitude": 76.2220205
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 32,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Production Engineering",
+        "url": "https://gecmaps.vercel.app/api/share?id=333758245",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=333758245",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5527995,
+          "longitude": 76.2225682
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 33,
+      "item": {
+        "@type": "Place",
+        "name": "Main Building",
+        "url": "https://gecmaps.vercel.app/api/share?id=363172473",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=363172473",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5544176,
+          "longitude": 76.2246677
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 34,
+      "item": {
+        "@type": "Place",
+        "name": "A-Block Mens Hostel",
+        "url": "https://gecmaps.vercel.app/api/share?id=363172794",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=363172794",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5544423,
+          "longitude": 76.2221209
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 35,
+      "item": {
+        "@type": "Place",
+        "name": "vimala college hostel",
+        "url": "https://gecmaps.vercel.app/api/share?id=425745732",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=425745732",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5522469,
+          "longitude": 76.2262863
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 36,
+      "item": {
+        "@type": "Place",
+        "name": "I.M.A. Blood Bank Complex and Research Centre",
+        "url": "https://gecmaps.vercel.app/api/share?id=429995792",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=429995792",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5598421,
+          "longitude": 76.2268681
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 37,
+      "item": {
+        "@type": "Place",
+        "name": "Fire and Rescue Station, Viyyur",
+        "url": "https://gecmaps.vercel.app/api/share?id=453249819",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=453249819",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5558619,
+          "longitude": 76.2237502
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 38,
+      "item": {
+        "@type": "Place",
+        "name": "Canteen",
+        "url": "https://gecmaps.vercel.app/api/share?id=664126474",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=664126474",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5523325,
+          "longitude": 76.2243316
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 39,
+      "item": {
+        "@type": "Place",
+        "name": "South Indian Bank",
+        "url": "https://gecmaps.vercel.app/api/share?id=673856257",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=673856257",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.552176,
+          "longitude": 76.2268524
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 40,
+      "item": {
+        "@type": "Place",
+        "name": "South Indian Bank",
+        "url": "https://gecmaps.vercel.app/api/share?id=673856472",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=673856472",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5519768,
+          "longitude": 76.2268941
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 41,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Architecture",
+        "url": "https://gecmaps.vercel.app/api/share?id=726612600",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=726612600",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.553398,
+          "longitude": 76.2211375
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 42,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Civil Engineering",
+        "url": "https://gecmaps.vercel.app/api/share?id=726628926",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=726628926",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5539403,
+          "longitude": 76.2251566
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 43,
+      "item": {
+        "@type": "Place",
+        "name": "GECT Library",
+        "url": "https://gecmaps.vercel.app/api/share?id=726629162",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=726629162",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5539858,
+          "longitude": 76.2247009
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 44,
+      "item": {
+        "@type": "Place",
+        "name": "Ladies Amenity Centre",
+        "url": "https://gecmaps.vercel.app/api/share?id=726764417",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=726764417",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5538525,
+          "longitude": 76.2249177
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 45,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Physical Education and gym",
+        "url": "https://gecmaps.vercel.app/api/share?id=726764929",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=726764929",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5539421,
+          "longitude": 76.2242923
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 46,
+      "item": {
+        "@type": "Place",
+        "name": "Post Graduate block",
+        "url": "https://gecmaps.vercel.app/api/share?id=760600128",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=760600128",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5534405,
+          "longitude": 76.2205772
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 47,
+      "item": {
+        "@type": "Place",
+        "name": "E-Block Mens Hostel",
+        "url": "https://gecmaps.vercel.app/api/share?id=760600129",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=760600129",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.553727,
+          "longitude": 76.2206448
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 48,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Electrical and Electronics Engineering",
+        "url": "https://gecmaps.vercel.app/api/share?id=760602029",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=760602029",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5521713,
+          "longitude": 76.2237962
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 49,
+      "item": {
+        "@type": "Place",
+        "name": "Little Star Restaurant",
+        "url": "https://gecmaps.vercel.app/api/share?id=798214455",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=798214455",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5542094,
+          "longitude": 76.2266852
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 50,
+      "item": {
+        "@type": "Place",
+        "name": "District institution of education and training,Thrissur",
+        "url": "https://gecmaps.vercel.app/api/share?id=799003385",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=799003385",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5556283,
+          "longitude": 76.2256698
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 51,
+      "item": {
+        "@type": "Place",
+        "name": "MEA masjid",
+        "url": "https://gecmaps.vercel.app/api/share?id=800962532",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=800962532",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5550963,
+          "longitude": 76.2282792
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 52,
+      "item": {
+        "@type": "Place",
+        "name": "Pee Jey complex",
+        "url": "https://gecmaps.vercel.app/api/share?id=800969715",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=800969715",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5544531,
+          "longitude": 76.2267137
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 53,
+      "item": {
+        "@type": "Place",
+        "name": "Quarters",
+        "url": "https://gecmaps.vercel.app/api/share?id=824615089",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=824615089",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5531721,
+          "longitude": 76.2203488
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 54,
+      "item": {
+        "@type": "Place",
+        "name": "Quarters",
+        "url": "https://gecmaps.vercel.app/api/share?id=824615428",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=824615428",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5532238,
+          "longitude": 76.2201514
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 55,
+      "item": {
+        "@type": "Place",
+        "name": "Co Operative Store",
+        "url": "https://gecmaps.vercel.app/api/share?id=824616928",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=824616928",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5539061,
+          "longitude": 76.2240978
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 56,
+      "item": {
+        "@type": "Place",
+        "name": "Fire and Rescue Station Thrissur",
+        "url": "https://gecmaps.vercel.app/api/share?id=843061098",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=843061098",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5586782,
+          "longitude": 76.2265309
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 57,
+      "item": {
+        "@type": "Place",
+        "name": "Vignan Sagar Science and Technology Park",
+        "url": "https://gecmaps.vercel.app/api/share?id=866736396",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=866736396",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5581686,
+          "longitude": 76.225602
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 58,
+      "item": {
+        "@type": "Place",
+        "name": "Central Computing Facility (CCF)",
+        "url": "https://gecmaps.vercel.app/api/share?id=893279304",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=893279304",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5536573,
+          "longitude": 76.2251171
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 59,
+      "item": {
+        "@type": "Place",
+        "name": "Geetha Homes",
+        "url": "https://gecmaps.vercel.app/api/share?id=954403684",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=954403684",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5552649,
+          "longitude": 76.2249632
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 60,
+      "item": {
+        "@type": "Place",
+        "name": "Madathilparambil Hostel",
+        "url": "https://gecmaps.vercel.app/api/share?id=954403685",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=954403685",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5561744,
+          "longitude": 76.2242336
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 61,
+      "item": {
+        "@type": "Place",
+        "name": "Varappilli Shiva Temple",
+        "url": "https://gecmaps.vercel.app/api/share?id=954403686",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=954403686",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.556444,
+          "longitude": 76.2245815
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 62,
+      "item": {
+        "@type": "Place",
+        "name": "Preethi Hostel",
+        "url": "https://gecmaps.vercel.app/api/share?id=954403687",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=954403687",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5561652,
+          "longitude": 76.2246143
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 63,
+      "item": {
+        "@type": "Place",
+        "name": "Bus Garage",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035390651",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035390651",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5524794,
+          "longitude": 76.2239685
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 64,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Electrical and Electronics Engineering extension",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035390652",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035390652",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5533335,
+          "longitude": 76.2258053
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 65,
+      "item": {
+        "@type": "Place",
+        "name": "Environmental Engineering block",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035390653",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035390653",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5528104,
+          "longitude": 76.2255582
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 66,
+      "item": {
+        "@type": "Place",
+        "name": "Academic Block",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035390654",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035390654",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.553437,
+          "longitude": 76.2250819
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 67,
+      "item": {
+        "@type": "Place",
+        "name": "NSS GECT",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035390655",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035390655",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5540112,
+          "longitude": 76.2262909
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 68,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Mechanical Engineering extension",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035390656",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035390656",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5526897,
+          "longitude": 76.2254346
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 69,
+      "item": {
+        "@type": "Place",
+        "name": "Mens Hostel Mess B",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035400071",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035400071",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5538387,
+          "longitude": 76.2211766
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 70,
+      "item": {
+        "@type": "Place",
+        "name": "Mens Hoste Mess A",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035400072",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035400072",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5536843,
+          "longitude": 76.2221877
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 71,
+      "item": {
+        "@type": "Place",
+        "name": "Dyuthi Room",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035563836",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035563836",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5534669,
+          "longitude": 76.2257176
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 72,
+      "item": {
+        "@type": "Place",
+        "name": "Dept. of Computer Science Engineering extension",
+        "url": "https://gecmaps.vercel.app/api/share?id=1035563841",
+        "hasMap": "https://gecmaps.vercel.app/?placeId=1035563841",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.5525513,
+          "longitude": 76.2219875
+        },
+        "containedInPlace": {
+          "@type": "CollegeOrUniversity",
+          "name": "Government Engineering College Thrissur"
+        }
+      }
+    }
+  ]
+}

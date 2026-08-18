@@ -86,7 +86,7 @@ A. ROAD NETWORK, TOPOLOGICAL GRAPH ROUTING & GATE SCHEDULE INTELLIGENCE
   - Completely editable JSON structure for seamless future campus road extensions.
 
 • Dynamic Gate Closure Detection & Verbal/Visual Announcements:
-  - Real-world schedule checking for all gates (Main Gate 06:00 AM - 10:30 PM, South Gate 06:00 AM - 09:30 PM, East Gate 06:00 AM - 09:00 PM, plus custom added gates).
+  - Real-world schedule checking for all gates (Main Gate 06:00 AM - 10:30 PM, Electrical/South Gate 08:00 AM - 05:30 PM, East Gate 06:00 AM - 09:00 PM, plus custom added gates).
   - When the primary closer gate is closed at the current time, the router automatically selects the optimal OPEN alternative gate.
   - Generates explicit spoken notice via TTS: e.g., "Main Gate may be closed at this time. Rerouted via South Gate which is open."
   - Displays high-visibility Amber warning badge on top turn-by-turn guidance banner and snackbar alert.

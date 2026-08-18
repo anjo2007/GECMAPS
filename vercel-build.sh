@@ -20,4 +20,6 @@ node scripts/generate-sitemap.mjs
 
 echo "Copying APK release asset..."
 cp app-release.apk gec_compass_app/build/web/app-release.apk 2>/dev/null || true
+cp app-arm64-v8a-release.apk gec_compass_app/build/web/app-arm64-v8a-release.apk 2>/dev/null || true
+
 

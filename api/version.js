@@ -8,9 +8,9 @@ export default function handler(req, res) {
   }
 
   return res.status(200).json({
-    version: "1.3.1",
-    buildNumber: 14,
-    releaseNotes: "• Real-time cloud sync & instant updates across platforms\n• Auto-upright pin markers and labels during map rotation\n• Dynamic category-based pins & enhanced campus routing\n• Performance optimizations and bug fixes",
+    version: "1.3.2",
+    buildNumber: 15,
+    releaseNotes: "• Updated Electrical Gate operating schedule (8:00 AM - 5:30 PM)\n• Improved Campus Grid location sharing\n• Enhanced web & app loading speeds\n• Complete campus places directory & search optimizations",
     downloadUrl: "https://gecmaps.vercel.app/app-release.apk",
     minRequiredBuildNumber: 1,
     forceUpdate: false

@@ -160,8 +160,8 @@ class RoutingService {
         'id': 'gate_south',
         'name': 'Electrical Gate Entrance',
         'pos': const LatLng(10.5520947, 76.2241280),
-        'open': '06:00 AM',
-        'close': '09:30 PM',
+        'open': '08:00 AM',
+        'close': '05:30 PM',
       },
       {
         'id': 'gate_east',
@@ -675,8 +675,8 @@ class RoutingService {
       {
         'id': 'gate_south',
         'pos': const LatLng(10.5520947, 76.2241280),
-        'open': '06:00 AM',
-        'close': '09:30 PM',
+        'open': '08:00 AM',
+        'close': '05:30 PM',
       },
       {
         'id': 'gate_east',
@@ -735,8 +735,8 @@ class RoutingService {
         'id': 'gate_south',
         'name': 'Electrical Gate Entrance',
         'pos': const LatLng(10.5520947, 76.2241280),
-        'open': '06:00 AM',
-        'close': '09:30 PM',
+        'open': '08:00 AM',
+        'close': '05:30 PM',
       },
       {
         'id': 'gate_east',
@@ -990,8 +990,8 @@ class RoutingService {
         'id': 'gate_south',
         'name': 'Electrical Gate Entrance',
         'pos': const LatLng(10.5520947, 76.2241280),
-        'open': '06:00 AM',
-        'close': '09:30 PM',
+        'open': '08:00 AM',
+        'close': '05:30 PM',
       },
       {
         'id': 'gate_east',

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/building.dart';
-import '../services/routing_service.dart';
 
 class PlaceDetailBottomSheet extends StatelessWidget {
   final Building building;
@@ -23,13 +22,6 @@ class PlaceDetailBottomSheet extends StatelessWidget {
     final subTextColor = textColor.withValues(alpha: 0.65);
     final photo = building.photoBase64;
     final displayUrl = building.photoUrl ?? building.vpsBoardPhotoUrl ?? building.tags['image'] as String? ?? building.tags['photoUrl'] as String?;
-
-    final openTime = building.tags['opening_time']?.toString() ?? building.tags['opening_hours']?.toString();
-    final closeTime = building.tags['closing_time']?.toString();
-    final isGate = building.tags['barrier'] == 'gate' || building.tags['place_type'] == 'Entrance Gate';
-    final hasHours = openTime != null || closeTime != null || isGate;
-    final isOpen = RoutingService.isGateOpenNow(openTime, closeTime);
-    final statusLabel = RoutingService.getGateStatusLabel(openTime, closeTime);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -65,10 +57,11 @@ class PlaceDetailBottomSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   building.name,
-                  style: theme.textTheme.headlineSmall?.copyWith(
+                  style: TextStyle(
+                    fontSize: 19,
                     fontWeight: FontWeight.bold,
                     color: textColor,
-                    letterSpacing: 0.1,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
@@ -78,41 +71,6 @@ class PlaceDetailBottomSheet extends StatelessWidget {
               ),
             ],
           ),
-          if (hasHours) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: (isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: (isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    statusLabel,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.bold,
-                      color: isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 8),
           if (building.tags.isNotEmpty)
             Wrap(

@@ -33,8 +33,8 @@ class AppUpdateInfo {
 
 class AppUpdateService {
   // Current installed app build version
-  static const int currentBuildNumber = 14;
-  static const String currentVersionName = "1.3.1";
+  static const int currentBuildNumber = 15;
+  static const String currentVersionName = "1.3.2";
 
   Future<AppUpdateInfo?> checkForUpdate() async {
     // Only check for APK updates when running as native mobile app (Android)

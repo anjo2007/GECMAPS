@@ -22,9 +22,9 @@
       "barrier": "gate",
       "name": "Electrical Gate Entrance",
       "place_type": "Entrance Gate",
-      "opening_time": "06:00 AM",
-      "closing_time": "09:30 PM",
-      "opening_hours": "06:00 AM - 09:30 PM"
+      "opening_time": "08:00 AM",
+      "closing_time": "05:30 PM",
+      "opening_hours": "08:00 AM - 05:30 PM"
     }
   },
   {

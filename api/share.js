@@ -342,25 +342,25 @@ export default async function handler(request, response) {
   </script>
 
   <meta charset="utf-8">
-  <title>${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps – GEC Thrissur</title>
-  <meta name="title" content="${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps">
-  <meta name="description" content="${escHtml(desc)} - Explore on GECT Compass (GECT Maps & GEC Maps) for Government Engineering College Thrissur.">
-  <meta name="keywords" content="${escHtml(place.name)}, GECT Compass, GECT Maps, GEC Maps, GEC Compass, gect compasss, GEC Thrissur, GECT Thrissur Maps, GEC Navigator">
+  <title>${escHtml(place.name)} | GEC Maps | GECT Compass | GECT Maps & GEC Compass – GEC Thrissur</title>
+  <meta name="title" content="${escHtml(place.name)} | GEC Maps | GECT Compass | GECT Maps & GEC Compass">
+  <meta name="description" content="${escHtml(desc)} - View location details and walking directions on GEC Maps & GECT Compass for Government Engineering College Thrissur.">
+  <meta name="keywords" content="${escHtml(place.name)}, GEC Maps, GECT Compass, GECT Maps, GEC Compass, gecmaps, gectcompass, GEC Thrissur, GECT Thrissur Maps, GEC Navigator, Government Engineering College Thrissur">
   <link rel="canonical" href="${escHtml(redirectUrl)}">
   
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="${escHtml(shareUrl)}">
-  <meta property="og:title" content="${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps">
-  <meta property="og:description" content="${escHtml(desc)} - Navigate with GECT Compass (GECT Maps & GEC Maps).">
+  <meta property="og:title" content="${escHtml(place.name)} | GEC Maps | GECT Compass | GECT Maps & GEC Compass">
+  <meta property="og:description" content="${escHtml(desc)} - Navigate with GEC Maps & GECT Compass.">
   <meta property="og:image" content="${escHtml(imageUrl)}">
-  <meta property="og:site_name" content="GECT Compass">
+  <meta property="og:site_name" content="GEC Maps - GECT Compass">
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="${escHtml(shareUrl)}">
-  <meta name="twitter:title" content="${escHtml(place.name)} | GECT Compass | GECT Maps & GEC Maps">
-  <meta name="twitter:description" content="${escHtml(desc)} - Navigate with GECT Compass (GECT Maps & GEC Maps).">
+  <meta name="twitter:title" content="${escHtml(place.name)} | GEC Maps | GECT Compass | GECT Maps & GEC Compass">
+  <meta name="twitter:description" content="${escHtml(desc)} - Navigate with GEC Maps & GECT Compass.">
   <meta name="twitter:image" content="${escHtml(imageUrl)}">
 
   <!-- JSON-LD Structured Data for Location -->
