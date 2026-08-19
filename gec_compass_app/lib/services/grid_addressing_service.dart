@@ -10,7 +10,7 @@ class GridAddressingService {
   // GEC Thrissur Campus Geodesic Bounding Box (Lat/Lng)
   static const double campusMinLat = 10.5480;
   static const double campusMaxLat = 10.5620;
-  static const double campusMinLng = 10.5500 > 0 ? 76.2150 : 76.2150;
+  static const double campusMinLng = 76.2150;
   static const double campusMaxLng = 76.2360;
 
   /// Computes high-precision point-to-point distance in meters (Haversine/Geodesic)
@@ -72,31 +72,44 @@ class GridAddressingService {
     final double dLat = snappedLatDist / r;
     final double targetLat = swLat + (dLat * 180.0 / pi);
 
-    final double dLng = snappedLngDist / (r * cos(_toRadians(swLat)));
+    final double dLng = snappedLngDist / (r * cos(_toRadians(targetLat)));
     final double targetLng = swLng + (dLng * 180.0 / pi);
 
     return LatLng(targetLat, targetLng);
   }
 
-  /// Decodes a custom campus grid address string (e.g., GEC-E074-N052 or GEC-E074.4-N052.8) back into LatLng.
+  /// Decodes a custom campus grid address string (e.g., GEC-E074-N052, E074-N052, E74 N52, or GEC-E074.4-N052.8) back into LatLng.
   static LatLng? getLatLngFromGridAddress(String address) {
-    final regex = RegExp(r'^GEC-E(\d+(?:\.\d+)?)-N(\d+(?:\.\d+)?)$');
-    final match = regex.firstMatch(address.toUpperCase().trim());
+    final clean = address.trim().toUpperCase();
+    final regex = RegExp(r'^(?:GEC[\s\-_]*)?E(\d+(?:\.\d+)?)[,\s\-_]+N(\d+(?:\.\d+)?)$|^(?:GEC[\s\-_]*)?E(\d+(?:\.\d+)?)-N(\d+(?:\.\d+)?)$');
+    final match = regex.firstMatch(clean);
     if (match == null) return null;
 
-    final double eVal = double.tryParse(match.group(1)!) ?? 0.0;
-    final double nVal = double.tryParse(match.group(2)!) ?? 0.0;
+    final String eStr = match.group(1) ?? match.group(3)!;
+    final String nStr = match.group(2) ?? match.group(4)!;
 
-    final double lngDist = eVal * gridCellSizeMeters;
-    final double latDist = nVal * gridCellSizeMeters;
+    final double? parsedE = double.tryParse(eStr);
+    final double? parsedN = double.tryParse(nStr);
+    if (parsedE == null || parsedN == null) return null;
+
+    // If an integer grid cell (no decimal point) is passed, center the point inside the 10m grid cell (+0.5 * cell size)
+    // for optimal geodesic accuracy. If sub-meter precision decimals are passed, decode directly.
+    final bool isIntegerE = !eStr.contains('.');
+    final bool isIntegerN = !nStr.contains('.');
+
+    final double effectiveE = isIntegerE ? (parsedE + 0.5) : parsedE;
+    final double effectiveN = isIntegerN ? (parsedN + 0.5) : parsedN;
+
+    final double lngDist = effectiveE * gridCellSizeMeters;
+    final double latDist = effectiveN * gridCellSizeMeters;
 
     const double r = 6371000.0;
 
-    // Reverse Haversine approx for short distances
+    // Reverse Geodesic projection
     final double dLat = latDist / r;
     final double targetLat = swLat + (dLat * 180.0 / pi);
 
-    final double dLng = lngDist / (r * cos(_toRadians(swLat)));
+    final double dLng = lngDist / (r * cos(_toRadians(targetLat)));
     final double targetLng = swLng + (dLng * 180.0 / pi);
 
     return LatLng(targetLat, targetLng);

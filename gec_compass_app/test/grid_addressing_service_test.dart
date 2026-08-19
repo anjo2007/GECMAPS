@@ -52,7 +52,40 @@ void main() {
 
       expect(decoded, isNotNull);
       final dist = GridAddressingService.computeDistanceMeters(p, decoded!);
-      expect(dist, lessThan(15.0)); // within 1 cell (10m)
+      expect(dist, lessThan(8.0)); // centered within 10m cell (max diagonal offset is ~7.07m)
+    });
+
+    test('getLatLngFromGridAddress decodes precision grid address with sub-meter accuracy', () {
+      const p = LatLng(10.554094, 76.226412);
+      final precisionCode = GridAddressingService.getPrecisionGridAddress(p);
+      final decoded = GridAddressingService.getLatLngFromGridAddress(precisionCode);
+
+      expect(decoded, isNotNull);
+      final dist = GridAddressingService.computeDistanceMeters(p, decoded!);
+      expect(dist, lessThan(1.0)); // sub-meter accuracy
+    });
+
+    test('getLatLngFromGridAddress decodes flexible input formats', () {
+      final formats = [
+        'GEC-E074-N052',
+        'gec-e074-n052',
+        'E074-N052',
+        'e74-n52',
+        'E74 N52',
+        'GEC E074 N052',
+        'E074, N052',
+        'GEC-E074.4-N052.8',
+        'e74.4 n52.8',
+      ];
+
+      for (final fmt in formats) {
+        final decoded = GridAddressingService.getLatLngFromGridAddress(fmt);
+        expect(decoded, isNotNull, reason: 'Failed to decode format: $fmt');
+        expect(decoded!.latitude, greaterThan(10.5480));
+        expect(decoded.latitude, lessThan(10.5620));
+        expect(decoded.longitude, greaterThan(76.2150));
+        expect(decoded.longitude, lessThan(76.2360));
+      }
     });
   });
 }

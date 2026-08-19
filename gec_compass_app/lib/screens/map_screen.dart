@@ -1006,24 +1006,44 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
       final queryParams = Uri.base.queryParameters;
       
       final gridParam = queryParams['grid'];
-      if (gridParam != null && gridParam.isNotEmpty) {
-        final loc = GridAddressingService.getLatLngFromGridAddress(gridParam);
-        if (loc != null) {
-          debugPrint("Deep link detected for grid: $gridParam");
-          final sharedBuilding = Building(
-            id: 'shared_$gridParam',
-            name: 'Shared Location ($gridParam)',
-            lat: loc.latitude,
-            lng: loc.longitude,
-            tags: {'place_type': 'Shared Location', 'custom': 'true'},
-          );
-          setState(() {
-            _sharedGridLocation = loc;
-          });
-          _mapController.move(loc, 18.5);
-          _selectBuilding(sharedBuilding);
-          return;
+      final latParam = queryParams['lat'];
+      final lngParam = queryParams['lng'];
+
+      LatLng? loc;
+      if (latParam != null && lngParam != null) {
+        final parsedLat = double.tryParse(latParam);
+        final parsedLng = double.tryParse(lngParam);
+        if (parsedLat != null && parsedLng != null) {
+          loc = LatLng(parsedLat, parsedLng);
         }
+      }
+
+      if (loc == null && gridParam != null && gridParam.isNotEmpty) {
+        loc = GridAddressingService.getLatLngFromGridAddress(gridParam);
+      }
+
+      if (loc != null) {
+        final displayGrid = gridParam != null && gridParam.isNotEmpty
+            ? gridParam
+            : GridAddressingService.getCampusGridAddress(loc);
+        debugPrint("Deep link detected for location: $loc (grid: $displayGrid)");
+        final sharedBuilding = Building(
+          id: 'shared_${displayGrid.replaceAll(' ', '_')}',
+          name: 'Shared Location ($displayGrid)',
+          lat: loc.latitude,
+          lng: loc.longitude,
+          tags: {
+            'place_type': 'Shared Location',
+            'custom': 'true',
+            'grid_code': displayGrid,
+          },
+        );
+        setState(() {
+          _sharedGridLocation = loc;
+        });
+        _mapController.move(loc, 18.5);
+        _selectBuilding(sharedBuilding);
+        return;
       }
 
       final placeId = queryParams['placeId'] ?? queryParams['placeid'];
@@ -1718,11 +1738,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                   if (_currentPosition != null) {
                     final grid = GridAddressingService.getCampusGridAddress(_currentPosition!);
                     final precisionGrid = GridAddressingService.getPrecisionGridAddress(_currentPosition!);
+                    final latStr = _currentPosition!.latitude.toStringAsFixed(6);
+                    final lngStr = _currentPosition!.longitude.toStringAsFixed(6);
                     final shareUrl = (kIsWeb && Uri.base.host.isNotEmpty && !Uri.base.host.contains('localhost') && !Uri.base.host.contains('127.0.0.1'))
-                        ? Uri.base.replace(queryParameters: {'grid': grid}).toString()
-                        : 'https://gecmaps.vercel.app/?grid=$grid';
+                        ? Uri.base.replace(queryParameters: {'grid': precisionGrid, 'lat': latStr, 'lng': lngStr}).toString()
+                        : 'https://gecmaps.vercel.app/?grid=$precisionGrid&lat=$latStr&lng=$lngStr';
                     final shareMsg = "📍 My Live Campus Location (GEC Compass):\n"
                         "• Grid Code: $grid ($precisionGrid)\n"
+                        "• Coordinates: $latStr, $lngStr\n"
                         "• Open in GEC Compass: $shareUrl";
                     SharePlus.instance.share(ShareParams(text: shareMsg));
                   } else {
@@ -2847,7 +2870,26 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                           _currentZoom = newZoom;
                         }
                       },
-                      onTap: (tapPosition, point) {},
+                      onTap: (tapPosition, point) {
+                        FocusScope.of(context).unfocus();
+                        if (!_isNavigating && GridAddressingService.isInsideCampusGrid(point)) {
+                          final gridAddr = GridAddressingService.getCampusGridAddress(point);
+                          final precisionGrid = GridAddressingService.getPrecisionGridAddress(point);
+                          final tappedBuilding = Building(
+                            id: 'grid_${gridAddr.replaceAll(' ', '_')}',
+                            name: '📍 Grid Location ($gridAddr)',
+                            lat: point.latitude,
+                            lng: point.longitude,
+                            tags: {
+                              'place_type': 'Campus Grid Code',
+                              'custom': 'true',
+                              'grid_code': gridAddr,
+                              'precision_grid': precisionGrid,
+                            },
+                          );
+                          _selectBuilding(tappedBuilding);
+                        }
+                      },
                     ),
                     children: [
                       // Map Tile Layer (reflects active selected theme)
@@ -3234,30 +3276,31 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                             final query = rawText.toLowerCase();
 
                             // 1. Instant GEC Campus Grid Code Resolution
-                            if (query.startsWith('gec-') || query.startsWith('gec')) {
-                              final gridPos = GridAddressingService.getLatLngFromGridAddress(rawText);
-                              if (gridPos != null) {
-                                final gridBuilding = Building(
-                                  id: 'grid_${rawText.toUpperCase()}',
-                                  name: '📍 Grid Location (${rawText.toUpperCase()})',
-                                  lat: gridPos.latitude,
-                                  lng: gridPos.longitude,
-                                  tags: {
-                                    'place_type': 'Campus Grid Code',
-                                    'custom': 'true',
-                                    'grid_code': rawText.toUpperCase(),
-                                  },
-                                );
-                                final rest = _buildings.where((Building option) {
-                                  final nameMatches = option.name.toLowerCase().contains(query);
-                                  final tagsStr = option.tags['search_tags']?.toString() ??
-                                                  option.tags['tags']?.toString() ??
-                                                  option.tags['keywords']?.toString() ??
-                                                  option.tags['alias']?.toString() ?? '';
-                                  return nameMatches || tagsStr.toLowerCase().contains(query);
-                                });
-                                return [gridBuilding, ...rest];
-                              }
+                            final gridPos = GridAddressingService.getLatLngFromGridAddress(rawText);
+                            if (gridPos != null) {
+                              final canonicalGrid = GridAddressingService.getCampusGridAddress(gridPos);
+                              final precisionGrid = GridAddressingService.getPrecisionGridAddress(gridPos);
+                              final gridBuilding = Building(
+                                id: 'grid_${canonicalGrid.replaceAll(' ', '_')}',
+                                name: '📍 Grid Location ($canonicalGrid)',
+                                lat: gridPos.latitude,
+                                lng: gridPos.longitude,
+                                tags: {
+                                  'place_type': 'Campus Grid Code',
+                                  'custom': 'true',
+                                  'grid_code': canonicalGrid,
+                                  'precision_grid': precisionGrid,
+                                },
+                              );
+                              final rest = _buildings.where((Building option) {
+                                final nameMatches = option.name.toLowerCase().contains(query);
+                                final tagsStr = option.tags['search_tags']?.toString() ??
+                                                option.tags['tags']?.toString() ??
+                                                option.tags['keywords']?.toString() ??
+                                                option.tags['alias']?.toString() ?? '';
+                                return nameMatches || tagsStr.toLowerCase().contains(query);
+                              });
+                              return [gridBuilding, ...rest];
                             }
 
                             return _buildings.where((Building option) {

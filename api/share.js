@@ -193,6 +193,55 @@ export default async function handler(request, response) {
     return response.status(400).send('Invalid or unauthorized redirect URL');
   }
 
+  const grid = urlObj.searchParams.get('grid');
+  const lat = urlObj.searchParams.get('lat');
+  const lng = urlObj.searchParams.get('lng');
+
+  const protocol = request.headers['x-forwarded-proto'] || 'https';
+  const host = request.headers.host || 'gecmaps.vercel.app';
+  const baseUrl = `${protocol}://${host}`;
+
+  if (grid || (lat && lng)) {
+    const queryParams = new URLSearchParams();
+    if (grid) queryParams.set('grid', grid);
+    if (lat) queryParams.set('lat', lat);
+    if (lng) queryParams.set('lng', lng);
+    const redirectUrl = `${baseUrl}/?${queryParams.toString()}`;
+
+    const locationLabel = grid ? `Campus Grid Location (${grid})` : `Shared Location (${lat}, ${lng})`;
+    const desc = `Live campus location shared via GEC Compass. Click to view on map and get walking directions.`;
+    const imageUrl = `${baseUrl}/icons/Icon-512.png`;
+    const escHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${escHtml(locationLabel)} | GEC Maps | GECT Compass</title>
+  <meta name="description" content="${escHtml(desc)}">
+  <link rel="canonical" href="${escHtml(redirectUrl)}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${escHtml(redirectUrl)}">
+  <meta property="og:title" content="${escHtml(locationLabel)} | GEC Maps | GECT Compass">
+  <meta property="og:description" content="${escHtml(desc)}">
+  <meta property="og:image" content="${escHtml(imageUrl)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escHtml(locationLabel)} | GEC Maps | GECT Compass">
+  <meta name="twitter:description" content="${escHtml(desc)}">
+  <meta name="twitter:image" content="${escHtml(imageUrl)}">
+  <meta http-equiv="refresh" content="0;url=${escHtml(redirectUrl)}">
+  <script>window.location.href = ${JSON.stringify(redirectUrl)};</script>
+</head>
+<body>
+  <p>Redirecting to <a href="${escHtml(redirectUrl)}">${escHtml(locationLabel)} on GEC Maps</a>...</p>
+</body>
+</html>`;
+
+    response.setHeader('Content-Type', 'text/html; charset=utf-8');
+    response.setHeader('Cache-Control', 'public, s-maxage=3600');
+    return response.status(200).send(html);
+  }
+
   if (!id) {
     return response.status(400).send('Missing id parameter');
   }
