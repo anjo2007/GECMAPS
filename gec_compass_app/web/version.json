@@ -1,8 +1,8 @@
 {
-  "version": "1.3.2",
-  "buildNumber": 15,
-  "releaseNotes": "• Updated Electrical Gate operating schedule (8:00 AM - 5:30 PM)\n• Improved Campus Grid location sharing\n• Enhanced web & app loading speeds\n• Complete campus places directory & search optimizations",
-  "downloadUrl": "https://gecmaps.vercel.app/app-release.apk",
+  "version": "1.3.4",
+  "buildNumber": 17,
+  "releaseNotes": "• High-precision 7-digit GPS & sub-meter Campus Grid (GEC-E074.48-N052.82)\n• Ultra-compressed APK package size & faster launch\n• Zero-bandwidth ETag caching & smart sync\n• Updated CARTO Basemaps & performance optimizations",
+  "downloadUrl": "https://github.com/anjo2007/GECMAPS/releases/latest/download/app-arm64-v8a-release.apk",
   "minRequiredBuildNumber": 1,
   "forceUpdate": false
 }

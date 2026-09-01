@@ -379,8 +379,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   }
 
   Future<void> _initData() async {
-    // Safety fallback timer to guarantee splash screen dismiss within 400ms
-    Future.delayed(const Duration(milliseconds: 400), () {
+    // Fast safety fallback timer to unblock UI
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted && _isLoading) {
         setState(() {
           _isLoading = false;
@@ -446,21 +446,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
         _handleStartupDeepLink();
       });
 
-      // Periodic cloud sync every 10 seconds — ensures pins added/deleted on
-      // other devices are reflected quickly without requiring a full app restart.
-      _cloudSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      // Gentle cloud sync heartbeat every 3 minutes (ETag backed — 0 bytes if unmodified)
+      _cloudSyncTimer = Timer.periodic(const Duration(minutes: 3), (_) {
         if (!mounted) return;
-        _dataService.fetchCloudBuildings().then((synced) {
-          if (mounted && synced.isNotEmpty) {
-            setState(() {
-              _buildings = synced;
-              _cachedFilteredBuildings = null;
-              _lastBuildingCount = -1;
-            });
-          }
-        }).catchError((e) {
-          debugPrint('Periodic cloud sync error: $e');
-        });
+        _syncCloudBuildingsInBackground();
       });
     } catch (e) {
       debugPrint("Error initializing map data: $e");
@@ -674,10 +663,25 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     }
   }
 
+  void _syncCloudBuildingsInBackground() {
+    _dataService.fetchCloudBuildings().then((synced) {
+      if (mounted && synced.isNotEmpty) {
+        setState(() {
+          _buildings = synced;
+          _cachedFilteredBuildings = null;
+          _lastBuildingCount = -1;
+        });
+      }
+    }).catchError((e) {
+      debugPrint('Cloud sync error: $e');
+    });
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkLocationPermissionOnResume();
+      _syncCloudBuildingsInBackground();
     }
   }
 
@@ -894,7 +898,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           locationSettings = AndroidSettings(
             accuracy: LocationAccuracy.bestForNavigation,
             distanceFilter: 0,
-            intervalDuration: const Duration(milliseconds: 200),
+            intervalDuration: const Duration(milliseconds: 100),
             forceLocationManager: false,
           );
         } else if (defaultTargetPlatform == TargetPlatform.iOS) {
@@ -1738,8 +1742,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                   if (_currentPosition != null) {
                     final grid = GridAddressingService.getCampusGridAddress(_currentPosition!);
                     final precisionGrid = GridAddressingService.getPrecisionGridAddress(_currentPosition!);
-                    final latStr = _currentPosition!.latitude.toStringAsFixed(6);
-                    final lngStr = _currentPosition!.longitude.toStringAsFixed(6);
+                    final latStr = _currentPosition!.latitude.toStringAsFixed(7);
+                    final lngStr = _currentPosition!.longitude.toStringAsFixed(7);
                     final shareUrl = (kIsWeb && Uri.base.host.isNotEmpty && !Uri.base.host.contains('localhost') && !Uri.base.host.contains('127.0.0.1'))
                         ? Uri.base.replace(queryParameters: {'grid': precisionGrid, 'lat': latStr, 'lng': lngStr}).toString()
                         : 'https://gecmaps.vercel.app/?grid=$precisionGrid&lat=$latStr&lng=$lngStr';
@@ -2099,15 +2103,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
     return filtered;
   }
 
+  static const String _cartoApiKey = 'cb1_2ogy_1_02329e70d4de29ec6b2fceb5';
+
   String _getTileUrl() {
     switch (_mapType) {
       case 'satellite':
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       case 'light':
-        return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=$_cartoApiKey';
       case 'ambient':
       default:
-        return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+        return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=$_cartoApiKey';
     }
   }
 
@@ -4775,6 +4781,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
   // Render onboarding/instructional carousel
   Widget _buildOnboardingOverlay() {
     final slides = [
+      _buildOnboardingSlide(
+        title: "Welcome to GECT Compass",
+        desc: "Interactive navigation along campus walkways, department buildings, labs, workshops, and facilities at GEC Thrissur.",
+        icon: Icons.explore,
+        iconColor: const Color(0xFF3B82F6),
+      ),
       if (kIsWeb)
         _buildOnboardingSlide(
           title: "Download Mobile App",
@@ -4793,12 +4805,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
             ),
           ),
         ),
-      _buildOnboardingSlide(
-        title: "Welcome to GECT Compass",
-        desc: "Interactive navigation along campus walkways, department buildings, labs, workshops, and facilities at GEC Thrissur.",
-        icon: Icons.explore,
-        iconColor: const Color(0xFF3B82F6),
-      ),
       _buildOnboardingSlide(
         title: "Dead Reckoning (PDR)",
         desc: "Using the accelerometer & compass of your phone, the app detects steps and heading to track your indoor walking paths without GPS.",
@@ -5651,7 +5657,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
           ),
           const SizedBox(height: 8),
           Text(
-            "Coordinates: ${building.lat.toStringAsFixed(5)}, ${building.lng.toStringAsFixed(5)}",
+            "Coordinates: ${building.lat.toStringAsFixed(7)}, ${building.lng.toStringAsFixed(7)}",
             style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
             textAlign: TextAlign.center,
           ),
@@ -6025,7 +6031,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                 const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 16),
                                 const SizedBox(width: 8),
                                 Text(
-                                  "Lat: ${location!.latitude.toStringAsFixed(6)}, Lng: ${location!.longitude.toStringAsFixed(6)}",
+                                  "Lat: ${location!.latitude.toStringAsFixed(7)}, Lng: ${location!.longitude.toStringAsFixed(7)}",
                                   style: const TextStyle(color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
                               ],
@@ -7167,7 +7173,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin, Wi
                                 const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 16),
                                 const SizedBox(width: 8),
                                 Text(
-                                  "Lat: ${location!.latitude.toStringAsFixed(6)}, Lng: ${location!.longitude.toStringAsFixed(6)}",
+                                  "Lat: ${location!.latitude.toStringAsFixed(7)}, Lng: ${location!.longitude.toStringAsFixed(7)}",
                                   style: const TextStyle(color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
                               ],

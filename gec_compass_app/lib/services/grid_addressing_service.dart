@@ -48,20 +48,21 @@ class GridAddressingService {
     return "GEC-E${eastingIndex.toString().padLeft(3, '0')}-N${northingIndex.toString().padLeft(3, '0')}";
   }
 
-  /// Generates a sub-meter precision campus grid address string (e.g., GEC-E074.4-N052.8)
-  static String getPrecisionGridAddress(LatLng point, {double resolutionMeters = 1.0}) {
+  /// Generates a high-precision sub-meter campus grid address string with increased digits (e.g., GEC-E074.48-N052.82)
+  static String getPrecisionGridAddress(LatLng point, {int decimals = 2}) {
     final double latDist = computeDistanceMeters(LatLng(swLat, point.longitude), point);
     final double lngDist = computeDistanceMeters(LatLng(point.latitude, swLng), point);
 
     final double eVal = lngDist / gridCellSizeMeters;
     final double nVal = latDist / gridCellSizeMeters;
 
-    return "GEC-E${eVal.toStringAsFixed(1).padLeft(5, '0')}-N${nVal.toStringAsFixed(1).padLeft(5, '0')}";
+    final int width = 3 + (decimals > 0 ? (1 + decimals) : 0);
+    return "GEC-E${eVal.toStringAsFixed(decimals).padLeft(width, '0')}-N${nVal.toStringAsFixed(decimals).padLeft(width, '0')}";
   }
 
   /// Snaps a floating coordinate to the nearest geodesic grid quantization step
-  /// to eliminate GPS/PDR micro-jitter while preserving true trajectory geometry.
-  static LatLng snapToCampusGrid(LatLng point, {double resolutionMeters = 1.0}) {
+  /// to eliminate GPS/PDR micro-jitter while preserving true trajectory geometry with 5cm accuracy.
+  static LatLng snapToCampusGrid(LatLng point, {double resolutionMeters = 0.05}) {
     final double latDist = computeDistanceMeters(LatLng(swLat, point.longitude), point);
     final double lngDist = computeDistanceMeters(LatLng(point.latitude, swLng), point);
 

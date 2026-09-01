@@ -130,6 +130,7 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
   bool _isMiniMapExpanded = false;
   double _miniMapZoom = 18.5;
   String _mapTileStyle = "voyager"; // "voyager" or "dark"
+  static const String _cartoApiKey = 'cb1_2ogy_1_02329e70d4de29ec6b2fceb5';
 
   @override
   void initState() {
@@ -613,8 +614,8 @@ class _VPSCameraScreenState extends State<VPSCameraScreen> with TickerProviderSt
                           children: [
                             TileLayer(
                               urlTemplate: _mapTileStyle == "voyager"
-                                  ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-                                  : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                                  ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=$_cartoApiKey'
+                                  : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=$_cartoApiKey',
                               subdomains: const ['a', 'b', 'c', 'd'],
                               userAgentPackageName: 'com.example.gec_compass_app',
                             ),

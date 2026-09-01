@@ -570,11 +570,9 @@ export default async function handler(request, response) {
 
         if (photoUrl && String(photoUrl).trim().length > 0) {
           cleanObj.photoUrl = photoUrl;
-          cleanObj.photoBase64 = photoUrl;
         }
         if (vpsUrl && String(vpsUrl).trim().length > 0) {
           cleanObj.vpsBoardPhotoUrl = vpsUrl;
-          cleanObj.vpsBoardPhotoBase64 = vpsUrl;
         }
 
         return cleanObj;
@@ -588,12 +586,21 @@ export default async function handler(request, response) {
         return response.status(200).send(JSON.stringify(activePlaces, null, 2));
       }
 
-      response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      response.setHeader('Pragma', 'no-cache');
-      response.setHeader('Expires', '0');
+      const bodyString = JSON.stringify(normalizedPlaces);
+      const etag = `"${crypto.createHash('md5').update(bodyString).digest('hex')}"`;
+      const ifNoneMatch = request.headers['if-none-match'];
+
+      response.setHeader('ETag', etag);
+      response.setHeader('Cache-Control', 'public, max-age=15, s-maxage=60, stale-while-revalidate=300');
       response.setHeader('x-storage-persistence', primaryDriver === 'memory' ? 'none' : 'persistent');
+
+      if (ifNoneMatch && (ifNoneMatch === etag || ifNoneMatch === `W/${etag}` || ifNoneMatch.replace(/^W\//, '') === etag)) {
+        return response.status(304).end();
+      }
+
+      response.setHeader('Content-Type', 'application/json; charset=utf-8');
       // Return normalized places including deletion tombstones so all devices synchronize deletions
-      return response.status(200).json(normalizedPlaces);
+      return response.status(200).send(bodyString);
     } catch (error) {
       console.error('Read handler error:', error);
       return response.status(500).json({ error: 'Failed to read places data' });

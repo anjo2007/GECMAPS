@@ -168,16 +168,37 @@ class DataService {
   }
 
   static const String _lastKnownCloudIdsKey = 'last_known_cloud_ids';
+  static const String _placesEtagKey = 'places_api_etag';
 
   /// Fetches latest custom buildings from cloud API and merges with local data.
-  Future<List<Building>> fetchCloudBuildings() async {
+  Future<List<Building>> fetchCloudBuildings({bool force = false}) async {
     try {
       final apiUrl = await _getApiUrl();
+      final prefs = await SharedPreferences.getInstance();
+      final cachedEtag = prefs.getString(_placesEtagKey);
+
+      final headers = <String, String>{
+        'Accept': 'application/json',
+      };
+      if (!force && cachedEtag != null && cachedEtag.isNotEmpty) {
+        headers['If-None-Match'] = cachedEtag;
+      }
+
       final response = await http
-          .get(Uri.parse(apiUrl))
+          .get(Uri.parse(apiUrl), headers: headers)
           .timeout(const Duration(seconds: 4));
       
+      // 304 Not Modified: zero bytes transferred, use local cached buildings
+      if (response.statusCode == 304) {
+        return await loadLocalBuildings();
+      }
+
       if (response.statusCode == 200) {
+        final newEtag = response.headers['etag'] ?? response.headers['ETag'];
+        if (newEtag != null && newEtag.isNotEmpty) {
+          await prefs.setString(_placesEtagKey, newEtag);
+        }
+
         final decoded = json.decode(response.body);
         final List<dynamic> apiList = decoded is List ? decoded : [];
         List<Building> customBuildings =
@@ -292,6 +313,8 @@ class DataService {
   Future<Building> saveCustomBuilding(Building building) async {
     // 1. Local-first save so data is never lost offline
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_placesEtagKey);
       final customBuildings = await _loadCustomBuildingsLocal();
       customBuildings.removeWhere((b) => b.id == building.id);
       customBuildings.add(building);
@@ -362,6 +385,8 @@ class DataService {
       debugPrint('Deleted custom building from cloud: $id');
       // Update local cache deletion only after verified server approval
       try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_placesEtagKey);
         final customBuildings = await _loadCustomBuildingsLocal();
         customBuildings.removeWhere((b) => b.id.toString().trim() == id.toString().trim());
         customBuildings.add(Building(

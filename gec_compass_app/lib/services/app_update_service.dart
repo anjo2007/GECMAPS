@@ -24,7 +24,7 @@ class AppUpdateInfo {
       version: json['version']?.toString() ?? '1.0.0',
       buildNumber: (json['buildNumber'] as num?)?.toInt() ?? 1,
       releaseNotes: json['releaseNotes']?.toString() ?? 'Bug fixes and performance improvements.',
-      downloadUrl: json['downloadUrl']?.toString() ?? 'https://gecmaps.vercel.app/app-release.apk',
+      downloadUrl: json['downloadUrl']?.toString() ?? 'https://github.com/anjo2007/GECMAPS/releases/latest/download/app-release.apk',
       minRequiredBuildNumber: (json['minRequiredBuildNumber'] as num?)?.toInt() ?? 1,
       forceUpdate: json['forceUpdate'] == true,
     );
@@ -33,8 +33,8 @@ class AppUpdateInfo {
 
 class AppUpdateService {
   // Current installed app build version
-  static const int currentBuildNumber = 15;
-  static const String currentVersionName = "1.3.2";
+  static const int currentBuildNumber = 17;
+  static const String currentVersionName = "1.3.4";
 
   Future<AppUpdateInfo?> checkForUpdate() async {
     // Only check for APK updates when running as native mobile app (Android)

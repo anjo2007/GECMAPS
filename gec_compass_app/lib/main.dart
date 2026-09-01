@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/map_screen.dart';
 
+import 'services/data_service.dart';
+import 'services/routing_service.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -15,8 +18,12 @@ void main() {
     ));
   }
 
-  // Pre-warm SharedPreferences asynchronously without blocking initial frame
+  // Pre-warm caches and assets in parallel without blocking UI bootstrap
   SharedPreferences.getInstance();
+  DataService().loadLocalBuildings();
+  rootBundle.loadString('assets/campus_roads.json').then((jsonString) {
+    RoutingService().loadCampusRoadsFromJsonString(jsonString);
+  }).catchError((_) {});
 
   runApp(const GecCompassApp());
 }

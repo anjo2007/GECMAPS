@@ -1,3 +1,4 @@
 {
-  "vercel_api_url": "https://gecmaps.vercel.app/api/places"
+  "vercel_api_url": "https://gecmaps.vercel.app/api/places",
+  "carto_api_key": "cb1_2ogy_1_02329e70d4de29ec6b2fceb5"
 }

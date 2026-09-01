@@ -2,6 +2,18 @@
   "installCommand": "npm install",
   "buildCommand": "bash vercel-build.sh",
   "outputDirectory": "gec_compass_app/build/web",
+  "redirects": [
+    {
+      "source": "/app-release.apk",
+      "destination": "https://github.com/anjo2007/GECMAPS/releases/latest/download/app-release.apk",
+      "permanent": false
+    },
+    {
+      "source": "/app-arm64-v8a-release.apk",
+      "destination": "https://github.com/anjo2007/GECMAPS/releases/latest/download/app-arm64-v8a-release.apk",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)\\.(js|wasm|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)",
@@ -9,6 +21,24 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/version.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, s-maxage=300, stale-while-revalidate=3600"
+        }
+      ]
+    },
+    {
+      "source": "/sitemap.xml",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, s-maxage=86400"
         }
       ]
     },
@@ -35,10 +65,6 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
     },
     {
       "source": "/about",
